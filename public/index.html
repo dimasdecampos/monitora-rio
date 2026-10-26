@@ -15,7 +15,7 @@
     --tinta: #0b0b0b; --tinta-2: #52514e; --tinta-3: #898781;
     --grade: #e8e7e1; --eixo: #c3c2b7; --borda: rgba(11,11,11,.09);
     --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --neutro: #c4c2b9; --faixa: rgba(137,135,129,.15); --mediana: #6f6d68;
-    --chuva: #5598e7; --bom: #0ca30c; --atencao: #fab219; --alerta: #ec835a; --inundacao: #d03b3b;
+    --chuva: #5598e7; --bom: #0ca30c; --atencao: #fab219; --alerta: #ec835a; --inundacao: #d03b3b; --extravasa: #8b1a1a;
     --acento: #2a78d6; --sobe: #b42318; --desce: #006300; --sombra: 0 1px 2px rgba(0,0,0,.05), 0 4px 16px rgba(0,0,0,.04);
     --r100:#cde2fb; --r150:#b7d3f6; --r200:#9ec5f4; --r250:#86b6ef; --r300:#6da7ec; --r350:#5598e7; --r400:#3987e5;
     --r450:#2a78d6; --r500:#256abf; --r550:#1c5cab; --r600:#184f95; --r650:#104281; --r700:#0d366b;
@@ -27,7 +27,7 @@
       --tinta: #f0efec; --tinta-2: #c3c2b7; --tinta-3: #898781;
       --grade: #2c2c2a; --eixo: #44443f; --borda: rgba(255,255,255,.09);
       --s1: #3987e5; --s2: #d95926; --s3: #199e70; --neutro: #55544f; --faixa: rgba(195,194,183,.10); --mediana: #a3a197;
-      --chuva: #5598e7; --acento: #5598e7; --sobe: #f97066; --desce: #0ca30c; --sombra: none;
+      --chuva: #5598e7; --acento: #5598e7; --extravasa: #ff6b6b; --sobe: #f97066; --desce: #0ca30c; --sombra: none;
     }
   }
   :root[data-theme="dark"] {
@@ -36,7 +36,7 @@
     --tinta: #f0efec; --tinta-2: #c3c2b7; --tinta-3: #898781;
     --grade: #2c2c2a; --eixo: #44443f; --borda: rgba(255,255,255,.09);
     --s1: #3987e5; --s2: #d95926; --s3: #199e70; --neutro: #55544f; --faixa: rgba(195,194,183,.10); --mediana: #a3a197;
-    --chuva: #5598e7; --acento: #5598e7; --sobe: #f97066; --desce: #0ca30c; --sombra: none;
+    --chuva: #5598e7; --acento: #5598e7; --extravasa: #ff6b6b; --sobe: #f97066; --desce: #0ca30c; --sombra: none;
   }
 
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -214,7 +214,7 @@
          border-radius: 4px; padding: 0 5px; margin-left: 6px; vertical-align: 2px; }
   .prev-corpo { display: grid; gap: 16px; }
   .probs { display: grid; gap: 10px; }
-  .prob { display: grid; grid-template-columns: 92px minmax(0, 1fr) 48px; gap: 10px; align-items: center; font-size: 14px; }
+  .prob { display: grid; grid-template-columns: 124px minmax(0, 1fr) 48px; gap: 10px; align-items: center; font-size: 14px; }
   .prob .nome { display: inline-flex; align-items: center; gap: 6px; color: var(--tinta-2); }
   .prob .nome i { width: 9px; height: 9px; border-radius: 3px; flex: none; }
   .prob .trilho { height: 10px; border-radius: 5px; background: var(--superficie-2); overflow: hidden; }
@@ -238,6 +238,28 @@
   details.confianca p, details.confianca ul { margin: 8px 0 0; line-height: 1.55; }
   details.confianca ul { padding-left: 18px; }
   .prev-carregando { color: var(--tinta-3); font-size: 14px; }
+
+  /* ---------- rio acima ---------- */
+  ol.trecho { list-style: none; margin: 0; padding: 0; position: relative; }
+  ol.trecho:not(.afl)::before { content: ""; position: absolute; left: 7px; top: 18px; bottom: 18px; width: 2px; background: var(--grade); }
+  ol.trecho li.no { position: relative; display: grid; grid-template-columns: 16px minmax(0, 1fr) 72px auto; gap: 0 10px; align-items: center;
+                    padding: 8px 6px 8px 0; cursor: pointer; border-radius: 10px; }
+  ol.trecho li.no:hover { background: var(--superficie-2); }
+  ol.trecho li.no .bolinha { width: 16px; height: 16px; border-radius: 50%; border: 3px solid var(--superficie); box-shadow: 0 0 0 1px var(--eixo); z-index: 1; }
+  ol.trecho li.no.cidade .bolinha { width: 16px; height: 16px; box-shadow: 0 0 0 2px var(--tinta); }
+  ol.trecho li.no strong { font-size: 14px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  ol.trecho li.no small { font-size: 12px; color: var(--tinta-2); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  ol.trecho li.no svg { width: 72px; height: 26px; }
+  ol.trecho li.no .num { text-align: right; white-space: nowrap; }
+  ol.trecho li.no .num b { display: block; font-size: 15px; font-variant-numeric: tabular-nums; }
+  ol.trecho li.no .num span { font-size: 12px; font-weight: 600; }
+  ol.trecho li.sel { background: color-mix(in srgb, var(--acento) 9%, transparent); }
+  @media (max-width: 520px) {
+    ol.trecho li.no { grid-template-columns: 16px minmax(0, 1fr) auto; }
+    ol.trecho li.no svg { display: none; }
+    ol.trecho li.no strong { white-space: normal; }
+  }
+  .mini-pill { font-size: 11px; font-weight: 700; padding: 0 6px; border-radius: 4px; color: #fff; margin-left: 6px; vertical-align: 1px; }
 
   /* ---------- folha de estações ---------- */
   dialog.folha { border: 0; padding: 0; margin: auto auto 0; width: 100%; max-width: 560px; max-height: 85vh; border-radius: 22px 22px 0 0;
@@ -264,8 +286,8 @@
     .coluna { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 84px; }
     .stats { grid-auto-flow: row; grid-template-columns: 1fr 1fr; overflow: visible; margin: 0; padding: 0; }
     .stats .stat:last-child:nth-child(odd) { grid-column: span 2; }
-    .grafico, .previsao { grid-column: 2; }
-    .coluna { grid-row: span 2; }
+    .grafico, .previsao, .rio-acima { grid-column: 2; }
+    .coluna { grid-row: span 3; }
     .largo { grid-column: 1 / -1; }
     .duas { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 20px; align-items: start; }
     .area-g { height: 380px; }
@@ -314,6 +336,17 @@
     </section>
     <section class="stats" id="stats" aria-label="Números rápidos"></section>
   </div>
+
+  <section class="card rio-acima" id="cardRio" aria-labelledby="tituloRio">
+    <div class="cab">
+      <div><h2 id="tituloRio">Rio acima</h2>
+        <p class="sub" id="rSub">A água leva horas para descer de Cunha e Lagoinha até a cidade · SP Águas</p></div>
+      <span class="pill" id="rResumo"><i></i>…</span>
+    </div>
+    <ol class="trecho" id="rTrecho"><li class="prev-carregando">Carregando réguas…</li></ol>
+    <div class="rot" style="margin:14px 0 6px">Afluentes</div>
+    <ol class="trecho afl" id="rAfl"></ol>
+  </section>
 
   <section class="card previsao" id="cardPrev" aria-labelledby="tituloPrev">
     <div class="cab">
@@ -385,20 +418,27 @@
       <li>As cotas de atenção, alerta e inundação <strong>não são oficiais</strong>; no Paraitinga foram estimadas com cheias reais registradas na régua da cidade.</li>
       <li>Leituras com erro de sensor são descartadas do histórico. Anos <em>parciais</em> têm falhas e podem subestimar picos.</li>
       <li>Em emergência ligue <strong>199</strong> (Defesa Civil) ou <strong>193</strong> (Bombeiros).</li>
-      <li>Versões anteriores: <a href="classico.html">tempo real</a> · <a href="analise.html">histórico e comparação</a>.</li>
+      <li>Réguas da ANA e da <a href="https://cth.daee.sp.gov.br/sibh/" target="_blank" rel="noopener">SP Águas (SIBH)</a>. Cotas oficiais da SP Águas onde existem. Versões anteriores (só réguas da ANA): <a href="classico.html">tempo real</a> · <a href="analise.html">histórico</a>.</li>
     </ul>
   </section>
 </main>
 
 <script>
 // ================= configuração e utilidades =================
-const ESTACAO_PADRAO = "58040000";
+const ESTACAO_PADRAO = "sp664";
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
-const COTAS = [
-  { chave: "inundacao", nome: "Inundação", cor: "--inundacao" },
+const COTAS = [   // da mais alta para a mais baixa (nomes das cotas oficiais da SP Águas)
+  { chave: "extravasamento", nome: "Transbordamento", cor: "--extravasa" },
+  { chave: "emergencia", nome: "Emergência", cor: "--inundacao" },
   { chave: "alerta", nome: "Alerta", cor: "--alerta" },
   { chave: "atencao", nome: "Atenção", cor: "--atencao" },
 ];
+// cotas que a estação tem, da mais alta para a mais baixa, com o valor em cm
+const cotasDe = (est = estacoes[estado.estacao]) => COTAS.filter(n => est?.cotas_cm?.[n.chave] != null).map(n => ({ ...n, cm: est.cotas_cm[n.chave] }));
+// conversão entre réguas da cidade: régua X = a + b × Passarela (config.conversoes)
+const conv = (cod, p) => { const c = config.conversoes?.[cod]; return c ? c[0] + c[1] * p : p; };
+const desconv = (cod, x) => { const c = config.conversoes?.[cod]; return c ? (x - c[0]) / c[1] : x; };
+const REGUAS_CIDADE = ["sp664", "58040000", "58041000"];
 const METRICAS = {
   nmax: { nome: "Nível máximo", un: "m", casas: 2 },
   nmed: { nome: "Nível médio", un: "m", casas: 2 },
@@ -443,6 +483,36 @@ async function buscarAna(cod, dias) {
   }
   return [...out.values()].sort((a, b) => a.t < b.t ? -1 : 1);
 }
+// SP Águas (SIBH): leituras a cada 10 min, em UTC; várias estações numa só chamada
+const URL_SIBH = "https://cth.daee.sp.gov.br/sibh/api/v2/measurements";
+const p2 = n => String(n).padStart(2, "0");
+const isoUTC = d => `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}T${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}`;
+const isoLocal = d => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}:00`;
+async function buscarSibh(ests, dias) {
+  const ids = ests.flatMap(e => [e.id_nivel, e.id_chuva].filter(Boolean));
+  const ini = new Date(Date.now() - dias * 864e5), fim = new Date(Date.now() + 36e5);
+  const lotes = [];   // a API aceita no máximo 10 estações por chamada
+  for (let k = 0; k < ids.length; k += 10) lotes.push(ids.slice(k, k + 10));
+  const respostas = await Promise.all(lotes.map(async lote => {
+    const r = await fetch(`${URL_SIBH}?${lote.map(i => `station_prefix_ids[]=${i}`).join("&")}&start_date=${isoUTC(ini)}&end_date=${isoUTC(fim)}`);
+    if (!r.ok) throw new Error(`SP Águas respondeu ${r.status}`);
+    return (await r.json()).measurements || [];
+  }));
+  const porId = {};
+  for (const m of respostas.flat()) if (m.value != null) (porId[m.station_prefix_id] ??= []).push(m);
+  const hora = m => { const [d, h] = m.date.split(" "); return isoLocal(new Date(`${d.replaceAll("/", "-")}T${h}:00Z`)); };
+  const out = {};
+  for (const e of ests) {
+    const mapa = new Map();
+    for (const m of porId[e.id_nivel] || []) { const t = hora(m); mapa.set(t, { t, nivel: +m.value >= 0 ? +m.value : null, vazao: null, chuva: null }); }
+    for (const m of porId[e.id_chuva] || []) { const t = hora(m), l = mapa.get(t) || { t, nivel: null, vazao: null, chuva: null }; l.chuva = +m.value; mapa.set(t, l); }
+    out[e.codigo] = [...mapa.values()].sort((a, b) => a.t < b.t ? -1 : 1);
+  }
+  return out;
+}
+async function buscarLeituras(est, dias) {
+  return est.fonte === "spaguas" ? (await buscarSibh([est], dias))[est.codigo] : buscarAna(est.codigo, dias);
+}
 async function buscarDiario(cod) {
   const r = await fetch(`historico/${cod}/diario.json`);
   if (!r.ok) return [];
@@ -463,7 +533,7 @@ function diarioCompleto(c) {
 }
 async function carregar(cod) {
   if (!cache[cod]) {
-    const [leituras, diario] = await Promise.all([buscarAna(cod, 30), buscarDiario(cod)]);
+    const [leituras, diario] = await Promise.all([buscarLeituras(estacoes[cod], 30), buscarDiario(cod)]);
     cache[cod] = { leituras, diario, quando: Date.now() };
   }
   cache[cod].dias = diarioCompleto(cache[cod]);
@@ -472,7 +542,7 @@ async function carregar(cod) {
 async function atualizarAoVivo() {
   const c = cache[estado.estacao]; if (!c) return;
   try {
-    const novas = await buscarAna(estado.estacao, 2), mapa = new Map(c.leituras.map(l => [l.t, l]));
+    const novas = await buscarLeituras(estacoes[estado.estacao], 2), mapa = new Map(c.leituras.map(l => [l.t, l]));
     for (const l of novas) mapa.set(l.t, l);
     const corte = Date.now() - 31 * 864e5;
     c.leituras = [...mapa.values()].filter(l => ms(l) >= corte).sort((a, b) => a.t < b.t ? -1 : 1);
@@ -485,8 +555,7 @@ async function atualizarAoVivo() {
 // ================= estado ao vivo =================
 const comNivel = ls => ls.filter(l => l.nivel != null);
 function classificar(cm) {
-  const c = estacoes[estado.estacao].cotas_cm;
-  return COTAS.find(n => cm >= c[n.chave]) || { nome: "Normal", cor: "--bom" };
+  return cotasDe().find(n => cm >= n.cm) || { nome: "Normal", cor: "--bom" };
 }
 function variacao(ls, horas) {
   const n = comNivel(ls); if (n.length < 2) return null;
@@ -496,7 +565,7 @@ function variacao(ls, horas) {
 }
 function marcarVivo(tipo, texto) {
   $("#vivo").className = "vivo " + tipo;
-  $("#vivoTxt").textContent = texto || (tipo === "erro" ? "Sem conexão com a ANA" : "");
+  $("#vivoTxt").textContent = texto || (tipo === "erro" ? "Sem conexão com a fonte de dados" : "");
 }
 
 // ================= destaque =================
@@ -505,7 +574,7 @@ function desenharHero() {
   if (!u) { $("#hNum").textContent = "—"; $("#hFrase").textContent = "A estação não enviou leituras nos últimos 30 dias."; marcarVivo("erro", "Estação sem dados"); return; }
   const horas = (Date.now() - ms(u)) / 36e5, atrasada = horas > est.atraso_max_horas, st = classificar(u.nivel);
   document.documentElement.style.setProperty("--cor-status", tok(st.cor));
-  $("#hRot").innerHTML = atrasada ? `<span class="aviso-atraso">⚠ Última leitura ${ha(horas)}</span>` : `Agora · ${new Date(ms(u)).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  $("#hRot").innerHTML = atrasada ? `<span class="aviso-atraso">⚠ Última leitura ${ha(horas)}</span>` : `Agora · ${new Date(ms(u)).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · ${est.operadora}`;
   $("#hStatus").innerHTML = `<i style="background:${tok(st.cor)}"></i>${st.nome}`;
   $("#hNum").innerHTML = `${fmt(u.nivel / 100, 2)}<small>m</small>`;
   marcarVivo(atrasada ? "atraso" : "ok", atrasada ? `Sem leitura nova ${ha(horas)}` : `Ao vivo · ${ha(horas)}`);
@@ -519,17 +588,17 @@ function desenharHero() {
   $("#hTend").innerHTML = taxa == null ? "" : `<b class="${cls}">${seta} ${txt}</b><span>${taxa > 0 ? "+" : ""}${fmt(taxa, 0)} cm/h</span>`;
 
   // medidor com as cotas
-  const cotas = est.cotas_cm, topo = Math.max(cotas.inundacao * 1.25, u.nivel * 1.05);
+  const cl = cotasDe(est), topo = Math.max((cl[0]?.cm ?? u.nivel) * 1.2, u.nivel * 1.05);
   $("#mAgua").style.width = Math.min(100, u.nivel / topo * 100) + "%";
   $("#mAgua").style.background = `linear-gradient(90deg, color-mix(in srgb, ${tok("--acento")} 45%, transparent), ${tok("--acento")})`;
   $("#medidor .trilho").querySelectorAll(".marca").forEach(m => m.remove());
-  for (const n of COTAS) {
+  for (const n of cl) {
     const m = document.createElement("span"); m.className = "marca";
-    m.style.left = cotas[n.chave] / topo * 100 + "%"; m.style.background = tok(n.cor); m.title = `${n.nome}: ${fmt(cotas[n.chave] / 100, 2)} m`;
+    m.style.left = n.cm / topo * 100 + "%"; m.style.background = tok(n.cor); m.title = `${n.nome}: ${fmt(n.cm / 100, 2)} m`;
     $("#medidor .trilho").appendChild(m);
   }
   $("#mEscala").innerHTML = `<span style="left:0;transform:none">0</span>` +
-    COTAS.slice().reverse().map(n => `<span style="left:${cotas[n.chave] / topo * 100}%">${fmt(cotas[n.chave] / 100, 1)}</span>`).join("");
+    cl.slice().reverse().map(n => `<span style="left:${n.cm / topo * 100}%">${fmt(n.cm / 100, 1)}</span>`).join("");
 
   // comparação com o normal da época (±7 dias, anos anteriores)
   const hoje = hojeISO(), ano = +hoje.slice(0, 4), alvo = Date.UTC(2024, +hoje.slice(5, 7) - 1, +hoje.slice(8, 10));
@@ -555,7 +624,7 @@ function desenharStats() {
   const vz = ls.filter(l => l.vazao != null).at(-1);
   const ano = new Date().getFullYear(), doAno = c.dias.filter(r => +r.d.slice(0, 4) === ano && r.nmax != null);
   const pico = doAno.reduce((m, r) => (!m || r.nmax > m.nmax ? r : m), null);
-  const acima = doAno.filter(r => r.nmax >= est.cotas_cm.atencao).length;
+  const baixa = cotasDe(est).at(-1), acima = baixa ? doAno.filter(r => r.nmax >= baixa.cm).length : 0;
   // pico do ano entre todos os anos
   const picos = new Map();
   for (const r of c.dias) { const y = r.d.slice(0, 4); if (r.nmax != null && (!picos.has(y) || r.nmax > picos.get(y))) picos.set(y, r.nmax); }
@@ -565,7 +634,7 @@ function desenharStats() {
     temChuva ? ["Chuva 7 dias", `${fmt(soma(168), 0)}<small> mm</small>`, `30 dias: ${fmt(soma(720), 0)} mm`] : null,
     vz ? ["Vazão", `${fmt(vz.vazao, 0)}<small> m³/s</small>`, "Volume de água passando"] : null,
     pico ? [`Pico de ${ano}`, `${fmt(pico.nmax / 100, 2)}<small> m</small>`, `${dataCurta(pico.d)} · ${rank}º maior de ${picos.size} anos`] : null,
-    [`Dias acima da atenção`, `${acima}<small> em ${ano}</small>`, `Cota de atenção: ${fmt(est.cotas_cm.atencao / 100, 2)} m`],
+    baixa ? [`Dias acima da ${baixa.nome.toLowerCase()}`, `${acima}<small> em ${ano}</small>`, `Cota${est.cotas_oficiais ? " oficial" : ""}: ${fmt(baixa.cm / 100, 2)} m`] : null,
   ].filter(Boolean);
   $("#stats").innerHTML = cards.map(([r, v, n]) => `<div class="stat"><span class="rot">${r}</span><span class="v">${v}</span><span class="n">${n}</span></div>`).join("");
 }
@@ -575,10 +644,10 @@ const pluginCotas = {
   id: "cotas",
   afterDatasetsDraw(c, _, op) {
     if (!op?.ativo) return;
-    const { ctx, chartArea: a, scales: { y } } = c, cotas = estacoes[estado.estacao].cotas_cm;
+    const { ctx, chartArea: a, scales: { y } } = c;
     ctx.save();
-    for (const n of COTAS) {
-      const v = cotas[n.chave] / 100;
+    for (const n of cotasDe()) {
+      const v = n.cm / 100;
       if (v > y.max || v < y.min) continue;
       const py = Math.round(y.getPixelForValue(v)) + .5;
       ctx.strokeStyle = tok(n.cor); ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
@@ -776,7 +845,7 @@ function ajustarY(chart, a, b, incluirCotas) {
   }
   if (!isFinite(lo)) return;
   if (incluirCotas) {
-    const at = estacoes[estado.estacao].cotas_cm.atencao / 100;
+    const at = (cotasDe().at(-1)?.cm ?? Infinity) / 100;
     if (at > hi && at - hi < Math.max(.8, (hi - lo) * .6)) hi = at;   // mostra a cota de atenção quando o rio está perto dela
   }
   const folga = Math.max(.1, (hi - lo) * .12);
@@ -810,7 +879,10 @@ function interp(dados, x) {
 }
 function linhaPrevista(ultimo) {
   const m = prev.modelo, ref = prev.ref, d = prev.dados;
-  if (!m?.trajetoria || !ref || !d || estacoes[estado.estacao].rio !== "Rio Paraitinga") return null;
+  if (!m?.trajetoria || !ref || !d || !REGUAS_CIDADE.includes(estado.estacao)) return null;
+  // o modelo trabalha na régua da CESP: converte a variação para a régua mostrada
+  const k = estado.estacao === "58041000" ? 1 : estado.estacao === "58040000" ? config.conversoes["58040000"][1] / config.conversoes["58041000"][1] : 1 / config.conversoes["58041000"][1];
+  const minimo = Math.min(...comNivel(cache[estado.estacao]?.leituras || []).map(l => l.nivel / 100), ultimo.y);
   const i = d.tempo.indexOf(horaLocal(new Date(ref.t)));
   if (i < 720) return null;
   const f = m.fator_previsao, soma = (a, b) => d.media.slice(Math.max(0, a), Math.max(0, b)).reduce((s, v) => s + v, 0);
@@ -823,8 +895,8 @@ function linhaPrevista(ultimo) {
     const v = [1, x.n, x.n * x.n, x.a, x.b, x.s, ra, rf, ra * x.s, rf * x.s, ra * x.n, x.a * (24 / (pz.h + 24))];
     const p = pz.pesos.reduce((s, w, k) => s + w * v[k], 0);
     const q = pz.faixas.find(fx => p <= fx.ate).q;
-    const piso = .8;   // o rio nunca ficou abaixo disso nessas réguas
-    pts.push({ x: ultimo.x + pz.h * 36e5, lo: Math.max(piso, ultimo.y + (p + q[1]) / 100), md: Math.max(piso, ultimo.y + (p + q[3]) / 100), hi: ultimo.y + (p + q[5]) / 100 });
+    const piso = Math.max(0, minimo - .1);   // não deixa a previsão abaixo do mínimo recente
+    pts.push({ x: ultimo.x + pz.h * 36e5, lo: Math.max(piso, ultimo.y + k * (p + q[1]) / 100), md: Math.max(piso, ultimo.y + k * (p + q[3]) / 100), hi: ultimo.y + k * (p + q[5]) / 100 });
   }
   const agoraH = d.tempo.indexOf(horaLocal(new Date()));
   const chuva = d.tempo.map((t, j) => ({ x: new Date(t + ":00").getTime() + 18e5, y: d.media[j] * f, j })).filter(p => p.j > agoraH && p.y > 0);
@@ -1105,22 +1177,22 @@ function atualizarLeitura() {
 
 // ================= ano a ano, cheias, mapa, permanência =================
 function desenharLinhas() {
-  const est = estacoes[estado.estacao], cot = est.cotas_cm, { lista } = temporadas();
+  const cl = cotasDe(), { lista } = temporadas();
   const comPico = lista.filter(t => t.pico).reverse();
-  const topo = Math.max(cot.inundacao * 1.15, ...comPico.map(t => t.pico.nmax)) ;
+  const topo = Math.max((cl[0]?.cm ?? 0) * 1.15, ...comPico.map(t => t.pico.nmax));
   $("#linhas").innerHTML = comPico.map(t => {
-    const cor = estado.destaques.get(t.s), dias = { atencao: 0, alerta: 0, inundacao: 0 };
-    for (const r of t.dias) { if (!r || r.nmax == null) continue; if (r.nmax >= cot.inundacao) dias.inundacao++; else if (r.nmax >= cot.alerta) dias.alerta++; else if (r.nmax >= cot.atencao) dias.atencao++; }
-    const total = dias.atencao + dias.alerta + dias.inundacao;
+    const cor = estado.destaques.get(t.s), dias = {};
+    for (const r of t.dias) { if (!r || r.nmax == null) continue; const n = cl.find(n => r.nmax >= n.cm); if (n) dias[n.chave] = (dias[n.chave] || 0) + 1; }
+    const total = Object.values(dias).reduce((s, x) => s + x, 0);
     return `<button class="linha" data-s="${t.s}" aria-pressed="${!!cor}">
       <span class="ano-n">${rotulo(t.s)}${t.atual ? "<em>atual</em>" : t.parcial ? "<em>parcial</em>" : ""}</span>
       <span class="trilho"><span class="enche" style="width:${t.pico.nmax / topo * 100}%;${cor ? `background:${tok(cor)}` : ""}"></span>
-        ${COTAS.map(n => `<span class="marca" style="left:${cot[n.chave] / topo * 100}%;background:${tok(n.cor)}"></span>`).join("")}</span>
+        ${cl.map(n => `<span class="marca" style="left:${n.cm / topo * 100}%;background:${tok(n.cor)}"></span>`).join("")}</span>
       <span class="val">${fmt(t.pico.nmax / 100, 2)} m</span>
-      <span class="det"><span>${dataCurta(t.pico.d)}</span>${total ? `<span class="dias">${COTAS.slice().reverse().filter(n => dias[n.chave]).map(n => `<span><i style="background:${tok(n.cor)}"></i>${dias[n.chave]} d</span>`).join("")}</span>` : "<span>nenhum dia acima da atenção</span>"}</span>
+      <span class="det"><span>${dataCurta(t.pico.d)}</span>${total ? `<span class="dias">${cl.slice().reverse().filter(n => dias[n.chave]).map(n => `<span><i style="background:${tok(n.cor)}"></i>${dias[n.chave]} d</span>`).join("")}</span>` : `<span>${cl.length ? `nenhum dia acima da ${cl.at(-1).nome.toLowerCase()}` : "sem cotas cadastradas"}</span>`}</span>
     </button>`;
   }).join("");
-  $("#legCotas").innerHTML = COTAS.slice().reverse().map(n => `<span><i style="background:${tok(n.cor)}"></i>${n.nome} ≥ ${fmt(cot[n.chave] / 100, 2)} m</span>`).join("") + `<span>· d = dias</span>`;
+  $("#legCotas").innerHTML = cl.slice().reverse().map(n => `<span><i style="background:${tok(n.cor)}"></i>${n.nome} ≥ ${fmt(n.cm / 100, 2)} m</span>`).join("") + (cl.length ? `<span>· d = dias${estacoes[estado.estacao].cotas_oficiais ? " · cotas oficiais SP Águas" : ""}</span>` : "");
   const nome = estado.de === 1 && estado.ate === 12 ? "" : ` (${MESES[estado.de - 1]}–${MESES[estado.ate - 1]})`;
   $("#anoSub").textContent = `Maior nível de cada ${vira() ? "temporada" : "ano"}${nome} e dias acima das cotas. Toque para comparar no gráfico.`;
 }
@@ -1179,7 +1251,7 @@ function desenharPermanencia() {
   if (vAt.length) ds.push({ label: rotulo(atual.s), data: q(vAt), borderColor: tok("--s1"), borderWidth: 2.5, pointRadius: 0, rotuloFinal: rotulo(atual.s) });
   graficos.perm?.destroy();
   graficos.perm = new Chart($("#gPerm"), { type: "line", data: { datasets: ds }, options: op });
-  const at = estacoes[estado.estacao].cotas_cm.atencao, pct = vs => vs.length ? vs.filter(v => v >= at).length / vs.length * 100 : null;
+  const at = cotasDe().at(-1)?.cm ?? Infinity, pct = vs => vs.length ? vs.filter(v => v >= at).length / vs.length * 100 : null;
   $("#permSub").textContent = `Em ${fmt(pct(vRef), 1)}% dos dias dos anos completos o nível médio passou da cota de atenção` + (vAt.length ? `; em ${rotulo(atual.s)}, ${fmt(pct(vAt), 1)}%.` : ".");
 }
 
@@ -1224,18 +1296,21 @@ async function buscarPrevisao() {
 }
 
 async function nivelDeReferencia() {
-  // usa a régua da CESP (a do treino); se estiver parada, usa a mais recente entre as duas da cidade
-  const ler = async cod => comNivel(cache[cod] && Date.now() - cache[cod].quando < 10 * 60e3 ? cache[cod].leituras : await buscarAna(cod, 2).catch(() => [])).at(-1);
-  const [cesp, cidade] = await Promise.all([ler("58041000"), ler("58040000")]);
-  const offset = cesp && cidade && Math.abs(ms(cesp) - ms(cidade)) < 2 * 36e5 ? cidade.nivel - cesp.nivel : 0;
-  if (cesp && (!cidade || ms(cesp) >= ms(cidade) - 36e5)) return { H0: cesp.nivel, t: ms(cesp), offset, fonte: "CESP" };
-  if (cidade) return { H0: cidade.nivel, t: ms(cidade), offset: 0, fonte: "cidade" };
+  // o modelo foi treinado na régua da CESP; se ela estiver parada, estima pela Passarela (SP Águas)
+  const ler = async cod => {
+    const c = cache[cod], ls = c && Date.now() - c.quando < 10 * 60e3 ? c.leituras : await buscarLeituras(estacoes[cod], 2).catch(() => []);
+    return comNivel(ls).at(-1);
+  };
+  const [cesp, pas] = await Promise.all([ler("58041000"), ler("sp664")]);
+  const fresca = l => l && Date.now() - ms(l) < 3 * 36e5;
+  if (fresca(cesp) || (cesp && !pas)) return { H0: cesp.nivel, t: ms(cesp), fonte: "régua da CESP" };
+  if (pas) return { H0: conv("58041000", pas.nivel), t: ms(pas), fonte: "Passarela (SP Águas) convertida" };
   return null;
 }
 
 async function desenharPrevisao() {
   const card = $("#cardPrev");
-  if (estacoes[estado.estacao].rio !== "Rio Paraitinga") { card.hidden = true; return; }
+  if (!["Rio Paraitinga", "Afluentes do Paraitinga"].includes(estacoes[estado.estacao].rio)) { card.hidden = true; return; }
   card.hidden = false;
   try {
     if (!prev.dados || Date.now() - prev.quando > 30 * 60e3) { await buscarPrevisao(); prev.quando = Date.now(); }
@@ -1261,18 +1336,22 @@ function renderizarPrevisao(ref) {
   const fs = cenarios.length >= 5 ? cenarios : [fDet];
   const P = G => fs.reduce((s, f) => s + chanceDeSubir(H0, x, f, G), 0) / fs.length;
 
-  const cot = m.cotas_cm, linhas = [["atencao", "Atenção", "--atencao"], ["alerta", "Alerta", "--alerta"], ["inundacao", "Inundação", "--inundacao"]];
-  const probs = Object.fromEntries(linhas.map(([k]) => [k, P(cot[k] - H0)]));
+  // cotas oficiais da Passarela, convertidas para a régua da CESP (onde o modelo trabalha), da mais baixa para a mais alta
+  const linhas = cotasDe(estacoes.sp664).reverse().map(n => ({ ...n, cesp: conv("58041000", n.cm) }));
+  const probs = Object.fromEntries(linhas.map(n => [n.chave, P(n.cesp - H0)]));
   // pico provável (50%) e cenário pessimista (10%) — em cm acima do nível atual
   const subida = alvo => { for (let G = 5; G <= 700; G += 5) if (P(G) < alvo) return G - 5; return 700; };
-  const g50 = subida(.5), g10 = subida(.1), regua = estado.estacao === "58040000" ? ref.offset : 0;
-  const naRegua = cm => fmt((cm + regua) / 100, 2);
+  const g50 = subida(.5), g10 = subida(.1);
+  // resultado na régua escolhida (Passarela, ANA ou CESP); para outras estações, na Passarela
+  const reguaCod = REGUAS_CIDADE.includes(estado.estacao) ? estado.estacao : "sp664";
+  const paraRegua = cesp => reguaCod === "58041000" ? cesp : reguaCod === "sp664" ? desconv("58041000", cesp) : conv("58040000", desconv("58041000", cesp));
+  const naRegua = cm => fmt(paraRegua(cm) / 100, 2);
 
   // nível de risco: olha a próxima cota que ainda não foi passada
-  const proxima = linhas.find(([k]) => H0 < cot[k]);
-  const pr = proxima ? probs[proxima[0]] : 1;
-  const jaAcima = H0 >= cot.atencao;   // já em atenção: o risco é de piorar
-  const risco = !proxima ? ["Acima da inundação", "--inundacao"]
+  const proxima = linhas.find(n => H0 < n.cesp);
+  const pr = proxima ? probs[proxima.chave] : 1;
+  const jaAcima = H0 >= linhas[0].cesp;   // já em atenção: o risco é de piorar
+  const risco = !proxima ? ["Acima do transbordamento", "--extravasa"]
     : pr < .1 ? [jaAcima ? "Sem sinal de piora" : "Risco baixo", "--bom"]
     : pr < .3 ? [jaAcima ? "Pode piorar" : "Risco moderado", "--atencao"]
     : pr < .6 ? [jaAcima ? "Risco alto de piorar" : "Risco alto", "--alerta"]
@@ -1301,17 +1380,17 @@ function renderizarPrevisao(ref) {
   const ord = fs.slice().sort((a, b) => a - b), f10 = ord[Math.floor(.1 * (ord.length - 1))], f90 = ord[Math.ceil(.9 * (ord.length - 1))];
   const mes = new Date().getMonth() + 1, anoAtual = new Date().getFullYear();
   const anosMes = [...prev.sazonal].filter(([k]) => +k.slice(5) === mes && +k.slice(0, 4) < anoAtual);
-  const comCheia = anosMes.filter(([, v]) => v >= cot.atencao).length;
+  const comCheia = anosMes.filter(([, v]) => v >= linhas[0].cesp).length;
   const idade = (Date.now() - ref.t) / 36e5;
   const t = m.teste;
 
-  $("#pSub").textContent = `Rio Paraitinga em São Luiz · ${cenarios.length >= 5 ? `${cenarios.length} cenários de chuva (GFS)` : "previsão de chuva Open-Meteo"} · atualizado ${new Date(prev.quando).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  $("#pSub").textContent = `Rio Paraitinga em São Luiz · régua ${reguaCod === "sp664" ? "da Passarela" : reguaCod === "58040000" ? "da ANA" : "da CESP"} · ${cenarios.length >= 5 ? `${cenarios.length} cenários de chuva (GFS)` : "previsão de chuva Open-Meteo"} · atualizado ${new Date(prev.quando).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
   $("#pCorpo").innerHTML = `
     <div class="probs" role="list" aria-label="Chance de passar de cada cota em 48 horas">
-      ${linhas.map(([k, nome, cor]) => {
-        const p = probs[k], ja = H0 >= cot[k];
-        return `<div class="prob" role="listitem"><span class="nome"><i style="background:${tok(cor)}"></i>${nome}</span>
-          <span class="trilho"><span class="enche" style="width:${Math.max(1.5, p * 100)}%;background:${tok(cor)}"></span></span>
+      ${linhas.map(n => {
+        const p = probs[n.chave], ja = H0 >= n.cesp;
+        return `<div class="prob" role="listitem"><span class="nome" title="${n.nome}: ${naRegua(n.cesp)} m"><i style="background:${tok(n.cor)}"></i>${n.nome}</span>
+          <span class="trilho"><span class="enche" style="width:${Math.max(1.5, p * 100)}%;background:${tok(n.cor)}"></span></span>
           <b>${ja ? "já" : p < .01 ? "<1%" : fmt(p * 100, 0) + "%"}</b></div>`;
       }).join("")}
     </div>
@@ -1340,10 +1419,70 @@ function renderizarPrevisao(ref) {
         <li>Testado de ${t.periodo.replace(" a ", " até ")} com a previsão do tempo real da época: das <b>${t.cheias}</b> vezes em que o rio passou da atenção, avisou (chance ≥ ${t.limiar_aviso * 100}%) <b>${t.avisadas["6"]}</b> com 6 h de antecedência, ${t.avisadas["12"]} com 12 h e ${t.avisadas["24"]} com 24 h.</li>
         <li>Em ${t.dias_sem_cheia} dos ${t.dias_com_aviso} dias com aviso, a cheia não veio.</li>
         <li>Tempestades muito localizadas na serra podem escapar da previsão. O aviso costuma vir poucas horas antes.</li>
-        <li>Cálculo na régua da CESP${regua ? `, convertido para a régua da cidade (${regua > 0 ? "+" : ""}${fmt(regua / 100, 2)} m)` : ""}. Nível usado: ${fmt(H0 / 100, 2)} m (${ref.fonte}, ${ha(idade)}).</li>
+        <li>Cotas oficiais da SP Águas (régua da Passarela). O modelo calcula na régua da CESP e converte; nível de partida: ${ref.fonte}, ${ha(idade)}.</li>
         <li><b>Não substitui os alertas da Defesa Civil (199).</b></li>
       </ul>
     </details>`;
+}
+
+// ================= rio acima (réguas da SP Águas ao longo do Paraitinga) =================
+const rioAcima = { dados: {}, quando: 0 };
+function miniGrafico(ls) {
+  const n = ls.filter(l => Date.now() - ms(l) < 48 * 36e5);
+  if (n.length < 2) return "";
+  const x0 = ms(n[0]), x1 = ms(n.at(-1)), ys = n.map(l => l.nivel), lo = Math.min(...ys), hi = Math.max(...ys);
+  const pts = n.map(l => `${((ms(l) - x0) / (x1 - x0 || 1) * 70 + 1).toFixed(1)},${(24 - (l.nivel - lo) / (hi - lo || 1) * 22).toFixed(1)}`).join(" ");
+  return `<svg viewBox="0 0 72 26" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="${tok("--s1")}" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+}
+async function desenharRioAcima() {
+  const card = $("#cardRio");
+  if (!["Rio Paraitinga", "Afluentes do Paraitinga"].includes(estacoes[estado.estacao].rio)) { card.hidden = true; return; }
+  card.hidden = false;
+  const lista = Object.values(estacoes).filter(e => e.rio_acima && e.fonte === "spaguas"), cidade = estacoes.sp664;
+  try {
+    if (Date.now() - rioAcima.quando > 4 * 60e3) { rioAcima.dados = await buscarSibh([...lista, cidade], 2); rioAcima.quando = Date.now(); }
+  } catch {
+    $("#rTrecho").innerHTML = `<li class="prev-carregando">SP Águas indisponível agora; tentaremos de novo em instantes.</li>`; return;
+  }
+  const montar = e => {
+    const ls = comNivel(rioAcima.dados[e.codigo] || []), u = ls.at(-1);
+    const v = variacao(ls, 3), cl = cotasDe(e), st = u ? cl.find(n => u.nivel >= n.cm) : null;
+    return { e, ls, u, dif: v ? v.delta : null, st };
+  };
+  const trecho = lista.filter(e => !e.rio_acima.afluente).sort((a, b) => a.rio_acima.ordem - b.rio_acima.ordem).map(montar);
+  trecho.push({ ...montar(cidade), cidade: true });
+  const afl = lista.filter(e => e.rio_acima.afluente).map(montar);
+
+  const li = r => {
+    const { e, u, dif, st } = r;
+    const cls = dif == null ? "" : dif >= 5 ? "sobe" : dif <= -5 ? "desce" : "";
+    const seta = cls === "sobe" ? "▲" : cls === "desce" ? "▼" : "▬";
+    const onde = r.cidade ? "cidade" : e.rio_acima?.horas_ate_cidade ? `~${e.rio_acima.horas_ate_cidade} h até a cidade` : "afluente";
+    const velho = u && Date.now() - ms(u) > 2 * 36e5;
+    return `<li class="no${r.cidade ? " cidade" : ""}${e.codigo === estado.estacao ? " sel" : ""}" data-cod="${e.codigo}">
+      <span class="bolinha" style="background:${tok(st ? st.cor : "--neutro")}"></span>
+      <div><strong>${e.nome}${st ? `<span class="mini-pill" style="background:${tok(st.cor)};${st.cor === "--atencao" ? "color:#0b0b0b" : ""}">${st.nome}</span>` : ""}</strong>
+        <small>${onde}${u ? ` · ${velho ? "⚠ " : ""}${new Date(ms(u)).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : " · sem leitura"}</small></div>
+      ${miniGrafico(r.ls)}
+      <div class="num"><b>${u ? fmt(u.nivel / 100, 2) + " m" : "—"}</b><span class="${cls}">${dif == null ? "" : `${seta} ${dif > 0 ? "+" : ""}${fmt(dif, 0)} cm/3h`}</span></div>
+    </li>`;
+  };
+  $("#rTrecho").innerHTML = trecho.map(li).join("");
+  $("#rAfl").innerHTML = afl.map(li).join("");
+
+  // resumo: a água está subindo em algum ponto rio acima?
+  const subindo = trecho.filter(r => !r.cidade && r.dif != null && r.dif >= 10);
+  const baixando = trecho.filter(r => !r.cidade && r.dif != null && r.dif <= -10);
+  const acimaCota = trecho.filter(r => !r.cidade && r.st);
+  let resumo;
+  if (subindo.length) {
+    const h = Math.min(...subindo.map(r => r.e.rio_acima.horas_ate_cidade));
+    resumo = ["Água subindo rio acima", "--alerta", `Subindo em ${subindo.map(r => r.e.nome.replace(" — ", " (") + (r.e.nome.includes(" — ") ? ")" : "")).join(", ")}. Essa água chega à cidade em cerca de ${h} h.`];
+  } else if (acimaCota.length) resumo = ["Rio alto rio acima", "--atencao", `${acimaCota.map(r => r.e.nome).join(", ")} acima da cota de ${acimaCota[0].st.nome.toLowerCase()}.`];
+  else if (baixando.length) resumo = ["Rio acima baixando", "--bom", "As réguas rio acima estão baixando."];
+  else resumo = ["Rio acima estável", "--bom", "Sem subida nas réguas rio acima nas últimas 3 h."];
+  $("#rResumo").innerHTML = `<i style="background:${tok(resumo[1])}"></i>${resumo[0]}`;
+  $("#rSub").textContent = `${resumo[2]} · SP Águas, leituras a cada 10 min`;
 }
 
 // ================= folha de estações =================
@@ -1351,16 +1490,21 @@ async function abrirFolha() {
   const lista = $("#listaEstacoes");
   lista.innerHTML = config.rios.map(rio => `<h3>${rio.nome}</h3>` + rio.estacoes.map(e => `
     <button class="op-est" data-cod="${e.codigo}" aria-current="${e.codigo === estado.estacao}">
-      <strong>${e.nome}${e.codigo === ESTACAO_PADRAO ? '<span class="selo">referência</span>' : ""}</strong>
+      <strong>${e.nome}${e.codigo === (config.estacao_padrao || ESTACAO_PADRAO) ? '<span class="selo">referência</span>' : ""}</strong>
       <span class="nv" id="nv-${e.codigo}">…</span>
-      <small>${e.operadora} · ${e.codigo}${e.observacao ? " · " + e.observacao : ""}</small>
+      <small>${e.operadora} · ${e.prefixo || e.codigo}${e.observacao ? " · " + e.observacao : ""}</small>
     </button>`).join("")).join("");
   $("#folha").showModal();
-  for (const rio of config.rios) for (const e of rio.estacoes) {
-    const c = cache[e.codigo];
-    const ls = c ? c.leituras : await buscarAna(e.codigo, 1).catch(() => []);
-    const u = comNivel(ls).at(-1), el = document.getElementById("nv-" + e.codigo);
+  const todas = config.rios.flatMap(r => r.estacoes);
+  const mostrar = (e, ls) => {
+    const u = comNivel(ls || []).at(-1), el = document.getElementById("nv-" + e.codigo);
     if (el) el.innerHTML = u ? `${fmt(u.nivel / 100, 2)} m<small>${ha((Date.now() - ms(u)) / 36e5)}</small>` : "—";
+  };
+  const sp = todas.filter(e => e.fonte === "spaguas" && !cache[e.codigo]);
+  if (sp.length) buscarSibh(sp, 1).then(r => sp.forEach(e => mostrar(e, r[e.codigo]))).catch(() => sp.forEach(e => mostrar(e, [])));
+  for (const e of todas) {
+    if (cache[e.codigo]) mostrar(e, cache[e.codigo].leituras);
+    else if (e.fonte !== "spaguas") buscarAna(e.codigo, 1).then(ls => mostrar(e, ls)).catch(() => mostrar(e, []));
   }
 }
 
@@ -1393,7 +1537,7 @@ function desenharTudo() {
   desenharHero(); desenharStats();
   trocarModo(estado.modo);
   desenharLinhas(); desenharCheias(); desenharCalor(); desenharPermanencia();
-  desenharPrevisao();
+  desenharPrevisao(); desenharRioAcima();
 }
 async function trocarEstacao(cod) {
   estado.estacao = cod; estado.destaques = new Map(); estado.janela = null;
@@ -1415,6 +1559,7 @@ async function iniciar() {
   config = await (await fetch("config.json")).json();
   config.rios.forEach(r => r.estacoes.forEach(e => estacoes[e.codigo] = { ...e, rio: r.nome }));
   const p = new URLSearchParams(location.search);
+  estado.estacao = config.estacao_padrao || ESTACAO_PADRAO;
   if (estacoes[p.get("estacao")]) estado.estacao = p.get("estacao");
   if (p.get("modo") === "comparar") estado.modo = "comparar";
   if (+p.get("de") >= 1 && +p.get("de") <= 12 && +p.get("ate") >= 1 && +p.get("ate") <= 12) { estado.de = +p.get("de"); estado.ate = +p.get("ate"); }
@@ -1452,6 +1597,8 @@ async function iniciar() {
   await trocarEstacao(estado.estacao);
   setInterval(atualizarAoVivo, 5 * 60e3);
   setInterval(desenharPrevisao, 15 * 60e3);
+  setInterval(desenharRioAcima, 5 * 60e3);
+  $("#cardRio").addEventListener("click", ev => { const li = ev.target.closest("li[data-cod]"); if (li && li.dataset.cod !== estado.estacao) trocarEstacao(li.dataset.cod); });
   document.addEventListener("visibilitychange", () => { if (!document.hidden) { atualizarAoVivo(); desenharPrevisao(); } });
 }
 iniciar();

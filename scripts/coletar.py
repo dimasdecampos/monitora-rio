@@ -1,17 +1,19 @@
-"""Baixa o histórico das estações da ANA e salva em public/historico/.
+"""Baixa o histórico das estações (ANA e SP Águas) e salva em public/historico/.
 
 Formato: public/historico/<codigo>/<AAAA-MM>.json  (um arquivo por mês)
          public/historico/index.json               (meses disponíveis por estação)
 
 Uso:
-  python scripts/coletar.py                 # atualiza o mês atual e o anterior (roda todo dia no GitHub)
-  python scripts/coletar.py --desde 2024-01 # baixa tudo desde jan/2024 (carga inicial)
+  python scripts/coletar.py                          # atualiza o mês atual e o anterior (roda todo dia no GitHub)
+  python scripts/coletar.py --desde 2024-01          # baixa tudo desde jan/2024 (carga inicial)
+  python scripts/coletar.py --desde 2018-01 --estacao sp664   # só uma estação
 """
 
 import argparse
 import json
 import sys
 import time
+import urllib.request
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -48,6 +50,43 @@ def baixar_mes(codigo, mes, tentativas=3):
             print(f"  erro ({erro}), tentativa {n + 1}/{tentativas}")
             time.sleep(5 * (n + 1))
     raise RuntimeError(f"Não foi possível baixar {codigo} {mes:%Y-%m}")
+
+
+SIBH = "https://cth.daee.sp.gov.br/sibh/api/v2/measurements"
+
+
+def baixar_mes_sibh(est, mes, tentativas=3):
+    """SP Águas (SIBH): leituras a cada 10 min, em UTC. Guarda de hora em hora (hora de Brasília):
+    nível = leitura da hora cheia (ou a mais próxima dentro da hora); chuva = soma da hora."""
+    ini = datetime(mes.year, mes.month, 1) + timedelta(hours=3)          # 00h de Brasília em UTC
+    fim = datetime.combine(ultimo_dia(mes), datetime.min.time()) + timedelta(days=1, hours=3)
+    ids = [est["id_nivel"]] + ([est["id_chuva"]] if est.get("id_chuva") else [])
+    q = "&".join(f"station_prefix_ids[]={i}" for i in ids)
+    url = f"{SIBH}?{q}&start_date={ini:%Y-%m-%dT%H:%M}&end_date={fim:%Y-%m-%dT%H:%M}"
+    for n in range(tentativas):
+        try:
+            dados = json.load(urllib.request.urlopen(url, timeout=600))["measurements"]
+            break
+        except Exception as erro:
+            print(f"  erro ({erro}), tentativa {n + 1}/{tentativas}")
+            time.sleep(10 * (n + 1))
+    else:
+        raise RuntimeError(f"Não foi possível baixar {est['codigo']} {mes:%Y-%m}")
+    horas = {}
+    for m in dados:
+        if m["value"] is None:
+            continue
+        t = datetime.strptime(m["date"], "%Y/%m/%d %H:%M") - timedelta(hours=3)
+        if t.strftime("%Y-%m") != mes.strftime("%Y-%m"):
+            continue
+        k = t.strftime("%Y-%m-%dT%H:00")
+        h = horas.setdefault(k, {"nivel": None, "min": 99, "chuva": None})
+        if m["station_prefix_id"] == est["id_nivel"]:
+            if t.minute < h["min"]:
+                h["nivel"], h["min"] = round(float(m["value"]), 1), t.minute
+        else:
+            h["chuva"] = round((h["chuva"] or 0) + float(m["value"]), 1)
+    return [[k, h["nivel"], None, h["chuva"]] for k, h in sorted(horas.items())]
 
 
 def sem_picos_falsos(linhas, salto=100):
@@ -128,6 +167,7 @@ def gerar_diario(codigo):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--desde", help="AAAA-MM: primeiro mês a baixar (padrão: mês anterior)")
+    p.add_argument("--estacao", help="baixa só esta estação (código do config.json)")
     args = p.parse_args()
     if args.desde:
         inicio = datetime.strptime(args.desde, "%Y-%m").date()
@@ -135,15 +175,20 @@ def main():
         inicio = (HOJE.replace(day=1) - timedelta(days=1)).replace(day=1)
 
     config = json.loads((RAIZ / "public" / "config.json").read_text(encoding="utf-8"))
-    codigos = [e["codigo"] for rio in config["rios"] for e in rio["estacoes"]]
+    estacoes = [e for rio in config["rios"] for e in rio["estacoes"] if e.get("guardar_historico", True)]
+    if args.estacao:
+        estacoes = [e for e in estacoes if e["codigo"] == args.estacao]
+    codigos = [e["codigo"] for e in estacoes]
     falhas = 0
 
-    for codigo in codigos:
+    for est in estacoes:
+        codigo = est["codigo"]
         pasta = PASTA / codigo
         pasta.mkdir(parents=True, exist_ok=True)
-        for mes in meses(inicio):
+        desde = max(inicio, datetime.strptime(est.get("historico_desde", "2000-01"), "%Y-%m").date())
+        for mes in meses(desde):
             try:
-                linhas = baixar_mes(codigo, mes)
+                linhas = baixar_mes_sibh(est, mes) if est.get("fonte") == "spaguas" else baixar_mes(codigo, mes)
             except RuntimeError as erro:
                 print(erro)
                 falhas += 1

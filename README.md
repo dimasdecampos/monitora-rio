@@ -1,8 +1,21 @@
 # Monitor dos rios Paraitinga e Paraibuna
 
-Nível, vazão e chuva em tempo real do Rio Paraitinga (São Luiz do Paraitinga) e do
-Rio Paraibuna (Fazenda Palmeiras, Natividade da Serra), com dados da rede
-telemétrica da ANA.
+Nível e chuva em tempo real do Rio Paraitinga (de Cunha a São Luiz do
+Paraitinga) e do Rio Paraibuna, com dados da rede telemétrica da
+[SP Águas (SIBH)](https://cth.daee.sp.gov.br/sibh/) e da ANA.
+
+## Fontes de dados
+
+| Fonte | Estações | Observação |
+|---|---|---|
+| SP Águas (SIBH) | Passarela (centro, padrão), Estrada do Ribeira, Lagoinha (2), Cunha, Rio Jacuí, Ribeirão do Chapéu (2), Ponte Alta | Leituras a cada 10 min, cotas oficiais (atenção, alerta, emergência, extravasamento). API aberta, no máx. 10 estações por chamada. |
+| ANA | Régua da cidade (58040000), CESP (58041000), Fazenda Palmeiras (58068000) | Leituras a cada 15 min; histórico desde 2015. |
+
+Conversões entre as réguas da cidade (em `public/config.json`): ANA = 123 + 1,017 × Passarela
+(erro típico 7 cm); CESP ≈ 95 + 1,09 × Passarela (dados de 2026).
+
+Tempo típico para a água chegar à Passarela (correlação das subidas, 2024–2026):
+Estrada do Ribeira 3 h, Lagoinha–Barro Vermelho 9 h, Lagoinha–Jusante do Jacuí 11 h, Cunha ~20 h.
 
 ## Como funciona
 
@@ -39,9 +52,10 @@ python scripts/coletar.py --desde 2022-01
 
 ## Cotas
 
-As cotas não são oficiais. No Paraitinga elas foram estimadas com cheias reais
-registradas na régua ANA/CPRM 58040000 (5,23 m em 2021, 6,49 m em 2024 e
-6,52 m em 2022). Ajuste em `public/config.json`.
+Nas réguas da SP Águas são as cotas oficiais cadastradas no SIBH. Na Passarela:
+atenção 1,92 m, alerta 2,32 m, emergência 2,72 m e extravasamento 3,12 m. Nas
+réguas da ANA e da CESP são as mesmas cotas convertidas. Em Natividade da Serra
+são provisórias. Ajuste em `public/config.json`.
 
 ## Previsão de cheias (experimental)
 
