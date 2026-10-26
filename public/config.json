@@ -313,5 +313,43 @@
       95.0,
       1.09
     ]
-  }
+  },
+  "regioes_chuva": [
+    {
+      "nome": "Cunha (cabeceiras)",
+      "curto": "Cunha",
+      "estacoes": [
+        "sp818",
+        "sp820"
+      ],
+      "chegada": "chega à cidade em ~14–20 h"
+    },
+    {
+      "nome": "Lagoinha",
+      "curto": "Lagoinha",
+      "estacoes": [
+        "sp35402",
+        "sp662"
+      ],
+      "chegada": "chega em ~9–11 h"
+    },
+    {
+      "nome": "Perto da cidade",
+      "curto": "Cidade",
+      "estacoes": [
+        "sp35388",
+        "sp664"
+      ],
+      "chegada": "chega em 0–3 h"
+    },
+    {
+      "nome": "Ribeirão do Chapéu",
+      "curto": "Chapéu",
+      "estacoes": [
+        "sp489",
+        "sp35413"
+      ],
+      "chegada": "cheio, represa o rio"
+    }
+  ]
 }

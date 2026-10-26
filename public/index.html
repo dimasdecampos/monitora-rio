@@ -21,7 +21,7 @@
     --plano: #f9f9f7; --superficie: #fcfcfb; --superficie-2: #f0efeb; --elevado: #ffffff;
     --tinta: #0b0b0b; --tinta-2: #52514e; --tinta-3: #898781;
     --grade: #e8e7e1; --eixo: #c3c2b7; --borda: rgba(11,11,11,.09);
-    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --neutro: #c4c2b9; --faixa: rgba(137,135,129,.15); --mediana: #6f6d68;
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --neutro: #c4c2b9; --faixa: rgba(137,135,129,.15); --mediana: #6f6d68;
     --chuva: #5598e7; --bom: #0ca30c; --atencao: #fab219; --alerta: #ec835a; --inundacao: #d03b3b; --extravasa: #8b1a1a;
     --acento: #2a78d6; --sobe: #b42318; --desce: #006300; --sombra: 0 1px 2px rgba(0,0,0,.05), 0 4px 16px rgba(0,0,0,.04);
     --r100:#cde2fb; --r150:#b7d3f6; --r200:#9ec5f4; --r250:#86b6ef; --r300:#6da7ec; --r350:#5598e7; --r400:#3987e5;
@@ -33,7 +33,7 @@
       --plano: #0d0d0d; --superficie: #1a1a19; --superficie-2: #252523; --elevado: #222220;
       --tinta: #f0efec; --tinta-2: #c3c2b7; --tinta-3: #898781;
       --grade: #2c2c2a; --eixo: #44443f; --borda: rgba(255,255,255,.09);
-      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --neutro: #55544f; --faixa: rgba(195,194,183,.10); --mediana: #a3a197;
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --neutro: #55544f; --faixa: rgba(195,194,183,.10); --mediana: #a3a197;
       --chuva: #5598e7; --acento: #5598e7; --extravasa: #ff6b6b; --sobe: #f97066; --desce: #0ca30c; --sombra: none;
     }
   }
@@ -42,7 +42,7 @@
     --plano: #0d0d0d; --superficie: #1a1a19; --superficie-2: #252523; --elevado: #222220;
     --tinta: #f0efec; --tinta-2: #c3c2b7; --tinta-3: #898781;
     --grade: #2c2c2a; --eixo: #44443f; --borda: rgba(255,255,255,.09);
-    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --neutro: #55544f; --faixa: rgba(195,194,183,.10); --mediana: #a3a197;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --neutro: #55544f; --faixa: rgba(195,194,183,.10); --mediana: #a3a197;
     --chuva: #5598e7; --acento: #5598e7; --extravasa: #ff6b6b; --sobe: #f97066; --desce: #0ca30c; --sombra: none;
   }
 
@@ -157,6 +157,17 @@
   .ano[aria-pressed="true"] { color: var(--tinta); font-weight: 650; border-color: var(--eixo); }
   .ano em { font-style: normal; font-size: 11px; color: var(--tinta-3); font-weight: 400; }
 
+  .area-chuva.bacia { height: 130px; }
+  @media (min-width: 900px) { .area-chuva.bacia { height: 160px; } }
+  .leg-chuva { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .leg-chuva:empty { display: none; }
+  .leg-chuva button { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--borda); background: var(--superficie); border-radius: 10px;
+                      padding: 6px 10px; font-size: 13px; cursor: pointer; color: var(--tinta); text-align: left; }
+  .leg-chuva button i { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+  .leg-chuva button b { font-variant-numeric: tabular-nums; }
+  .leg-chuva button small { color: var(--tinta-3); font-size: 11.5px; display: block; }
+  .leg-chuva button[aria-pressed="false"] { opacity: .45; }
+  .leg-chuva button[aria-pressed="false"] i { background: var(--neutro) !important; }
   .leg-agora { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--tinta-2); margin-top: 10px; }
   .leg-agora span { display: inline-flex; align-items: center; gap: 6px; }
   .leg-agora i { width: 16px; height: 3px; border-radius: 2px; display: inline-block; }
@@ -452,6 +463,9 @@
       <button data-modo="comparar" role="tab">Comparar anos</button>
     </div>
     <div class="controles" id="ctrlAgora">
+      <div class="seg" id="modoChuva" aria-label="Chuva mostrada no gráfico">
+        <button data-c="regua">Chuva na régua</button><button data-c="bacia">Chuva na bacia</button>
+      </div>
       <div class="seg" id="janelas">
         <button data-d="1">24 h</button><button data-d="3">3 dias</button><button data-d="7">7 dias</button><button data-d="30">30 dias</button>
       </div>
@@ -468,6 +482,7 @@
     <div class="leitura" id="leitura" aria-live="polite"></div>
     <div class="area-g"><canvas id="gPrincipal" aria-label="Gráfico do nível do rio"></canvas></div>
     <div class="area-chuva" id="boxChuva"><span class="rot-chuva" id="rotChuva">Chuva (mm)</span><canvas id="gChuva" aria-label="Gráfico de chuva"></canvas></div>
+    <div class="leg-chuva" id="legChuva" role="group" aria-label="Regiões da bacia"></div>
     <div class="nav" id="nav" role="slider" aria-label="Período visível do gráfico" tabindex="0">
       <svg viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true"><path id="navLinha" fill="none" stroke="var(--tinta-3)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>
       <div class="janela" id="navJanela"><span class="alca e" data-alca="e"></span><span class="alca d" data-alca="d"></span></div>
@@ -579,7 +594,7 @@ const ha = horas => horas < 1 ? `há ${Math.max(1, Math.round(horas * 60))} min`
 // preferências do visitante (só neste navegador)
 const ler = (k, padrao) => { try { const v = localStorage.getItem("monitor-" + k); return v == null ? padrao : JSON.parse(v); } catch { return padrao; } };
 const guardar = (k, v) => { try { localStorage.setItem("monitor-" + k, JSON.stringify(v)); } catch {} };
-const estado = { mostrarMediana: ler("mostrarMediana", true), mostrarFaixa: ler("mostrarFaixa", true), estacao: ESTACAO_PADRAO, modo: "agora", dias: 3, de: 1, ate: 12, metrica: "nmax", destaques: new Map(), janela: null, cursor: null };
+const estado = { chuvaBacia: ler("chuvaBacia", false), mostrarMediana: ler("mostrarMediana", true), mostrarFaixa: ler("mostrarFaixa", true), estacao: ESTACAO_PADRAO, modo: "agora", dias: 3, de: 1, ate: 12, metrica: "nmax", destaques: new Map(), janela: null, cursor: null };
 let config, estacoes = {};
 window.monitor = estado;   // facilita testes e depuração pelo console
 window.monitorGraficos = () => graficos;
@@ -993,6 +1008,86 @@ function formatoTempo(v, larguraDias) {
   if (larguraDias <= 4) return `${d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")} ${d.getHours()}h`;
   return `${d.getDate()} ${MESES[d.getMonth()]}`;
 }
+// ---- chuva na bacia: soma das regiões que fazem o rio subir (medida + prevista) ----
+const bacia = { quando: 0, regioes: null, carregando: null };
+const CORES_REGIAO = ["--s1", "--s2", "--s3", "--s4"];
+const somaPorDia = pts => {
+  const m = new Map();
+  for (const p of pts) { const d = new Date(p.x); d.setHours(12, 0, 0, 0); m.set(+d, (m.get(+d) || 0) + p.y); }
+  return [...m].map(([x, y]) => ({ x, y })).sort((a, b) => a.x - b.x);
+};
+function carregarChuvaBacia() {
+  if (bacia.regioes && Date.now() - bacia.quando < 10 * 60e3) return Promise.resolve(bacia.regioes);
+  return bacia.carregando ??= (async () => {
+    const regs = config.regioes_chuva, cods = regs.flatMap(r => r.estacoes), ests = cods.map(c => estacoes[c]);
+    const hoje = new Date(), meses = [0, 1].map(k => { const d = new Date(hoje.getFullYear(), hoje.getMonth() - k, 1); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}`; });
+    const [hist, vivo, previsto] = await Promise.all([
+      // histórico de hora em hora (dos dois últimos meses), atualizado todo dia
+      Promise.all(cods.map(c => Promise.all(meses.map(m => fetch(`historico/${c}/${m}.json`).then(r => r.ok ? r.json() : { dados: [] }).catch(() => ({ dados: [] })))))),
+      // últimas 48 h ao vivo (SP Águas)
+      buscarSibh(ests, 2).catch(() => ({})),
+      // previsão nos mesmos pontos (Open-Meteo)
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${ests.map(e => e.lat).join(",")}&longitude=${ests.map(e => e.lon).join(",")}&hourly=precipitation&forecast_days=8&timezone=America%2FSao_Paulo`)
+        .then(r => r.ok ? r.json() : null).catch(() => null),
+    ]);
+    const medida = {}, prevista = {};
+    cods.forEach((c, k) => {
+      const m = new Map();
+      for (const arq of hist[k]) for (const [t, , , ch] of arq.dados) if (ch != null && ch >= 0 && ch <= 150) m.set(t.slice(0, 13), ch);   // ignora erros do pluviômetro
+      const h48 = new Map();
+      for (const l of vivo[c] || []) if (l.chuva != null) { const h = l.t.slice(0, 13); h48.set(h, (h48.get(h) || 0) + l.chuva); }
+      for (const [h, v] of h48) m.set(h, v);   // as horas ao vivo substituem as do arquivo
+      medida[c] = m;
+    });
+    if (previsto) [].concat(previsto).forEach((pt, k) => {
+      const m = new Map(); pt.hourly.time.forEach((t, j) => m.set(t.slice(0, 13), pt.hourly.precipitation[j] ?? 0)); prevista[cods[k]] = m;
+    });
+    const agoraH = isoLocal(new Date()).slice(0, 13), corte = Date.now() - 32 * 864e5;
+    const serie = (r, fonte, filtro) => {
+      const horas = new Set(r.estacoes.flatMap(c => [...(fonte[c]?.keys() || [])]));
+      return [...horas].filter(filtro).map(h => {
+        const vs = r.estacoes.map(c => fonte[c]?.get(h)).filter(v => v != null);   // média dos pluviômetros da região
+        return { x: new Date(h + ":30:00").getTime(), y: vs.length ? media(vs) : 0 };
+      }).filter(p => p.x >= corte).sort((a, b) => a.x - b.x);
+    };
+    bacia.regioes = regs.map((r, k) => {
+      const med = serie(r, medida, h => h <= agoraH), prv = serie(r, prevista, h => h > agoraH);
+      return { ...r, cor: CORES_REGIAO[k], med, prv, medDia: somaPorDia(med), prvDia: somaPorDia(prv) };
+    });
+    bacia.quando = Date.now(); bacia.carregando = null;
+    return bacia.regioes;
+  })().catch(e => { bacia.carregando = null; throw e; });
+}
+// legenda das regiões: total de chuva no trecho visível, da que mais choveu para a que menos; toque liga/desliga
+function desenharLegChuva(a, b) {
+  const ch = graficos.chuva; if (!ch || !ch.data.datasets[0]?.regiao) { $("#legChuva").innerHTML = ""; return; }
+  const ocultas = new Set(ler("regioesOcultas", []));
+  const linhas = bacia.regioes.map(r => {
+    const soma = tipo => ch.data.datasets.filter(d => d.regiao === r && d.tipo === tipo).flatMap(d => d.data).filter(p => p.x >= a && p.x <= b).reduce((s, p) => s + p.y, 0);
+    return { r, med: soma("med"), prv: soma("prv") };
+  }).sort((x, y) => (y.med + y.prv) - (x.med + x.prv));
+  const total = linhas.filter(l => !ocultas.has(l.r.curto)).reduce((s, l) => s + l.med + l.prv, 0);
+  $("#legChuva").innerHTML = linhas.map(l => `<button data-reg="${l.r.curto}" aria-pressed="${!ocultas.has(l.r.curto)}">
+      <i style="background:${tok(l.r.cor)}"></i><span>${l.r.nome} · <b>${fmt(l.med + l.prv, 0)} mm</b>
+      <small>${l.prv >= .5 ? `${fmt(l.med, 0)} medidos + ${fmt(l.prv, 0)} previstos · ` : ""}${l.r.chegada}</small></span></button>`).join("") +
+    `<button disabled aria-hidden="true" style="cursor:default"><span>Soma no período · <b>${fmt(total, 0)} mm</b><small>regiões ligadas</small></span></button>`;
+}
+function aplicarRegioesOcultas() {
+  const ch = graficos.chuva; if (!ch || !ch.data.datasets[0]?.regiao) return;
+  const ocultas = new Set(ler("regioesOcultas", []));
+  ch.data.datasets.forEach((d, k) => ch.setDatasetVisibility(k, !ocultas.has(d.regiao.curto)));
+}
+
+function chuvaBaciaEm(alvo, futuro) {
+  const porDia = $("#rotChuva").textContent.includes("dia"), tol = porDia ? 864e5 : 36e5;
+  const itens = graficos.chuva.data.datasets.filter((d, k) => d.regiao && d.tipo === (futuro ? "prv" : "med") && graficos.chuva.isDatasetVisible(k)).map(d => {
+    const q = d.data.length ? pontoEm(d.data, alvo) : null; return { d, v: q && Math.abs(q.x - alvo) < tol ? q.y : 0 };
+  });
+  const total = itens.reduce((s, i) => s + i.v, 0);
+  return `<span><b>${fmt(total, 1)} mm</b>${futuro ? " previstos" : ""} na bacia ${porDia ? "no dia" : "na hora"}</span>` +
+    itens.map(i => `<span><i class="barra" style="background:${i.d.backgroundColor}"></i>${i.d.regiao.curto} <b>${fmt(i.v, 1)}</b></span>`).join("");
+}
+
 // ---- linha de previsão (modelo por prazo, régua da CESP) e faixa típica da época ----
 function interp(dados, x) {
   if (!dados.length || x < dados[0].x || x > dados.at(-1).x) return null;
@@ -1090,9 +1185,17 @@ function desenharAgora(manterJanela) {
   $("#legAgora").innerHTML = `<span><i style="background:${tok("--s1")}"></i>medido</span>` +
     (previsto ? `<span><i class="tracejado" style="border-color:${tok("--s1")}"></i>previsão provável</span><span><i class="area" style="background:${tok("--s1")}2e"></i>8 em 10 chances</span>` : "") +
     (tipica.length ? `<span><i class="area" style="background:${tok("--faixa")}"></i>nível típico da época</span>` : "") +
-    (previsto ? `<span><i class="area" style="background:color-mix(in srgb, ${tok("--chuva")} 45%, transparent)"></i>chuva prevista</span>` : "");
+    (previsto && !(["Rio Paraitinga", "Afluentes do Paraitinga"].includes(est.rio) && estado.chuvaBacia && bacia.regioes) ? `<span><i class="area" style="background:color-mix(in srgb, ${tok("--chuva")} 45%, transparent)"></i>chuva prevista</span>` : "") +
+    (["Rio Paraitinga", "Afluentes do Paraitinga"].includes(est.rio) && estado.chuvaBacia && bacia.regioes
+      ? `<span><i class="area" style="background:color-mix(in srgb, ${tok("--s1")} 40%, transparent)"></i>chuva: tom claro = previsão</span>` : "");
 
-  if (temChuva) {
+  const cidade = ["Rio Paraitinga", "Afluentes do Paraitinga"].includes(est.rio);
+  $("#modoChuva").hidden = !cidade;
+  $("#boxChuva").classList.toggle("bacia", !!(cidade && estado.chuvaBacia));
+  const modoBacia = cidade && estado.chuvaBacia && bacia.regioes;
+  if (cidade && estado.chuvaBacia && !bacia.regioes && !bacia.carregando)
+    carregarChuvaBacia().then(() => { if (estado.modo === "agora") desenharAgora(true); }).catch(() => {});
+  if (temChuva || modoBacia) {
     const opc = opcoesBase();
     opc.layout.padding.top = 14;
     opc.layout.padding.right = principal.width - principal.chartArea.right;   // mesma borda direita do gráfico de nível
@@ -1102,10 +1205,20 @@ function desenharAgora(manterJanela) {
     opc.scales.y.beginAtZero = true; opc.scales.y.suggestedMax = 2; opc.scales.y.ticks.maxTicksLimit = 3;
     opc.scales.y.ticks.callback = v => fmt(v, 0);
     opc.plugins.hoje = { x: Date.now() };
-    criar("gChuva", "chuva", { type: "bar", options: opc, data: { datasets: [
-      { label: "Chuva", data: chuvaHora, backgroundColor: tok("--chuva"), borderRadius: 2, barPercentage: 1, categoryPercentage: 1, maxBarThickness: 14, grouped: false },
-      { label: "Chuva prevista", data: chuvaPrevHora, backgroundColor: `color-mix(in srgb, ${tok("--chuva")} 45%, transparent)`, borderRadius: 2, barPercentage: 1, categoryPercentage: 1, maxBarThickness: 14, grouped: false },
-    ] } });
+    const barra = { barPercentage: 1, categoryPercentage: 1, maxBarThickness: 14 };
+    const dsChuva = modoBacia
+      ? bacia.regioes.flatMap(r => [   // barras empilhadas: a altura total é a soma das regiões
+          { label: r.nome, regiao: r, tipo: "med", data: r.med, backgroundColor: tok(r.cor), stack: "bacia", borderColor: tok("--superficie"), borderWidth: { top: 1 }, borderSkipped: "bottom", ...barra },
+          { label: r.nome + " (prevista)", regiao: r, tipo: "prv", data: r.prv, backgroundColor: `color-mix(in srgb, ${tok(r.cor)} 40%, transparent)`, stack: "bacia", borderColor: tok("--superficie"), borderWidth: { top: 1 }, borderSkipped: "bottom", ...barra },
+        ])
+      : [
+          { label: "Chuva", data: chuvaHora, backgroundColor: tok("--chuva"), borderRadius: 2, grouped: false, ...barra },
+          { label: "Chuva prevista", data: chuvaPrevHora, backgroundColor: `color-mix(in srgb, ${tok("--chuva")} 45%, transparent)`, borderRadius: 2, grouped: false, ...barra },
+        ];
+    if (modoBacia) { opc.scales.x.stacked = true; opc.scales.y.stacked = true; }
+    opc.scales.y.min = 0;
+    criar("gChuva", "chuva", { type: "bar", options: opc, data: { datasets: dsChuva } });
+    aplicarRegioesOcultas();
   } else { graficos.chuva?.destroy(); graficos.chuva = null; }
 
   // linha "medida" no navegador + previsão tracejada
@@ -1113,13 +1226,20 @@ function desenharAgora(manterJanela) {
     for (const ch of [graficos.principal, graficos.chuva]) if (ch) { ch.options.scales.x.min = a; ch.options.scales.x.max = b; }
     ajustarY(principal, a, b, true);
     if (graficos.chuva) {
-      const porDia = (b - a) / 864e5 > 7, [d0, d1] = graficos.chuva.data.datasets;
-      d0.data = porDia ? chuvaDia : chuvaHora; d1.data = porDia ? chuvaPrevDia : chuvaPrevHora;
-      const vis = d0.data.concat(d1.data).filter(p => p.x >= a && p.x <= b).map(p => p.y);
-      graficos.chuva.options.scales.y.max = Math.max(2, Math.ceil(Math.max(0, ...vis) * 1.15));
-      $("#rotChuva").textContent = porDia ? "Chuva (mm por dia)" : "Chuva (mm por hora)";
+      const porDia = (b - a) / 864e5 > 7, dss = graficos.chuva.data.datasets;
+      if (modoBacia) {
+        for (const d of dss) d.data = d.tipo === "med" ? (porDia ? d.regiao.medDia : d.regiao.med) : (porDia ? d.regiao.prvDia : d.regiao.prv);
+      } else {
+        dss[0].data = porDia ? chuvaDia : chuvaHora; dss[1].data = porDia ? chuvaPrevDia : chuvaPrevHora;
+      }
+      const totais = new Map();   // empilhado: a escala vai até a maior soma visível
+      dss.forEach((d, k) => { if (!graficos.chuva.isDatasetVisible(k)) return;
+        for (const p of d.data) if (p.x >= a && p.x <= b) totais.set(p.x, modoBacia ? (totais.get(p.x) || 0) + p.y : Math.max(totais.get(p.x) || 0, p.y)); });
+      graficos.chuva.options.scales.y.max = Math.max(2, Math.ceil(Math.max(0, ...totais.values()) * 1.15));
+      $("#rotChuva").textContent = modoBacia ? `Chuva na bacia (mm por ${porDia ? "dia" : "hora"}, soma das 4 regiões)` : porDia ? "Chuva (mm por dia)" : "Chuva (mm por hora)";
       graficos.chuva.update("none");
-    }
+      desenharLegChuva(a, b);
+    } else $("#legChuva").innerHTML = "";
     principal.update("none");
     atualizarLeitura();
   });
@@ -1267,7 +1387,8 @@ function atualizarLeitura() {
       const md = interp(serie("prev-md"), alvo), lo = interp(serie("prev-lo"), alvo), hi = interp(serie("prev-hi"), alvo);
       const tlo = interp(serie("tip-lo"), alvo), thi = interp(serie("tip-hi"), alvo);
       let chuva = "";
-      if (graficos.chuva) {
+      if (graficos.chuva && graficos.chuva.data.datasets[0]?.regiao) chuva = chuvaBaciaEm(alvo, true);
+      else if (graficos.chuva) {
         const dsp = graficos.chuva.data.datasets[1].data, porDia = $("#rotChuva").textContent.includes("dia"), q = pontoEm(dsp, alvo);
         if (dsp.length && q && Math.abs(q.x - alvo) < (porDia ? 864e5 : 36e5)) chuva = `<span><i class="barra" style="background:color-mix(in srgb, ${tok("--chuva")} 45%, transparent)"></i><b>${fmt(q.y, 1)} mm</b>previstos ${porDia ? "no dia" : "na hora"}</span>`;
       }
@@ -1279,7 +1400,8 @@ function atualizarLeitura() {
     const p = pontoEm(nivel, alvo);
     const l = c.leituras.find(x => ms(x) === p.x);
     let chuva = "";
-    if (graficos.chuva) {
+    if (graficos.chuva && graficos.chuva.data.datasets[0]?.regiao) chuva = chuvaBaciaEm(alvo, false);
+    else if (graficos.chuva) {
       const ds = graficos.chuva.data.datasets[0].data, q = pontoEm(ds, alvo), porDia = $("#rotChuva").textContent.includes("dia");
       chuva = `<span><i class="barra" style="background:${tok("--chuva")}"></i><b>${fmt(q && Math.abs(q.x - alvo) < (porDia ? 864e5 : 36e5) ? q.y : 0, 1)} mm</b>${porDia ? "no dia" : "na hora"}</span>`;
     }
@@ -1860,6 +1982,22 @@ async function iniciar() {
     else if (ev.target === $("#folha")) $("#folha").close();     // toque fora fecha
   });
   $("#modo").onclick = ev => { const b = ev.target.closest("button"); if (b && b.dataset.modo !== estado.modo) trocarModo(b.dataset.modo); };
+  const marcarChuva = () => document.querySelectorAll("#modoChuva button").forEach(b => b.setAttribute("aria-pressed", (b.dataset.c === "bacia") === estado.chuvaBacia));
+  marcarChuva();
+  $("#legChuva").onclick = ev => {
+    const b = ev.target.closest("button[data-reg]"); if (!b) return;
+    const ocultas = new Set(ler("regioesOcultas", []));
+    ocultas.has(b.dataset.reg) ? ocultas.delete(b.dataset.reg) : ocultas.add(b.dataset.reg);
+    if (ocultas.size >= config.regioes_chuva.length) return;   // ao menos uma região ligada
+    guardar("regioesOcultas", [...ocultas]); aplicarRegioesOcultas();
+    if (estado.janela) definirJanela(...estado.janela);   // recalcula escala, legenda e leitura
+  };
+  $("#modoChuva").onclick = ev => {
+    const b = ev.target.closest("button"); if (!b) return;
+    estado.chuvaBacia = b.dataset.c === "bacia"; guardar("chuvaBacia", estado.chuvaBacia); marcarChuva();
+    if (estado.modo === "agora") desenharAgora(true);
+  };
+  setInterval(() => { if (estado.chuvaBacia) { bacia.quando = 0; carregarChuvaBacia().then(() => { if (estado.modo === "agora") desenharAgora(true); }).catch(() => {}); } }, 10 * 60e3);
   $("#janelas").onclick = ev => {
     const b = ev.target.closest("button"); if (!b) return;
     estado.dias = +b.dataset.d; estado.janelaManual = false; definirJanela(...janelaPadrao()); marcarJanelasAtivas();
