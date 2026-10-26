@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "outputDirectory": "public",
+  "functions": {
+    "api/dados.py": { "maxDuration": 30, "includeFiles": "public/config.json" }
+  },
+  "headers": [
+    {
+      "source": "/historico/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=86400" }]
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "titulo": "Rios Paraitinga e Paraibuna — Alto Paraíba do Sul",
+  "atualizar_a_cada_minutos": 5,
+  "_aviso_cotas": "Cotas em cm na régua de cada estação. Não são as cotas oficiais (não publicadas): no Paraitinga foram calibradas com cheias registradas na régua ANA/CPRM 58040000 (2021: 5,23 m ruas da beira do rio alagadas; 2022: 6,52 m água na Praça da Matriz; 2024: 6,49 m ruas do centro alagadas). Confirme com a Defesa Civil.",
+  "rios": [
+    {
+      "nome": "Rio Paraitinga",
+      "estacoes": [
+        {
+          "codigo": "58040000",
+          "nome": "São Luiz do Paraitinga (cidade)",
+          "operadora": "SGB/CPRM — ANA",
+          "lat": -23.2386, "lon": -45.3067,
+          "atraso_max_horas": 2,
+          "observacao": "Régua de referência usada nos relatórios da cidade.",
+          "cotas_cm": { "atencao": 350, "alerta": 450, "inundacao": 500 },
+          "referencias": [
+            { "cm": 523, "texto": "07/02/2021 — ruas da beira do rio alagadas (até 70 cm)" },
+            { "cm": 649, "texto": "24/02/2024 — ruas do centro alagadas" },
+            { "cm": 652, "texto": "08/02/2022 — água na Praça da Matriz" }
+          ]
+        },
+        {
+          "codigo": "58041000",
+          "nome": "São Luiz do Paraitinga (CESP)",
+          "operadora": "CESP",
+          "lat": -23.2375, "lon": -45.3064,
+          "atraso_max_horas": 2,
+          "observacao": "Em cheias marca 10–25 cm acima da régua da cidade.",
+          "cotas_cm": { "atencao": 345, "alerta": 460, "inundacao": 510 }
+        }
+      ]
+    },
+    {
+      "nome": "Rio Paraibuna",
+      "estacoes": [
+        {
+          "codigo": "58068000",
+          "nome": "Fazenda Palmeiras — Natividade da Serra",
+          "operadora": "CESP",
+          "lat": -23.4211, "lon": -45.2889,
+          "atraso_max_horas": 2,
+          "cotas_cm": { "atencao": 250, "alerta": 350, "inundacao": 450 }
+        }
+      ]
+    }
+  ]
+}
