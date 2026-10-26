@@ -1,4 +1,4 @@
-"""Avisos de cheia para um canal do Telegram (roda no GitHub Actions a cada ~10 min).
+"""Avisos de cheia por Telegram e WhatsApp (roda no GitHub Actions a cada ~10 min).
 
 Avisa quando:
   - a Passarela passa para uma cota oficial mais alta (e quando volta abaixo da atenção);
@@ -8,7 +8,10 @@ Avisa quando:
 Cada tipo de aviso se repete no máximo a cada 6–12 h.
 
 Variáveis de ambiente:
-  TELEGRAM_TOKEN, TELEGRAM_CHAT   sem elas, só mostra as mensagens (modo de teste)
+  TELEGRAM_TOKEN, TELEGRAM_CHAT   canal do Telegram
+  CALLMEBOT_PHONE, CALLMEBOT_KEY  WhatsApp pessoal via CallMeBot (número com DDI, ex. +5512999999999)
+                                  sem nenhum dos dois, só mostra as mensagens (modo de teste)
+  TESTE=1                         envia já uma mensagem de teste com o nível atual
   ESTADO                          arquivo onde guarda o que já foi avisado (padrão .alertas/estado.json)
 """
 import json, math, os, sys, time, urllib.parse, urllib.request
@@ -98,6 +101,33 @@ def probabilidade(ref, cunha):
     return chance, f48
 
 
+def enviar(m):
+    """Manda o aviso para o Telegram e/ou o WhatsApp, conforme os segredos configurados."""
+    token, chat = os.environ.get("TELEGRAM_TOKEN"), os.environ.get("TELEGRAM_CHAT")
+    fone, chave = os.environ.get("CALLMEBOT_PHONE"), os.environ.get("CALLMEBOT_KEY")
+    if token and chat:
+        texto = m + f"\n\n[Abrir o painel]({SITE})"
+        dados = urllib.parse.urlencode({"chat_id": chat, "text": texto, "parse_mode": "Markdown", "disable_web_page_preview": "true"}).encode()
+        try:
+            urllib.request.urlopen(f"https://api.telegram.org/bot{token}/sendMessage", data=dados, timeout=30)
+        except Exception as e:
+            print("falha no Telegram:", e)
+    if fone and chave:
+        # WhatsApp usa *negrito* igual ao Telegram, mas não aceita [texto](link)
+        q = urllib.parse.urlencode({"phone": fone, "text": m + f"\n\nPainel: {SITE}", "apikey": chave})
+        for n in range(3):
+            try:
+                r = urllib.request.urlopen(f"https://api.callmebot.com/whatsapp.php?{q}", timeout=60).read().decode("utf-8", "replace")
+                if "queued" in r.lower() or "sent" in r.lower(): break
+                print("CallMeBot respondeu:", r[:300])
+            except Exception as e:
+                print("falha no WhatsApp:", e)
+            time.sleep(10 * (n + 1))
+        time.sleep(5)   # o CallMeBot recusa mensagens muito seguidas
+    if not (token and chat) and not (fone and chave):
+        print("--- (teste, sem Telegram nem WhatsApp configurado) ---\n" + m)
+
+
 def main():
     estado = json.loads(ARQ.read_text()) if ARQ.exists() else {"cota": None, "avisos": {}}
     agora = time.time()
@@ -150,18 +180,13 @@ def main():
             if p >= .3 and pode("prev-" + prox[0], 12):
                 msgs.append(f"🌧️ *Previsão: {p*100:.0f}% de chance de {prox[1].lower()}*\nNas próximas 48 h a Passarela pode chegar a {br(prox[2])} m (agora {br(nivel)} m). Chuva prevista na bacia: {f48:.0f} mm.")
 
+    if os.environ.get("TESTE") == "1":
+        sit = atual[1] if atual else "Normal"
+        msgs.append(f"🧪 *Teste do monitor do rio*\nPassarela em *{br(nivel)} m* às {hora}{tend}. Situação: {sit}.")
+
     print(f"Passarela {br(nivel)} m às {hora}; cota: {estado['cota']}; {len(msgs)} aviso(s)")
-    token, chat = os.environ.get("TELEGRAM_TOKEN"), os.environ.get("TELEGRAM_CHAT")
     for m in msgs:
-        texto = m + f"\n\n[Abrir o painel]({SITE})"
-        if token and chat:
-            dados = urllib.parse.urlencode({"chat_id": chat, "text": texto, "parse_mode": "Markdown", "disable_web_page_preview": "true"}).encode()
-            try:
-                urllib.request.urlopen(f"https://api.telegram.org/bot{token}/sendMessage", data=dados, timeout=30)
-            except Exception as e:
-                print("falha ao enviar:", e)
-        else:
-            print("--- (teste, sem Telegram configurado) ---\n" + texto)
+        enviar(m)
     ARQ.parent.mkdir(exist_ok=True)
     ARQ.write_text(json.dumps(estado))
 

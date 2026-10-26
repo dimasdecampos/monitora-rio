@@ -196,6 +196,15 @@ ou desliga a região.
   4. Em `public/config.json`, preencha `"telegram": "https://t.me/nome_do_canal"`.
 
   Sem os segredos, o robô roda em modo de teste e só registra as mensagens.
+- **WhatsApp (pessoal, via [CallMeBot](https://www.callmebot.com/blog/free-api-whatsapp-messages/)):**
+  os mesmos avisos chegam no seu WhatsApp, de graça. Funciona só para números
+  individuais (não para grupos), e cada número precisa ativar o próprio acesso.
+  1. Salve o número do CallMeBot indicado no site deles e mande a mensagem de ativação
+     que aparece lá. A resposta traz sua `apikey`.
+  2. No GitHub: *Settings → Secrets and variables → Actions* → `CALLMEBOT_PHONE`
+     (ex.: `+5512999999999`) e `CALLMEBOT_KEY`.
+  3. Teste: *Actions → Avisos de cheia → Run workflow*, marque **teste** e rode. Chega
+     uma mensagem com o nível atual.
 - **App instalável:** `public/manifest.webmanifest` e `public/sw.js` (funciona sem internet
   com a última leitura guardada).
 
@@ -204,7 +213,7 @@ ou desliga a região.
 | Workflow | Quando | O que faz |
 |---|---|---|
 | `site.yml` | todo dia às 06:20 e a cada push | baixa o mês atual e o anterior (ANA e SP Águas), gera os resumos diários (com preenchimento), atualiza as estatísticas e publica o site no GitHub Pages |
-| `alertas.yml` | a cada ~10 min | verifica o rio e envia os avisos do Telegram |
+| `alertas.yml` | a cada ~10 min | verifica o rio e envia os avisos do Telegram e do WhatsApp |
 
 O GitHub pode atrasar tarefas agendadas em alguns minutos.
 
