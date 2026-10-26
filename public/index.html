@@ -282,14 +282,14 @@
   /* ---------- telas maiores ---------- */
   @media (min-width: 900px) {
     .barra-in { padding: 12px 28px; }
-    main { padding: 22px 28px 48px; grid-template-columns: 340px minmax(0, 1fr); gap: 20px; align-items: start; }
+    main { padding: 22px 28px 48px; gap: 20px; }
+    /* topo em duas colunas; a da esquerda acompanha a rolagem só até o fim deste bloco */
+    .painel { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 20px; align-items: start; }
+    .direita { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
     .coluna { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 84px; }
     .stats { grid-auto-flow: row; grid-template-columns: 1fr 1fr; overflow: visible; margin: 0; padding: 0; }
     .stats .stat:last-child:nth-child(odd) { grid-column: span 2; }
-    .grafico, .previsao, .rio-acima { grid-column: 2; }
-    .coluna { grid-row: span 3; }
-    .largo { grid-column: 1 / -1; }
-    .duas { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+    .duas { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 20px; align-items: start; }
     .area-g { height: 380px; }
     .area-chuva { height: 110px; }
     dialog.folha { margin: auto; border-radius: 22px; }
@@ -297,7 +297,7 @@
     .anos { margin: 12px 0 0; padding: 0 0 2px; flex-wrap: wrap; overflow: visible; }
   }
   @media (max-width: 899px) {
-    .coluna { display: contents; }
+    .painel, .direita, .coluna { display: contents; }
     .duas { display: contents; }
   }
 </style>
@@ -324,6 +324,7 @@
 <main id="principal" class="carregando">
   <div id="erro" class="card largo"></div>
 
+  <div class="painel">
   <div class="coluna">
     <section class="card hero" id="hero">
       <div class="hero-top"><span class="rot" id="hRot">Agora</span><span class="pill" id="hStatus"><i></i>—</span></div>
@@ -337,6 +338,7 @@
     <section class="stats" id="stats" aria-label="Números rápidos"></section>
   </div>
 
+  <div class="direita">
   <section class="card rio-acima" id="cardRio" aria-labelledby="tituloRio">
     <div class="cab">
       <div><h2 id="tituloRio">Rio acima</h2>
@@ -387,6 +389,8 @@
     <div class="leg-agora" id="legAgora"></div>
     <div class="anos" id="anos" hidden></div>
   </section>
+  </div><!-- .direita -->
+  </div><!-- .painel -->
 
   <div class="duas">
     <section class="card">
@@ -585,7 +589,7 @@ function desenharHero() {
   else if (taxa != null && taxa >= 2) { txt = "Subindo"; cls = "sobe"; }
   else if (taxa != null && taxa <= -2) { txt = "Baixando"; cls = "desce"; }
   const seta = cls === "sobe" ? "▲" : cls === "desce" ? "▼" : "▬";
-  $("#hTend").innerHTML = taxa == null ? "" : `<b class="${cls}">${seta} ${txt}</b><span>${taxa > 0 ? "+" : ""}${fmt(taxa, 0)} cm/h</span>`;
+  $("#hTend").innerHTML = taxa == null ? "" : `<b class="${cls}">${seta} ${txt}</b><span>${Math.round(taxa) > 0 ? "+" : ""}${fmt(Math.round(taxa) || 0, 0)} cm/h</span>`;
 
   // medidor com as cotas
   const cl = cotasDe(est), topo = Math.max((cl[0]?.cm ?? u.nivel) * 1.2, u.nivel * 1.05);
@@ -1464,7 +1468,7 @@ async function desenharRioAcima() {
       <div><strong>${e.nome}${st ? `<span class="mini-pill" style="background:${tok(st.cor)};${st.cor === "--atencao" ? "color:#0b0b0b" : ""}">${st.nome}</span>` : ""}</strong>
         <small>${onde}${u ? ` · ${velho ? "⚠ " : ""}${new Date(ms(u)).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : " · sem leitura"}</small></div>
       ${miniGrafico(r.ls)}
-      <div class="num"><b>${u ? fmt(u.nivel / 100, 2) + " m" : "—"}</b><span class="${cls}">${dif == null ? "" : `${seta} ${dif > 0 ? "+" : ""}${fmt(dif, 0)} cm/3h`}</span></div>
+      <div class="num"><b>${u ? fmt(u.nivel / 100, 2) + " m" : "—"}</b><span class="${cls}">${dif == null ? "" : `${seta} ${Math.round(dif) > 0 ? "+" : ""}${fmt(Math.round(dif) || 0, 0)} cm/3h`}</span></div>
     </li>`;
   };
   $("#rTrecho").innerHTML = trecho.map(li).join("");
