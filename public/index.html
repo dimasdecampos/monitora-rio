@@ -889,8 +889,20 @@ const pluginHoje = {
     const { ctx, chartArea: a, scales: { x } } = c;
     if (op.x < x.min || op.x > x.max) return;
     const px = Math.round(x.getPixelForValue(op.x)) + .5;
-    ctx.save(); ctx.strokeStyle = tok("--eixo"); ctx.setLineDash([2, 3]);
+    ctx.save(); ctx.strokeStyle = tok("--tinta-2"); ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
     ctx.beginPath(); ctx.moveTo(px, a.top); ctx.lineTo(px, a.bottom); ctx.stroke();
+    ctx.restore();
+  },
+  afterDatasetsDraw(c, _, op) {
+    // rótulo no topo (só no gráfico principal), por cima das linhas
+    if (op?.x == null || !op.rotulo) return;
+    const { ctx, chartArea: a, scales: { x } } = c;
+    if (op.x < x.min || op.x > x.max) return;
+    const px = Math.round(x.getPixelForValue(op.x)) + .5;
+    ctx.save(); ctx.font = "700 11px system-ui";
+    const w = ctx.measureText(op.rotulo).width + 12, lx = Math.min(Math.max(px - w / 2, a.left), a.right - w);
+    ctx.fillStyle = tok("--tinta-2"); ctx.beginPath(); ctx.roundRect(lx, a.top + 2, w, 17, 8); ctx.fill();
+    ctx.fillStyle = tok("--superficie"); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(op.rotulo, lx + w / 2, a.top + 11);
     ctx.restore();
   },
 };
@@ -1227,7 +1239,7 @@ function desenharAgora(manterJanela) {
   op.scales.x.ticks.callback = function (v) { return formatoTempo(v, (this.max - this.min) / 864e5); };
   op.scales.y.ticks.callback = v => fmt(v, 1);
   op.plugins.cotas = { ativo: true };
-  op.plugins.hoje = { x: Date.now() };
+  op.plugins.hoje = { x: Date.now(), rotulo: "agora" };
   const grad = ctx => { const { ctx: g, chartArea: a } = ctx.chart; if (!a) return null; const gr = g.createLinearGradient(0, a.top, 0, a.bottom);
     gr.addColorStop(0, tok("--s1") + "40"); gr.addColorStop(1, tok("--s1") + "00"); return gr; };
   const ds = [
@@ -1421,7 +1433,7 @@ function desenharComparar(manterJanela) {
   op.scales.x.ticks.callback = function (v) { const m = marcos.find(k => k.x === v); return (this.max - this.min) < 75 ? nomeDoDia(v) : m ? MESES[m.m - 1] : ""; };
   op.scales.y.ticks.callback = v => fmt(v, met.casas === 2 ? 1 : 0);
   op.plugins.cotas = { ativo: ehNivel };
-  op.plugins.hoje = { x: pHoje };
+  op.plugins.hoje = { x: pHoje, rotulo: "hoje" };
   const ch = criar("gPrincipal", "principal", { type: "line", data: { datasets }, options: op });
   graficos.chuva?.destroy(); graficos.chuva = null;
 
