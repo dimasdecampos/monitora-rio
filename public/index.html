@@ -239,6 +239,15 @@
   details.confianca ul { padding-left: 18px; }
   .prev-carregando { color: var(--tinta-3); font-size: 14px; }
 
+  /* ---------- cartões recolhíveis ---------- */
+  .recolhivel > .cab { cursor: pointer; margin-bottom: 0; border-radius: 10px; user-select: none; }
+  .recolhivel > .cab:focus-visible { outline: 2px solid var(--acento); outline-offset: 4px; }
+  .recolhivel > .corpo { margin-top: 14px; }
+  .recolhivel .lado { display: inline-flex; align-items: center; gap: 10px; }
+  .seta-exp { width: 30px; height: 30px; border-radius: 50%; background: var(--superficie-2); display: inline-grid; place-items: center; flex: none; }
+  .seta-exp::before { content: ""; width: 8px; height: 8px; border-right: 2px solid var(--tinta-2); border-bottom: 2px solid var(--tinta-2); transform: translateY(-2px) rotate(45deg); transition: transform .2s; }
+  .recolhivel > .cab[aria-expanded="true"] .seta-exp::before { transform: translateY(2px) rotate(-135deg); }
+
   /* ---------- rio acima ---------- */
   ol.trecho { list-style: none; margin: 0; padding: 0; position: relative; }
   ol.trecho:not(.afl)::before { content: ""; position: absolute; left: 7px; top: 18px; bottom: 18px; width: 2px; background: var(--grade); }
@@ -339,24 +348,28 @@
   </div>
 
   <div class="direita">
-  <section class="card rio-acima" id="cardRio" aria-labelledby="tituloRio">
-    <div class="cab">
+  <section class="card rio-acima recolhivel" id="cardRio" aria-labelledby="tituloRio">
+    <div class="cab" role="button" tabindex="0" aria-expanded="false" aria-controls="corpoRio">
       <div><h2 id="tituloRio">Rio acima</h2>
         <p class="sub" id="rSub">A água leva horas para descer de Cunha e Lagoinha até a cidade · SP Águas</p></div>
-      <span class="pill" id="rResumo"><i></i>…</span>
+      <span class="lado"><span class="pill" id="rResumo"><i></i>…</span><span class="seta-exp" aria-hidden="true"></span></span>
     </div>
-    <ol class="trecho" id="rTrecho"><li class="prev-carregando">Carregando réguas…</li></ol>
-    <div class="rot" style="margin:14px 0 6px">Afluentes</div>
-    <ol class="trecho afl" id="rAfl"></ol>
+    <div class="corpo" id="corpoRio" hidden>
+      <ol class="trecho" id="rTrecho"><li class="prev-carregando">Carregando réguas…</li></ol>
+      <div class="rot" style="margin:14px 0 6px">Afluentes</div>
+      <ol class="trecho afl" id="rAfl"></ol>
+    </div>
   </section>
 
-  <section class="card previsao" id="cardPrev" aria-labelledby="tituloPrev">
-    <div class="cab">
+  <section class="card previsao recolhivel" id="cardPrev" aria-labelledby="tituloPrev">
+    <div class="cab" role="button" tabindex="0" aria-expanded="false" aria-controls="corpoPrev">
       <div><h2 id="tituloPrev">Previsão · 48 h<span class="exp">experimental</span></h2>
         <p class="sub" id="pSub">Rio Paraitinga em São Luiz · nível atual + chuva prevista na bacia</p></div>
-      <span class="pill" id="pRisco"><i></i>…</span>
+      <span class="lado"><span class="pill" id="pRisco"><i></i>…</span><span class="seta-exp" aria-hidden="true"></span></span>
     </div>
-    <div class="prev-corpo" id="pCorpo"><span class="prev-carregando">Calculando com a previsão do tempo…</span></div>
+    <div class="corpo" id="corpoPrev" hidden>
+      <div class="prev-corpo" id="pCorpo"><span class="prev-carregando">Calculando com a previsão do tempo…</span></div>
+    </div>
   </section>
 
   <section class="card grafico">
@@ -460,7 +473,10 @@ const quando = x => new Date(x).toLocaleString("pt-BR", { weekday: "short", day:
 const hojeISO = () => { const h = new Date(); return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, "0")}-${String(h.getDate()).padStart(2, "0")}`; };
 const ha = horas => horas < 1 ? `há ${Math.max(1, Math.round(horas * 60))} min` : horas < 48 ? `há ${fmt(horas, horas < 10 ? 1 : 0)} h` : `há ${fmt(horas / 24, 0)} dias`;
 
-const estado = { estacao: ESTACAO_PADRAO, modo: "agora", dias: 3, de: 1, ate: 12, metrica: "nmax", destaques: new Map(), janela: null, cursor: null };
+// preferências do visitante (só neste navegador)
+const ler = (k, padrao) => { try { const v = localStorage.getItem("monitor-" + k); return v == null ? padrao : JSON.parse(v); } catch { return padrao; } };
+const guardar = (k, v) => { try { localStorage.setItem("monitor-" + k, JSON.stringify(v)); } catch {} };
+const estado = { mostrarMediana: ler("mostrarMediana", true), mostrarFaixa: ler("mostrarFaixa", true), estacao: ESTACAO_PADRAO, modo: "agora", dias: 3, de: 1, ate: 12, metrica: "nmax", destaques: new Map(), janela: null, cursor: null };
 let config, estacoes = {};
 window.monitor = estado;   // facilita testes e depuração pelo console
 window.monitorGraficos = () => graficos;
@@ -1057,11 +1073,8 @@ function destaquesPadrao(lista) {
   const atual = lista.find(t => t.atual) || lista.at(-1);
   if (!atual) return;
   estado.destaques.set(atual.s, "--s1");
-  const outros = lista.filter(t => t !== atual && t.pico);
-  const anterior = outros.filter(t => t.s < atual.s).at(-1);
-  const recorde = [...outros].sort((a, b) => b.pico.nmax - a.pico.nmax).find(t => t !== anterior);
+  const anterior = lista.filter(t => t !== atual && t.pico && t.s < atual.s).at(-1);   // só o ano atual e o anterior
   if (anterior) estado.destaques.set(anterior.s, "--s2");
-  if (recorde) estado.destaques.set(recorde.s, anterior ? "--s3" : "--s2");
 }
 function alternarDestaque(s) {
   // até 3 anos em destaque, qualquer um (inclusive desligar o atual); sempre fica pelo menos um
@@ -1094,9 +1107,9 @@ function desenharComparar(manterJanela) {
       lo.push(vs.length >= 2 ? Math.min(...vs) : null); hi.push(vs.length >= 2 ? Math.max(...vs) : null); md.push(vs.length >= 2 ? mediana(vs) : null);
     }
     faixa = { lo, hi, md, nome: `${rotulo(ref[0].s)}–${rotulo(ref.at(-1).s)}` };
-    datasets.push({ label: "mín", data: pontos(lo), borderWidth: 0, pointRadius: 0, fill: false, order: 9, foraDaEscala: false });
-    datasets.push({ label: "máx", data: pontos(hi), borderWidth: 0, pointRadius: 0, fill: "-1", backgroundColor: tok("--faixa"), order: 9 });
-    datasets.push({ label: "Mediana", data: pontos(md), borderColor: tok("--mediana"), borderWidth: 1.5, pointRadius: 0, order: 5, tension: .2, marcarCursor: true, cor: "--mediana" });
+    if (estado.mostrarFaixa) datasets.push({ label: "mín", data: pontos(lo), borderWidth: 0, pointRadius: 0, fill: false, order: 9, foraDaEscala: false });
+    if (estado.mostrarFaixa) datasets.push({ label: "máx", data: pontos(hi), borderWidth: 0, pointRadius: 0, fill: "-1", backgroundColor: tok("--faixa"), order: 9 });
+    if (estado.mostrarMediana) datasets.push({ label: "Mediana", data: pontos(md), borderColor: tok("--mediana"), borderWidth: 1.5, pointRadius: 0, order: 5, tension: .2, marcarCursor: true, cor: "--mediana" });
   }
   for (const t of lista) {
     const cor = estado.destaques.get(t.s);
@@ -1134,7 +1147,8 @@ function desenharComparar(manterJanela) {
   $("#anos").innerHTML = lista.slice().reverse().map(t => {
     const cor = estado.destaques.get(t.s);
     return `<button class="ano" data-s="${t.s}" aria-pressed="${!!cor}"><i style="${cor ? `background:${tok(cor)}` : ""}"></i>${rotulo(t.s)}${t.atual ? " <em>atual</em>" : t.parcial ? " <em>parcial</em>" : ""}</button>`;
-  }).join("");
+  }).join("") + (faixa ? `<button class="ano extra" data-extra="mostrarMediana" aria-pressed="${estado.mostrarMediana}"><i style="background:${tok("--mediana")};height:2px"></i>mediana</button>
+    <button class="ano extra" data-extra="mostrarFaixa" aria-pressed="${estado.mostrarFaixa}"><i style="background:${tok("--faixa")};height:10px;border-radius:3px"></i>faixa mín–máx</button>` : "");
 }
 
 // ================= faixa de leitura (substitui o balão) =================
@@ -1175,7 +1189,7 @@ function atualizarLeitura() {
     const itens = datasets.filter(d => d.marcarCursor).map(d => ({ d, y: d.data[x]?.y })).filter(i => i.y != null).sort((p, q) => q.y - p.y);
     $("#leitura").innerHTML = `<time>${nomeDoDia(x)}${x === pHoje && estado.cursor == null ? " · hoje" : ""} — ${met.nome.toLowerCase()}</time><div class="vals">` +
       itens.map(i => `<span><i style="background:${i.d.borderColor}"></i><b>${fmt(i.y, met.casas)}</b>${i.d.label}${i.d.parcial ? "*" : ""}</span>`).join("") +
-      (faixa && faixa.lo[x] != null ? `<span>faixa ${faixa.nome}: <b>${fmt(faixa.lo[x], met.casas)}–${fmt(faixa.hi[x], met.casas)}</b> ${met.un}</span>` : "") + "</div>";
+      (faixa && estado.mostrarFaixa && faixa.lo[x] != null ? `<span>faixa ${faixa.nome}: <b>${fmt(faixa.lo[x], met.casas)}–${fmt(faixa.hi[x], met.casas)}</b> ${met.un}</span>` : "") + "</div>";
   }
 }
 
@@ -1589,7 +1603,20 @@ async function iniciar() {
     marcarControles(); desenharComparar(); desenharLinhas(); salvarURL();
   };
   $("#metrica").onchange = e => { estado.metrica = e.target.value; desenharComparar(true); salvarURL(); };
-  $("#anos").onclick = ev => { const b = ev.target.closest(".ano"); if (b) alternarDestaque(+b.dataset.s); };
+  $("#anos").onclick = ev => {
+    const b = ev.target.closest(".ano"); if (!b) return;
+    if (b.dataset.extra) { estado[b.dataset.extra] = !estado[b.dataset.extra]; guardar(b.dataset.extra, estado[b.dataset.extra]); desenharComparar(true); }
+    else alternarDestaque(+b.dataset.s);
+  };
+  // cartões recolhíveis: começam fechados; o navegador lembra a escolha
+  document.querySelectorAll(".recolhivel").forEach(card => {
+    const cab = card.querySelector(".cab"), corpo = card.querySelector(".corpo"), chave = "aberto-" + card.id;
+    const abrir = sim => { cab.setAttribute("aria-expanded", sim); corpo.hidden = !sim; };
+    abrir(ler(chave, false));
+    const alternar = () => { const sim = corpo.hidden; abrir(sim); guardar(chave, sim); };
+    cab.addEventListener("click", ev => { if (!ev.target.closest("a, li[data-cod]")) alternar(); });
+    cab.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); alternar(); } });
+  });
   $("#linhas").onclick = ev => {
     const b = ev.target.closest(".linha"); if (!b) return;
     alternarDestaque(+b.dataset.s);
