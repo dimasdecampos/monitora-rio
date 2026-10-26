@@ -516,9 +516,14 @@
     <div class="area-perm"><canvas id="gPerm"></canvas></div>
   </details>
 
-  <section class="card largo" id="cardHist" aria-labelledby="tituloHist">
-    <div class="cab"><div><h2 id="tituloHist">Memória das cheias</h2><p class="sub">Grandes cheias de São Luiz do Paraitinga, de 1863 até hoje</p></div></div>
-    <ol class="linha-tempo" id="hLinha"></ol>
+  <section class="card largo recolhivel" id="cardHist" aria-labelledby="tituloHist">
+    <div class="cab" role="button" tabindex="0" aria-expanded="false" aria-controls="corpoHist">
+      <div><h2 id="tituloHist">Memória das cheias</h2><p class="sub">Grandes cheias de São Luiz do Paraitinga, de 1863 até hoje</p></div>
+      <span class="lado"><span class="pill" id="hResumo"><i style="background:var(--inundacao)"></i>Maior: 2010, ≈ 11 m</span><span class="seta-exp" aria-hidden="true"></span></span>
+    </div>
+    <div class="corpo" id="corpoHist" hidden>
+      <ol class="linha-tempo" id="hLinha"></ol>
+    </div>
   </section>
 
   <section class="card largo" id="cardFontes" aria-labelledby="tituloFontes">
