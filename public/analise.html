@@ -256,7 +256,7 @@
           <button data-m="vmed">Vazão</button>
           <button data-m="chuva">Chuva acumulada</button>
         </div>
-        <label class="alternar"><input type="checkbox" id="suavizar" checked> suavizar (7 dias)</label>
+        <label class="alternar"><input type="checkbox" id="suavizar"> suavizar (7 dias)</label>
       </div>
     </div>
     <div class="area"><canvas id="gComparacao" aria-label="Gráfico de comparação entre anos"></canvas></div>
@@ -328,7 +328,7 @@ const mediana = a => { if (!a.length) return null; const s = [...a].sort((x, y) 
 const dataCurta = d => `${+d.slice(8, 10)} ${MESES[+d.slice(5, 7) - 1]} ${d.slice(0, 4)}`;
 const hojeISO = () => { const h = new Date(); return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, "0")}-${String(h.getDate()).padStart(2, "0")}`; };
 
-const estado = { estacao: ESTACAO_PADRAO, de: 1, ate: 12, metrica: "nmax", suavizar: true, destaques: new Map() };
+const estado = { estacao: ESTACAO_PADRAO, de: 1, ate: 12, metrica: "nmax", suavizar: false, destaques: new Map() };
 let config, estacoes = {}, diario = [], ultima = null, graficos = {};
 
 // ---------------- dados ----------------
@@ -409,10 +409,14 @@ function temporadas() {
   return { lista: [...mapa.values()].sort((a, b) => a.s - b.s), sHoje, pHoje, len };
 }
 
+// Média móvel centrada. Nas pontas (ex.: os últimos dias até hoje) não há dias
+// suficientes dos dois lados, então o valor fica sem suavizar — senão uma cheia
+// de ontem seria "diluída" com os dias secos anteriores.
 function suavizar(arr, janela = 7) {
-  const h = janela >> 1;
+  const h = janela >> 1, ultimo = arr.findLastIndex(v => v != null), primeiro = arr.findIndex(v => v != null);
   return arr.map((v, i) => {
     if (v == null) return null;
+    if (i + h > ultimo || i - h < primeiro) return v;
     let s = 0, c = 0;
     for (let k = i - h; k <= i + h; k++) if (arr[k] != null) { s += arr[k]; c++; }
     return s / c;
@@ -757,7 +761,13 @@ function desenharHero() {
   const { lista } = temporadas(), atual = lista.find(t => t.atual) || lista.at(-1);
   if (!ultima) { $("#heroFrase").textContent = "Sem leituras para esta estação."; return; }
   const nivel = ultima.nivel, st = statusDe(nivel), quando = new Date(ultima.t);
-  $("#heroRotulo").textContent = ultima.antiga ? "Último registro" : `Agora · ${quando.toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}`;
+  const horas = (Date.now() - quando) / 36e5, hora = quando.toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  const atrasada = ultima.antiga || horas > est.atraso_max_horas;
+  const ha = horas < 1 ? `há ${Math.round(horas * 60)} min` : horas < 48 ? `há ${fmt(horas, horas < 10 ? 1 : 0)} h` : `há ${fmt(horas / 24, 0)} dias`;
+  $("#heroRotulo").innerHTML = atrasada
+    ? `<span style="color:var(--alerta)">⚠ Última leitura · ${hora} (${ha})</span>`
+    : `Agora · leitura de ${hora}`;
+  $("#heroRotulo").title = atrasada ? "A ANA não recebeu leituras novas desta estação desde então. O nível real pode ter mudado." : "";
   $("#heroNum").innerHTML = `${fmt(nivel / 100, 2)}<small> m</small>`;
   $("#heroStatus").innerHTML = `<i style="background:${tok(st.cor)}"></i>${st.nome}`;
 
@@ -775,7 +785,8 @@ function desenharHero() {
     const anosJ = [...new Set(janela.map(r => r.d.slice(0, 4)))];
     $("#kNormal").innerHTML = `<span class="${dif > 0 ? "delta-sobe" : "delta-desce"}">${dif > 0 ? "▲ +" : "▼ "}${fmt(dif, 2)}</span><small> m</small>`;
     $("#kNormalNota").textContent = `Normal para ${+hoje.slice(8, 10)} ${MESES[+hoje.slice(5, 7) - 1]}: ${fmt(normal / 100, 2)} m (mediana ${anosJ[0]}–${anosJ.at(-1)})`;
-    $("#heroFrase").innerHTML = `O ${est.rio} em <strong>${est.nome}</strong> está <strong>${fmt(Math.abs(dif), 2)} m ${dif >= 0 ? "acima" : "abaixo"} do normal</strong> para esta época — mais alto que ${fmt(pct, 0)}% dos registros nesta mesma quinzena desde ${anosJ[0]}.`;
+    $("#heroFrase").innerHTML = `${atrasada ? `Na última leitura (${hora}), o` : "O"} ${est.rio} em <strong>${est.nome}</strong> ${atrasada ? "estava" : "está"} <strong>${fmt(Math.abs(dif), 2)} m ${dif >= 0 ? "acima" : "abaixo"} do normal</strong> para esta época — mais alto que ${fmt(pct, 0)}% dos registros nesta mesma quinzena desde ${anosJ[0]}.` +
+      (atrasada ? ` <span style="color:var(--alerta)">A estação está sem transmitir; o nível real pode ser outro.</span>` : "");
   } else {
     $("#kNormal").textContent = "—"; $("#kNormalNota").textContent = "Histórico insuficiente para esta época.";
     $("#heroFrase").innerHTML = `${est.rio} em <strong>${est.nome}</strong>.`;
