@@ -90,3 +90,37 @@ Na visão "Últimos dias", o gráfico continua para o futuro:
   grandes — para isso, veja a chance de cheia no cartão de previsão.
 - **Até 30 dias**: só a faixa típica do nível para a época (anos anteriores).
   Previsão de chuva para meses não é confiável o bastante para prever o rio.
+
+## O que alaga e memória das cheias
+
+`public/impactos.json` liga níveis da Passarela a impactos registrados (2021, 2022,
+2024), com os lugares no mapa (coordenadas do OpenStreetMap) e a linha do tempo das
+grandes cheias desde 1863 (relatório SGB/CPRM 2022 e notícias). Os níveis das ruas do
+centro são aproximados; edite o arquivo para corrigir ou acrescentar registros.
+
+## Previsão na Passarela
+
+`scripts/modelo_cheias/passarela.py` e `exportar_passarela.py` treinam a previsão
+direto na régua da Passarela (2018–2026), com a subida da régua de Cunha quando ela
+está transmitindo. Teste com a previsão do tempo real (2024–2026, 8 vezes acima da
+atenção): avisou 7 com 6 h de antecedência; com Cunha, os dias de alarme falso
+caíram de 44% para 35%. A linha de previsão do gráfico erra em média 15 cm em 2 dias.
+
+## Avisos
+
+- **No aparelho**: botão "Avisar neste aparelho" (funciona com o painel aberto ou
+  instalado como app).
+- **Telegram** (funciona sempre): `scripts/alertas.py` roda a cada ~10 min pelo
+  `.github/workflows/alertas.yml`. Para ligar:
+  1. No Telegram, fale com **@BotFather**, crie um bot (`/newbot`) e copie o token.
+  2. Crie um canal público, adicione o bot como administrador.
+  3. No GitHub: *Settings → Secrets and variables → Actions* → crie
+     `TELEGRAM_TOKEN` (o token) e `TELEGRAM_CHAT` (`@nome_do_canal`).
+  4. Em `public/config.json`, preencha `"telegram": "https://t.me/nome_do_canal"`
+     para o painel mostrar o botão do canal.
+  Sem os segredos, o robô roda em modo de teste e só registra as mensagens.
+
+## App instalável
+
+`public/manifest.webmanifest` e `public/sw.js` deixam o painel instalável no celular
+("Adicionar à tela inicial"); sem internet, ele mostra a última leitura guardada.

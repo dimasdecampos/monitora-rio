@@ -1,0 +1,38 @@
+{
+  "_sobre": "Níveis em cm na régua da Passarela (SP Águas). Impactos tirados de registros de cheias passadas (notícias e relatório SGB/CPRM 2022); são aproximados e não substituem a Defesa Civil. Coordenadas: OpenStreetMap.",
+  "regua": "sp664",
+  "niveis": [
+    { "cm": 191.9, "tipo": "cota", "titulo": "Atenção (cota oficial)", "texto": "Rio acima do normal. Acompanhe." },
+    { "cm": 231.9, "tipo": "cota", "titulo": "Alerta (cota oficial)", "texto": "Prepare-se se mora perto do rio." },
+    { "cm": 272, "tipo": "cota", "titulo": "Emergência (cota oficial)", "texto": "Risco de o rio sair da calha." },
+    { "cm": 312, "tipo": "cota", "titulo": "Transbordamento (cota oficial)", "texto": "O rio sai da calha (extravasamento)." },
+    { "cm": 395, "tipo": "registro", "titulo": "Ruas da beira do rio alagadas", "texto": "Em 7/2/2021 (pico de 3,95 m) as ruas que margeiam o rio ficaram com até 70 cm de água; família retirada na Rua Capitão Antônio Carlos.", "fonte": "https://spriomais.com.br/2021/02/08/sao-luiz-do-paraitinga-entra-em-estado-de-alerta-apos-rio-paraitinga-subir-mais-de-3-metros/" },
+    { "cm": 460, "tipo": "registro", "aproximado": true, "titulo": "Ruas do centro alagadas", "texto": "Em 23/2/2024 (o rio subiu de 3,3 m para 5,1 m ao longo do dia) ao menos cinco ruas do centro alagaram, entre elas Rua dos Presottos, Benedito Pião Sobrinho, Abraão Abdala, Capitão Antônio Carlos, Monsenhor Ignácio Gióia, Cel. Manoel Bento e Eng. Pedro Pereira Rio Branco.", "fonte": "https://www.cbnvale.com.br/sao-luiz-do-paraitinga-em-alerta-risco-de-transbordamento-do-rio-paraitinga/" },
+    { "cm": 536, "tipo": "registro", "titulo": "Água na Praça da Matriz", "texto": "Em 8/2/2022 (pico de 5,36 m) a água chegou à praça em frente à Igreja Matriz; marcas d'água na via de acesso em frente ao Fórum e na Rua Capitão Antônio Carlos; casas atingidas no bairro Orris.", "fonte": "https://ecrie.com.br/sistema/conteudos/arquivo/a_30_0_1_23032023162929.pdf" }
+  ],
+  "lugares": [
+    { "nome": "Rua Capitão Antônio Carlos", "lat": -23.22554, "lon": -45.30910, "cm": 395 },
+    { "nome": "Rua dos Presottos", "lat": -23.22162, "lon": -45.31194, "cm": 460 },
+    { "nome": "Rua Benedito Pião Sobrinho", "lat": -23.22608, "lon": -45.31009, "cm": 460 },
+    { "nome": "Rua Abraão Abdala", "lat": -23.22517, "lon": -45.31007, "cm": 460 },
+    { "nome": "Rua Monsenhor Ignácio Gióia", "lat": -23.22287, "lon": -45.31021, "cm": 460 },
+    { "nome": "Rua Cel. Manoel Bento", "lat": -23.22528, "lon": -45.30861, "cm": 460 },
+    { "nome": "Rua Eng. Pedro Pereira Rio Branco", "lat": -23.22647, "lon": -45.30845, "cm": 460 },
+    { "nome": "Praça Dr. Oswaldo Cruz (Matriz)", "lat": -23.22200, "lon": -45.31088, "cm": 536 },
+    { "nome": "Via de acesso — Fórum", "lat": -23.23123, "lon": -45.30841, "cm": 536 },
+    { "nome": "Bairro Orris", "lat": -23.21793, "lon": -45.29691, "cm": 536 }
+  ],
+  "historia": [
+    { "data": "1863-01-12", "titulo": "Primeiro registro", "nivel": null, "texto": "Na noite de 11 para 12 de janeiro as águas chegaram perto da porta da Matriz e, pela antiga Rua Direita (Cel. Domingues de Castro), à porta lateral da Igreja das Mercês. Duas pontes, a cadeia e casas destruídas.", "fonte": "Moradei (2016), citado no relatório SGB/CPRM 2022" },
+    { "data": "1967", "titulo": "Cheia de 1967", "nivel": "5,80 m acima do normal", "texto": "A água chegou ao cruzamento das ruas Cel. Domingues de Castro e Monsenhor Gióia.", "fonte": "Relatório SGB/CPRM 2022" },
+    { "data": "1971", "titulo": "Cheia do Rio do Chapéu", "nivel": "6,30 m acima do normal", "texto": "O Chapéu destruiu parte da Vila de Catuçaba e o Paraitinga encheu na cidade.", "fonte": "Relatório SGB/CPRM 2022" },
+    { "data": "1996", "titulo": "Tromba d'água na serra", "nivel": null, "texto": "A cheia do Chapéu represou o Paraitinga, que subiu rápido e chegou à Praça da Matriz. Três mortes.", "fonte": "Moradei (2016), citado no relatório SGB/CPRM 2022" },
+    { "data": "2010-01-01", "titulo": "A grande enchente", "nivel": "≈ 11 m acima do normal", "destaque": true, "texto": "Maior cheia registrada. A Igreja Matriz desabou e o centro histórico (437 imóveis tombados) foi muito danificado. 5.163 pessoas afetadas, 5.050 desalojadas, 1 morte. Causa: chuva acumulada de semanas nas cabeceiras, solo encharcado e cheia do Chapéu.", "fonte": "Brollo et al. (2010), citado no relatório SGB/CPRM 2022" },
+    { "data": "2017-02-27", "titulo": "Catuçaba", "nivel": "≈ 4 m de água em áreas habitadas", "texto": "Cheia localizada no Ribeirão do Chapéu: 30 cm de água na praça de Catuçaba. Na cidade, o Paraitinga não transbordou.", "fonte": "Relatório SGB/CPRM 2022" },
+    { "data": "2021-02-07", "titulo": "Estado de alerta", "nivel": "3,95 m na Passarela", "cm": 395, "texto": "Ruas da beira do rio alagadas, até 70 cm de água; família retirada na Rua Capitão Antônio Carlos.", "fonte": "SPRio+ (fev/2021)" },
+    { "data": "2022-02-08", "titulo": "Água na praça", "nivel": "5,36 m na Passarela", "cm": 536, "texto": "A água chegou à praça em frente à Igreja Matriz. Marcas d'água em frente ao Fórum e na Rua Capitão Antônio Carlos.", "fonte": "Relatório SGB/CPRM 2022" },
+    { "data": "2024-02-24", "titulo": "Ruas do centro alagadas", "nivel": "5,26 m na Passarela", "cm": 526, "texto": "Pelo menos cinco ruas do centro alagadas; Defesa Civil em alerta.", "fonte": "CBN Vale (fev/2024)" },
+    { "data": "2025-04-26", "titulo": "Sirene de alerta", "nivel": null, "texto": "A cidade recebe a primeira sirene de alerta de inundação do estado, ligada ao nível do Paraitinga.", "fonte": "SPRio+ (abr/2025)" },
+    { "data": "2026-01-27", "titulo": "Cheia de janeiro", "nivel": "4,63 m na Passarela", "cm": 463, "texto": "Maior nível de 2026 até agora.", "fonte": "SP Águas (SIBH)" }
+  ]
+}

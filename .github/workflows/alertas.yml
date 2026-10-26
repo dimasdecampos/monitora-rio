@@ -1,0 +1,45 @@
+name: Avisos de cheia (Telegram)
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # a cada ~10 min (o GitHub pode atrasar alguns minutos)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: alertas
+  cancel-in-progress: false
+
+jobs:
+  avisar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts
+            public/config.json
+            public/modelo_cheias.json
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # guarda o que já foi avisado entre uma rodada e outra
+      - uses: actions/cache/restore@v4
+        with:
+          path: .alertas
+          key: alertas-estado-${{ github.run_id }}
+          restore-keys: alertas-estado-
+      - name: Verificar rio e avisar
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT: ${{ secrets.TELEGRAM_CHAT }}
+        run: python scripts/alertas.py
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .alertas
+          key: alertas-estado-${{ github.run_id }}

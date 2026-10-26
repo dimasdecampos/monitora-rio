@@ -6,7 +6,14 @@
 <meta name="theme-color" content="#f9f9f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
 <title>Rio Paraitinga Agora</title>
-<meta name="description" content="Nível, chuva e histórico dos rios Paraitinga e Paraibuna em tempo real, com dados da ANA">
+<meta name="description" content="Nível, chuva, previsão e avisos de cheia do Rio Paraitinga em São Luiz do Paraitinga, com dados da SP Águas e da ANA">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icones/icone-192.png">
+<link rel="apple-touch-icon" href="icones/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Rio Paraitinga">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root {
@@ -239,6 +246,63 @@
   details.confianca ul { padding-left: 18px; }
   .prev-carregando { color: var(--tinta-3); font-size: 14px; }
 
+  /* ---------- avisos ---------- */
+  .avisos h2 { font-size: 15px; }
+  .avisos .sub { margin-bottom: 10px; }
+  .botoes-avisos { display: flex; flex-wrap: wrap; gap: 8px; }
+  .botao { border: 0; border-radius: 10px; padding: 9px 14px; font-weight: 650; font-size: 14px; background: var(--acento); color: #fff; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+  .botao.sec { background: var(--superficie-2); color: var(--tinta); }
+  .botao[disabled] { opacity: .6; cursor: default; }
+  .trocar { margin-top: 8px; border: 0; background: var(--superficie-2); color: var(--acento); font-weight: 650; border-radius: 8px; padding: 6px 10px; cursor: pointer; font-size: 13px; }
+
+  /* ---------- o que alaga ---------- */
+  .impacto { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  ol.escada { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  ol.escada li { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 2px 12px; padding: 9px 10px; border-radius: 10px; background: var(--superficie-2); border-left: 4px solid var(--neutro); }
+  ol.escada li .alt { font-weight: 750; font-variant-numeric: tabular-nums; font-size: 15px; grid-row: span 2; align-self: center; }
+  ol.escada li strong { font-size: 14px; }
+  ol.escada li span.t { font-size: 12.5px; color: var(--tinta-2); grid-column: 2; }
+  ol.escada li.atingido { border-left-color: var(--inundacao); background: color-mix(in srgb, var(--inundacao) 9%, var(--superficie-2)); }
+  ol.escada li.possivel { border-left-color: var(--alerta); }
+  ol.escada li.marcador { background: none; border-left: 0; padding: 2px 10px; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }
+  ol.escada li.marcador::before { content: ""; flex: 1; height: 2px; background: currentColor; order: 2; }
+  ol.escada li.marcador.agora { color: var(--acento); }
+  ol.escada li.marcador.prev { color: var(--alerta); }
+  ol.escada li em { font-style: normal; font-size: 11px; color: var(--tinta-3); }
+  .mapa-box { min-width: 0; }
+  .mapa { height: 340px; border-radius: 12px; overflow: hidden; background: var(--superficie-2); position: relative; z-index: 0; isolation: isolate; }
+  .leg-mapa { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--tinta-2); margin-top: 8px; }
+  .leg-mapa span { display: inline-flex; align-items: center; gap: 6px; }
+  .leg-mapa i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .nota { font-size: 12px; color: var(--tinta-3); margin: 12px 0 0; }
+  .represa { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13px; color: var(--tinta-2); margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--superficie-2); }
+  .represa:empty { display: none; }
+  @media (min-width: 900px) {
+    .impacto { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); align-items: stretch; }
+    .mapa-box { display: flex; flex-direction: column; }
+    .mapa { flex: 1; height: auto; min-height: 420px; }
+  }
+
+  /* ---------- memória das cheias ---------- */
+  ol.linha-tempo { list-style: none; margin: 0; padding: 0 0 0 18px; position: relative; display: flex; flex-direction: column; gap: 14px; }
+  ol.linha-tempo::before { content: ""; position: absolute; left: 5px; top: 6px; bottom: 6px; width: 2px; background: var(--grade); }
+  ol.linha-tempo li { position: relative; }
+  ol.linha-tempo li::before { content: ""; position: absolute; left: -18px; top: 5px; width: 12px; height: 12px; border-radius: 50%; background: var(--superficie); box-shadow: inset 0 0 0 2px var(--eixo); }
+  ol.linha-tempo li.destaque::before { background: var(--inundacao); box-shadow: none; }
+  ol.linha-tempo li.agora::before { background: var(--acento); box-shadow: none; }
+  ol.linha-tempo .data-h { display: block; font-size: 13px; font-weight: 750; color: var(--tinta-3); font-variant-numeric: tabular-nums; }
+  ol.linha-tempo strong { display: block; font-size: 15px; }
+  ol.linha-tempo .nv { font-size: 13px; font-weight: 650; color: var(--tinta); }
+  ol.linha-tempo p { margin: 3px 0 0; font-size: 13.5px; color: var(--tinta-2); max-width: 80ch; }
+  ol.linha-tempo small { font-size: 11.5px; color: var(--tinta-3); }
+  ol.linha-tempo .barra-h { height: 6px; border-radius: 3px; background: var(--acento); margin-top: 6px; max-width: 360px; }
+
+  /* ---------- fontes ---------- */
+  ul.fontes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+  ul.fontes li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; background: var(--superficie-2); font-size: 13px; color: var(--tinta-2); }
+  ul.fontes li i { width: 10px; height: 10px; border-radius: 50%; flex: none; margin-top: 4px; }
+  ul.fontes li strong { color: var(--tinta); display: block; font-size: 14px; }
+
   /* ---------- cartões recolhíveis ---------- */
   .recolhivel > .cab { cursor: pointer; margin-bottom: 0; border-radius: 10px; user-select: none; }
   .recolhivel > .cab:focus-visible { outline: 2px solid var(--acento); outline-offset: 4px; }
@@ -345,6 +409,15 @@
       <p id="hFrase"></p>
     </section>
     <section class="stats" id="stats" aria-label="Números rápidos"></section>
+    <section class="card avisos" id="cardAvisos" aria-labelledby="tituloAvisos">
+      <h2 id="tituloAvisos">Receber avisos</h2>
+      <p class="sub" id="avisoTexto">Quando o rio passar de uma cota, a água subir rio acima ou a previsão indicar cheia.</p>
+      <div class="botoes-avisos">
+        <button class="botao" id="btnNotif">Avisar neste aparelho</button>
+        <a class="botao sec" id="lnkTelegram" href="#" target="_blank" rel="noopener" hidden>Canal no Telegram</a>
+        <button class="botao sec" id="btnInstalar" hidden>Instalar o app</button>
+      </div>
+    </section>
   </div>
 
   <div class="direita">
@@ -356,6 +429,7 @@
     </div>
     <div class="corpo" id="corpoRio" hidden>
       <ol class="trecho" id="rTrecho"><li class="prev-carregando">Carregando réguas…</li></ol>
+      <div class="represa" id="rChapeu"></div>
       <div class="rot" style="margin:14px 0 6px">Afluentes</div>
       <ol class="trecho afl" id="rAfl"></ol>
     </div>
@@ -405,6 +479,20 @@
   </div><!-- .direita -->
   </div><!-- .painel -->
 
+  <section class="card largo" id="cardImpacto" aria-labelledby="tituloImpacto">
+    <div class="cab">
+      <div><h2 id="tituloImpacto">O que alaga com cada nível</h2>
+        <p class="sub" id="iSub">Régua da Passarela · registros de cheias passadas</p></div>
+      <span class="pill" id="iResumo"><i></i>…</span>
+    </div>
+    <div class="impacto">
+      <ol class="escada" id="iEscada"></ol>
+      <div class="mapa-box"><div class="mapa" id="iMapa" role="img" aria-label="Mapa do centro com os pontos atingidos em cheias passadas"></div>
+        <div class="leg-mapa"><span><i style="background:var(--inundacao)"></i>atingido no nível de agora</span><span><i style="background:var(--alerta)"></i>pode ser atingido (previsão 48 h)</span><span><i style="background:var(--mediana)"></i>não atingido</span><span><i style="background:var(--acento)"></i>régua da Passarela</span></div></div>
+    </div>
+    <p class="nota">Baseado nas cheias de 2021, 2022 e 2024 (níveis das ruas do centro são aproximados). Não substitui a Defesa Civil (199).</p>
+  </section>
+
   <div class="duas">
     <section class="card">
       <div class="cab"><div><h2>Ano a ano</h2><p class="sub" id="anoSub">Maior nível de cada ano e dias acima das cotas. Toque num ano para comparar no gráfico.</p></div></div>
@@ -427,6 +515,16 @@
     <summary><div><h2>Com que frequência o rio fica alto</h2><p class="sub" id="permSub">Curva de permanência do nível médio diário.</p></div></summary>
     <div class="area-perm"><canvas id="gPerm"></canvas></div>
   </details>
+
+  <section class="card largo" id="cardHist" aria-labelledby="tituloHist">
+    <div class="cab"><div><h2 id="tituloHist">Memória das cheias</h2><p class="sub">Grandes cheias de São Luiz do Paraitinga, de 1863 até hoje</p></div></div>
+    <ol class="linha-tempo" id="hLinha"></ol>
+  </section>
+
+  <section class="card largo" id="cardFontes" aria-labelledby="tituloFontes">
+    <div class="cab"><div><h2 id="tituloFontes">Situação das fontes de dados</h2><p class="sub">Se uma rede parar, o painel avisa e sugere outra régua.</p></div></div>
+    <ul class="fontes" id="fontes"><li class="prev-carregando">Verificando…</li></ul>
+  </section>
 
   <section class="card largo sobre">
     <strong>Sobre os dados</strong>
@@ -525,7 +623,7 @@ async function buscarSibh(ests, dias) {
   for (const e of ests) {
     const mapa = new Map();
     for (const m of porId[e.id_nivel] || []) { const t = hora(m); mapa.set(t, { t, nivel: +m.value >= 0 ? +m.value : null, vazao: null, chuva: null }); }
-    for (const m of porId[e.id_chuva] || []) { const t = hora(m), l = mapa.get(t) || { t, nivel: null, vazao: null, chuva: null }; l.chuva = +m.value; mapa.set(t, l); }
+    for (const m of porId[e.id_chuva] || []) { const t = hora(m), l = mapa.get(t) || { t, nivel: null, vazao: null, chuva: null }; l.chuva = +m.value >= 0 && +m.value <= 50 ? +m.value : null; mapa.set(t, l); }
     out[e.codigo] = [...mapa.values()].sort((a, b) => a.t < b.t ? -1 : 1);
   }
   return out;
@@ -632,7 +730,8 @@ function desenharHero() {
   if (normal != null) {
     const dif = (u.nivel - normal) / 100;
     $("#hFrase").innerHTML = `O ${est.rio.replace("Rio ", "rio ")} ${verbo} <strong>${fmt(Math.abs(dif), 2)} m ${dif >= 0 ? "acima" : "abaixo"} do normal</strong> para ${+hoje.slice(8, 10)} de ${MESES[+hoje.slice(5, 7) - 1]} (${fmt(normal / 100, 2)} m).` +
-      (atrasada ? ` <span class="aviso-atraso">A estação parou de transmitir; o nível real pode ser outro.</span>` : "");
+      (atrasada ? ` <span class="aviso-atraso">A estação parou de transmitir; o nível real pode ser outro.</span>` : "") +
+      (atrasada && estado.estacao !== "sp664" && REGUAS_CIDADE.includes(estado.estacao) ? `<br><button class="trocar" data-cod="sp664">Ver a régua da Passarela (SP Águas) →</button>` : "");
   } else $("#hFrase").textContent = "";
 }
 
@@ -899,9 +998,9 @@ function interp(dados, x) {
 }
 function linhaPrevista(ultimo) {
   const m = prev.modelo, ref = prev.ref, d = prev.dados;
-  if (!m?.trajetoria || !ref || !d || !REGUAS_CIDADE.includes(estado.estacao)) return null;
-  // o modelo trabalha na régua da CESP: converte a variação para a régua mostrada
-  const k = estado.estacao === "58041000" ? 1 : estado.estacao === "58040000" ? config.conversoes["58040000"][1] / config.conversoes["58041000"][1] : 1 / config.conversoes["58041000"][1];
+  if (!m?.passarela?.trajetoria || !ref || !d || !REGUAS_CIDADE.includes(estado.estacao)) return null;
+  // o modelo trabalha na régua da Passarela: converte a variação para a régua mostrada
+  const k = estado.estacao === "sp664" ? 1 : config.conversoes[estado.estacao][1];
   const minimo = Math.min(...comNivel(cache[estado.estacao]?.leituras || []).map(l => l.nivel / 100), ultimo.y);
   const i = d.tempo.indexOf(horaLocal(new Date(ref.t)));
   if (i < 720) return null;
@@ -909,10 +1008,10 @@ function linhaPrevista(ultimo) {
   const x = { a: Math.log1p(soma(i - 24, i + 1)), b: Math.log1p(soma(i - 72, i + 1)), s: soma(i - 720, i - 72) / 100, n: ref.H0 / 100 };
   // a linha parte da última leitura da estação mostrada e soma a variação prevista
   const pts = [{ x: ultimo.x, lo: ultimo.y, md: ultimo.y, hi: ultimo.y }];
-  for (const pz of m.trajetoria.prazos) {
+  for (const pz of m.passarela.trajetoria.prazos) {
     if (i + pz.h >= d.tempo.length) break;
     const ra = Math.log1p(soma(i + 1, i + pz.h + 1) * f), rf = Math.log1p(soma(i + pz.h - 23, i + pz.h + 1) * f);
-    const v = [1, x.n, x.n * x.n, x.a, x.b, x.s, ra, rf, ra * x.s, rf * x.s, ra * x.n, x.a * (24 / (pz.h + 24))];
+    const v = [1, x.n, x.n * x.n, x.a, x.b, x.s, ra, rf, ra * x.s, rf * x.s, ra * x.n, x.a * (24 / (pz.h + 24)), Math.max(ref.dc6 || 0, 0) / 100 * (24 / (pz.h + 24))];
     const p = pz.pesos.reduce((s, w, k) => s + w * v[k], 0);
     const q = pz.faixas.find(fx => p <= fx.ate).q;
     const piso = Math.max(0, minimo - .1);   // não deixa a previsão abaixo do mínimo recente
@@ -1279,11 +1378,14 @@ const prev = { modelo: null, dados: null, sazonal: null };
 const pad = n => String(n).padStart(2, "0");
 const horaLocal = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:00`;
 const sigmoide = z => 1 / (1 + Math.exp(-Math.max(-30, Math.min(30, z))));
+// Modelo na régua da Passarela (scripts/modelo_cheias/passarela.py). Versão B usa a subida da régua de Cunha.
 function chanceDeSubir(H0, x, f48, G) {
   if (G <= 0) return 1;
   const f = Math.log1p(f48), a = Math.log1p(x.p24), b = Math.log1p(x.p72), solo = x.api / 100, g = G / 100;
   const v = [1, g, f, a, b, solo, H0 / 100, f * solo, f * g, a * g, g * g];
-  return sigmoide(prev.modelo.pesos.reduce((s, w, i) => s + w * v[i], 0));
+  if (x.versao === "B") { const dc = Math.max(x.dc6, 0) / 100; v.push(dc, Math.max(x.dc12, 0) / 100, dc / (g + .3)); }
+  const pesos = x.versao === "B" ? prev.modelo.passarela.pesos_B : prev.modelo.passarela.pesos_A;
+  return sigmoide(pesos.reduce((s, w, i) => s + w * v[i], 0));
 }
 
 async function buscarPrevisao() {
@@ -1304,9 +1406,9 @@ async function buscarPrevisao() {
     }));
   }
   prev.dados = { tempo, media, membros };
-  // frequência histórica de cheias por mês (régua da CESP)
+  // frequência histórica de cheias por mês (régua da Passarela, desde 2018)
   if (!prev.sazonal) {
-    const dias = cache["58041000"]?.diario || await buscarDiario("58041000");
+    const dias = cache["sp664"]?.diario || await buscarDiario("sp664");
     const porAnoMes = new Map();
     for (const r of dias) if (r.nmax != null) { const k = r.d.slice(0, 7); porAnoMes.set(k, Math.max(porAnoMes.get(k) || 0, r.nmax)); }
     prev.sazonal = porAnoMes;
@@ -1314,16 +1416,31 @@ async function buscarPrevisao() {
 }
 
 async function nivelDeReferencia() {
-  // o modelo foi treinado na régua da CESP; se ela estiver parada, estima pela Passarela (SP Águas)
+  // o modelo trabalha na régua da Passarela; a subida da régua de Cunha (rio acima) melhora a previsão
   const ler = async cod => {
-    const c = cache[cod], ls = c && Date.now() - c.quando < 10 * 60e3 ? c.leituras : await buscarLeituras(estacoes[cod], 2).catch(() => []);
-    return comNivel(ls).at(-1);
+    const c = cache[cod], r = rioAcima.dados[cod];
+    const ls = c && Date.now() - c.quando < 10 * 60e3 ? c.leituras
+      : r && Date.now() - rioAcima.quando < 10 * 60e3 ? r : await buscarLeituras(estacoes[cod], 2).catch(() => []);
+    return comNivel(ls || []);
   };
-  const [cesp, pas] = await Promise.all([ler("58041000"), ler("sp664")]);
-  const fresca = l => l && Date.now() - ms(l) < 3 * 36e5;
-  if (fresca(cesp) || (cesp && !pas)) return { H0: cesp.nivel, t: ms(cesp), fonte: "régua da CESP" };
-  if (pas) return { H0: conv("58041000", pas.nivel), t: ms(pas), fonte: "Passarela (SP Águas) convertida" };
-  return null;
+  const [pas, cunha] = await Promise.all([ler("sp664"), ler("sp818")]);
+  const u = pas.at(-1);
+  if (!u || Date.now() - ms(u) > 3 * 36e5) {   // reserva: régua da ANA convertida
+    const ana = comNivel(await buscarAna("58040000", 2).catch(() => [])).at(-1);
+    if (ana && (!u || ms(ana) > ms(u))) return { H0: desconv("58040000", ana.nivel), t: ms(ana), fonte: "régua da ANA convertida", versao: "A" };
+    if (!u) return null;
+  }
+  const ref = { H0: u.nivel, t: ms(u), fonte: "Passarela (SP Águas)", versao: "A" };
+  const cu = cunha.at(-1);
+  if (cu && Date.now() - ms(cu) < 2 * 36e5) {
+    const antes = h => {
+      const alvo = ms(cu) - h * 36e5, l = cunha.reduce((m, x) => Math.abs(ms(x) - alvo) < Math.abs(ms(m) - alvo) ? x : m, cunha[0]);
+      return Math.abs(ms(l) - alvo) < 36e5 ? l.nivel : null;
+    };
+    const a6 = antes(6), a12 = antes(12);
+    if (a6 != null && a12 != null) Object.assign(ref, { versao: "B", dc6: cu.nivel - a6, dc12: cu.nivel - a12, fonte: "Passarela + régua de Cunha" });
+  }
+  return ref;
 }
 
 async function desenharPrevisao() {
@@ -1336,6 +1453,7 @@ async function desenharPrevisao() {
     if (!ref) throw new Error("sem leitura recente do rio");
     prev.ref = ref;
     renderizarPrevisao(ref);
+    desenharImpactos(); verificarAvisos(); desenharFontes();
     if (estado.modo === "agora" && cache[estado.estacao]) desenharAgora(true);   // acrescenta a linha de previsão ao gráfico
   } catch (e) {
     $("#pRisco").innerHTML = `<i style="background:${tok("--neutro")}"></i>indisponível`;
@@ -1348,26 +1466,28 @@ function renderizarPrevisao(ref) {
   let i = tempo.indexOf(horaLocal(new Date()));
   if (i < 0) i = tempo.findLastIndex(t => t <= horaLocal(new Date()));
   const soma = (a, b) => media.slice(Math.max(0, a), Math.max(0, b)).reduce((s, v) => s + v, 0);
-  const x = { p24: soma(i - 24, i + 1), p72: soma(i - 72, i + 1), api: soma(i - 720, i - 72) };
+  const x = { p24: soma(i - 24, i + 1), p72: soma(i - 72, i + 1), api: soma(i - 720, i - 72), versao: ref.versao, dc6: ref.dc6 || 0, dc12: ref.dc12 || 0 };
   const fDet = soma(i + 1, i + 49) * fator;
   const cenarios = membros.map(mb => { const j = mb.tempo.indexOf(tempo[i]); return j < 0 || j + 49 > mb.serie.length ? null : mb.serie.slice(j + 1, j + 49).reduce((s, v) => s + v, 0) * fator; }).filter(v => v != null);
   const fs = cenarios.length >= 5 ? cenarios : [fDet];
   const P = G => fs.reduce((s, f) => s + chanceDeSubir(H0, x, f, G), 0) / fs.length;
 
   // cotas oficiais da Passarela, convertidas para a régua da CESP (onde o modelo trabalha), da mais baixa para a mais alta
-  const linhas = cotasDe(estacoes.sp664).reverse().map(n => ({ ...n, cesp: conv("58041000", n.cm) }));
+  const linhas = cotasDe(estacoes.sp664).reverse().map(n => ({ ...n, cesp: n.cm }));   // cotas oficiais da Passarela
   const probs = Object.fromEntries(linhas.map(n => [n.chave, P(n.cesp - H0)]));
   // pico provável (50%) e cenário pessimista (10%) — em cm acima do nível atual
   const subida = alvo => { for (let G = 5; G <= 700; G += 5) if (P(G) < alvo) return G - 5; return 700; };
   const g50 = subida(.5), g10 = subida(.1);
   // resultado na régua escolhida (Passarela, ANA ou CESP); para outras estações, na Passarela
   const reguaCod = REGUAS_CIDADE.includes(estado.estacao) ? estado.estacao : "sp664";
-  const paraRegua = cesp => reguaCod === "58041000" ? cesp : reguaCod === "sp664" ? desconv("58041000", cesp) : conv("58040000", desconv("58041000", cesp));
+  const paraRegua = cm => reguaCod === "sp664" ? cm : conv(reguaCod, cm);
+  prev.pico = { agora: H0, provavel: H0 + g50, alto: H0 + g10 };   // na régua da Passarela (usado em "o que alaga")
   const naRegua = cm => fmt(paraRegua(cm) / 100, 2);
 
   // nível de risco: olha a próxima cota que ainda não foi passada
   const proxima = linhas.find(n => H0 < n.cesp);
   const pr = proxima ? probs[proxima.chave] : 1;
+  prev.chanceProxima = proxima ? { p: pr, nome: proxima.nome, cm: proxima.cm, chave: proxima.chave } : null;
   const jaAcima = H0 >= linhas[0].cesp;   // já em atenção: o risco é de piorar
   const risco = !proxima ? ["Acima do transbordamento", "--extravasa"]
     : pr < .1 ? [jaAcima ? "Sem sinal de piora" : "Risco baixo", "--bom"]
@@ -1400,7 +1520,7 @@ function renderizarPrevisao(ref) {
   const anosMes = [...prev.sazonal].filter(([k]) => +k.slice(5) === mes && +k.slice(0, 4) < anoAtual);
   const comCheia = anosMes.filter(([, v]) => v >= linhas[0].cesp).length;
   const idade = (Date.now() - ref.t) / 36e5;
-  const t = m.teste;
+  const t = m.passarela.teste;
 
   $("#pSub").textContent = `Rio Paraitinga em São Luiz · régua ${reguaCod === "sp664" ? "da Passarela" : reguaCod === "58040000" ? "da ANA" : "da CESP"} · ${cenarios.length >= 5 ? `${cenarios.length} cenários de chuva (GFS)` : "previsão de chuva Open-Meteo"} · atualizado ${new Date(prev.quando).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
   $("#pCorpo").innerHTML = `
@@ -1432,12 +1552,12 @@ function renderizarPrevisao(ref) {
     ${depois.length ? `<p class="prev-frase">⚠ Chuva forte prevista depois das 48 h: ${depois.map(c => `<strong>${fmt(c.mm, 0)} mm ${["sábado", "domingo"].includes(new Date(c.d + "T12:00").toLocaleDateString("pt-BR", { weekday: "long" })) ? "no" : "na"} ${new Date(c.d + "T12:00").toLocaleDateString("pt-BR", { weekday: "long" })}</strong>`).join(", ")}. Ainda fora do alcance do modelo — acompanhe a atualização.</p>` : ""}
     <details class="confianca">
       <summary>Como funciona e quão confiável é</summary>
-      <p>Um modelo estatístico treinado com o nível do rio de 2015 a 2021 e a chuva na bacia (São Luiz, Lagoinha, Cunha e cabeceiras). Ele combina o nível atual, a chuva dos últimos dias, o quanto o solo está encharcado e a chuva prevista, e calcula a chance do rio subir até cada cota em 48 h.</p>
+      <p>Um modelo estatístico treinado com o nível da Passarela (2018–2026), a chuva na bacia (São Luiz, Lagoinha, Cunha e cabeceiras) e, quando está transmitindo, a subida da régua de Cunha, rio acima. Ele combina o nível atual, a chuva dos últimos dias, o quanto o solo está encharcado e a chuva prevista, e calcula a chance de o rio chegar a cada cota oficial em 48 h.</p>
       <ul>
         <li>Testado de ${t.periodo.replace(" a ", " até ")} com a previsão do tempo real da época: das <b>${t.cheias}</b> vezes em que o rio passou da atenção, avisou (chance ≥ ${t.limiar_aviso * 100}%) <b>${t.avisadas["6"]}</b> com 6 h de antecedência, ${t.avisadas["12"]} com 12 h e ${t.avisadas["24"]} com 24 h.</li>
-        <li>Em ${t.dias_sem_cheia} dos ${t.dias_com_aviso} dias com aviso, a cheia não veio.</li>
+        <li>Em ${t.dias_sem_cheia} dos ${t.dias_com_aviso} dias com aviso, a cheia não veio. Com a régua de Cunha, foram ${t.B_dias_sem_cheia} de ${t.B_dias_com_aviso}.</li>
         <li>Tempestades muito localizadas na serra podem escapar da previsão. O aviso costuma vir poucas horas antes.</li>
-        <li>Cotas oficiais da SP Águas (régua da Passarela). O modelo calcula na régua da CESP e converte; nível de partida: ${ref.fonte}, ${ha(idade)}.</li>
+        <li>Cotas oficiais da SP Águas (régua da Passarela). Nível de partida: ${ref.fonte}, ${ha(idade)}.</li>
         <li><b>Não substitui os alertas da Defesa Civil (199).</b></li>
       </ul>
     </details>`;
@@ -1499,8 +1619,150 @@ async function desenharRioAcima() {
   } else if (acimaCota.length) resumo = ["Rio alto rio acima", "--atencao", `${acimaCota.map(r => r.e.nome).join(", ")} acima da cota de ${acimaCota[0].st.nome.toLowerCase()}.`];
   else if (baixando.length) resumo = ["Rio acima baixando", "--bom", "As réguas rio acima estão baixando."];
   else resumo = ["Rio acima estável", "--bom", "Sem subida nas réguas rio acima nas últimas 3 h."];
+  // Ribeirão do Chapéu: deságua logo abaixo da cidade; cheio, represa o Paraitinga (agravou 1996 e 2010)
+  const ch = afl.find(r => r.e.codigo === "sp489"), cid = trecho.at(-1);
+  rioAcima.represa = null;
+  if (ch?.u) {
+    const at = estacoes.sp489.cotas_cm.atencao, alto = ch.u.nivel >= at, rapido = ch.dif != null && ch.dif >= 30;
+    const cidadeAlta = cid?.u && cid.u.nivel >= estacoes.sp664.cotas_cm.alerta;
+    rioAcima.represa = alto && cidadeAlta ? ["alto", "--inundacao", "Chapéu cheio com o Paraitinga alto: a água pode represar no centro (foi o que agravou 1996 e 2010)."]
+      : alto || (rapido && cidadeAlta) ? ["atenção", "--alerta", `Ribeirão do Chapéu ${alto ? "acima da cota de atenção" : "subindo rápido"}: pode represar o Paraitinga perto da cidade.`]
+      : ["baixo", "--bom", `Ribeirão do Chapéu em ${fmt(ch.u.nivel / 100, 2)} m (atenção a partir de ${fmt(at / 100, 2)} m). Sem sinal de represamento.`];
+    if (rioAcima.represa[0] === "alto") resumo = ["Risco de represamento", "--inundacao", rioAcima.represa[2]];
+  }
+  $("#rChapeu").innerHTML = rioAcima.represa ? `<span class="pill"><i style="background:${tok(rioAcima.represa[1])}"></i>Represamento: ${rioAcima.represa[0]}</span><span>${rioAcima.represa[2]}</span>` : "";
   $("#rResumo").innerHTML = `<i style="background:${tok(resumo[1])}"></i>${resumo[0]}`;
   $("#rSub").textContent = `${resumo[2]} · SP Águas, leituras a cada 10 min`;
+  rioAcima.trecho = trecho;
+  desenharImpactos(); verificarAvisos();
+}
+
+// ================= o que alaga com cada nível =================
+let impactos = null, mapa = null, marcadores = [];
+async function desenharImpactos() {
+  const card = $("#cardImpacto");
+  if (!["Rio Paraitinga", "Afluentes do Paraitinga"].includes(estacoes[estado.estacao].rio)) { card.hidden = true; return; }
+  card.hidden = false;
+  impactos ??= await fetch("impactos.json").then(r => r.json()).catch(() => null);
+  if (!impactos) return;
+  const ls = comNivel(cache.sp664?.leituras || rioAcima.dados.sp664 || []), u = ls.at(-1);
+  const agora = u?.nivel, alto = prev.pico?.alto, provavel = prev.pico?.provavel;
+  const niveis = impactos.niveis.slice().sort((a, b) => b.cm - a.cm);
+  const marcas = [];
+  if (agora != null) marcas.push({ cm: agora, tipo: "agora", txt: `Agora: ${fmt(agora / 100, 2)} m` });
+  if (alto != null && alto > (agora ?? 0) + 5) marcas.push({ cm: alto, tipo: "prev", txt: `Pode chegar a ${fmt(alto / 100, 2)} m em 48 h` });
+  const itens = [...niveis.map(n => ({ ...n, eh: "nivel" })), ...marcas.map(m => ({ ...m, eh: "marca" }))].sort((a, b) => b.cm - a.cm);
+  $("#iEscada").innerHTML = itens.map(n => n.eh === "marca"
+    ? `<li class="marcador ${n.tipo}">${n.txt}</li>`
+    : `<li class="${agora != null && agora >= n.cm ? "atingido" : alto != null && alto >= n.cm ? "possivel" : ""}">
+        <span class="alt">${fmt(n.cm / 100, 2)}</span><strong>${n.titulo}${n.aproximado ? " <em>(aprox.)</em>" : ""}</strong>
+        <span class="t">${n.texto}${n.fonte ? ` <a href="${n.fonte}" target="_blank" rel="noopener">fonte</a>` : ""}</span></li>`).join("");
+  const pior = niveis.find(n => agora != null && agora >= n.cm);
+  const cor = !pior ? "--bom" : pior.tipo === "registro" ? "--inundacao" : cotasDe(estacoes.sp664).find(c => Math.abs(c.cm - pior.cm) < 1)?.cor || "--atencao";
+  $("#iResumo").innerHTML = `<i style="background:${tok(cor)}"></i>${pior ? pior.titulo.replace(" (cota oficial)", "") : "Abaixo da atenção"}`;
+  $("#iSub").textContent = `Régua da Passarela · agora ${agora != null ? fmt(agora / 100, 2) + " m" : "sem leitura"}${provavel != null ? ` · previsão 48 h: provável ${fmt(provavel / 100, 2)} m` : ""}`;
+  if (!window.L) return;   // mapa só quando a biblioteca carregar
+  if (!mapa) {
+    mapa = L.map("iMapa", { scrollWheelZoom: false, attributionControl: true }).setView([-23.2240, -45.3085], 15);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(mapa);
+    const p = estacoes.sp664;
+    L.circleMarker([p.lat, p.lon], { radius: 7, color: "#fff", weight: 2, fillColor: tok("--acento"), fillOpacity: 1 }).addTo(mapa).bindPopup("Régua da Passarela (SP Águas)");
+  }
+  marcadores.forEach(m => m.remove());
+  marcadores = impactos.lugares.map(l => {
+    const st = agora != null && agora >= l.cm ? "--inundacao" : alto != null && alto >= l.cm ? "--alerta" : "--mediana";
+    return L.circleMarker([l.lat, l.lon], { radius: 9, color: "#fff", weight: 2, fillColor: tok(st), fillOpacity: .95 })
+      .addTo(mapa).bindPopup(`<strong>${l.nome}</strong><br>Alagou com a Passarela em cerca de ${fmt(l.cm / 100, 2)} m`);
+  });
+  if (!mapa._enquadrado) {   // enquadra os pontos registrados e a régua
+    mapa.fitBounds(L.latLngBounds([...impactos.lugares.map(l => [l.lat, l.lon]), [estacoes.sp664.lat, estacoes.sp664.lon]]), { padding: [24, 24] });
+    mapa._enquadrado = true;
+  }
+  setTimeout(() => mapa.invalidateSize(), 50);
+}
+
+// ================= memória das cheias =================
+async function desenharMemoria() {
+  impactos ??= await fetch("impactos.json").then(r => r.json()).catch(() => null);
+  if (!impactos) return;
+  const u = comNivel(cache.sp664?.leituras || rioAcima.dados.sp664 || []).at(-1);
+  const maior = Math.max(...impactos.historia.filter(h => h.cm).map(h => h.cm), u?.nivel || 0);
+  const itens = impactos.historia.slice().reverse();
+  const data = d => d.length === 4 ? d : new Date(d + "T12:00").toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" });
+  $("#hLinha").innerHTML = (u ? `<li class="agora"><span class="data-h">Agora</span><strong>${fmt(u.nivel / 100, 2)} m na Passarela</strong>
+      <div class="barra-h" style="width:${u.nivel / maior * 100}%"></div></li>` : "") +
+    itens.map(h => `<li class="${h.destaque ? "destaque" : ""}"><span class="data-h">${data(h.data)}</span><strong>${h.titulo}</strong>
+      ${h.nivel ? `<span class="nv">${h.nivel}</span>` : ""}<p>${h.texto}</p>
+      ${h.cm ? `<div class="barra-h" style="width:${h.cm / maior * 100}%;background:${tok("--neutro")}"></div>` : ""}
+      <small>${h.fonte}</small></li>`).join("");
+}
+
+// ================= situação das fontes de dados =================
+const fontes = { ana: null, ana_quando: 0, hist: null };
+async function desenharFontes() {
+  if (Date.now() - fontes.ana_quando > 10 * 60e3) {
+    fontes.ana = comNivel(await buscarAna("58040000", 1).catch(() => [])).at(-1) || null; fontes.ana_quando = Date.now();
+  }
+  fontes.hist ??= await fetch("historico/index.json").then(r => r.json()).catch(() => null);
+  const sp = comNivel(rioAcima.dados.sp664 || cache.sp664?.leituras || []).at(-1);
+  const idade = l => l ? (Date.now() - ms(l)) / 36e5 : Infinity;
+  const linha = (nome, ok, txt) => `<li><i style="background:${tok(ok === true ? "--bom" : ok === false ? "--inundacao" : "--atencao")}"></i><div><strong>${nome}</strong>${txt}</div></li>`;
+  $("#fontes").innerHTML = [
+    linha("SP Águas (SIBH)", idade(sp) < 1 ? true : idade(sp) < 3 ? null : false, sp ? `Passarela: última leitura ${ha(idade(sp))}` : "sem resposta"),
+    linha("ANA (telemetria)", idade(fontes.ana) < 2 ? true : idade(fontes.ana) < 4 ? null : false, fontes.ana ? `Régua da cidade: última leitura ${ha(idade(fontes.ana))}` : "sem resposta"),
+    linha("Open-Meteo (chuva prevista)", prev.quando ? (Date.now() - prev.quando < 90 * 60e3) : null, prev.quando ? `Previsão atualizada às ${new Date(prev.quando).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : "carregando"),
+    linha("Histórico (GitHub)", fontes.hist ? (Date.now() - Date.parse(fontes.hist.atualizado_em + "T12:00") < 3 * 864e5) : null, fontes.hist ? `Atualizado em ${new Date(fontes.hist.atualizado_em + "T12:00").toLocaleDateString("pt-BR")}` : "carregando"),
+  ].join("");
+}
+
+// ================= avisos no aparelho =================
+// Funcionam com o painel aberto (ou instalado e aberto em segundo plano). O canal do Telegram avisa sempre.
+function avisoJaDado(chave, horas) {
+  const v = ler("aviso-" + chave, 0);
+  if (Date.now() - v < horas * 36e5) return true;
+  guardar("aviso-" + chave, Date.now()); return false;
+}
+async function notificar(titulo, corpo, chave, horas) {
+  if (!ler("avisos", false) || typeof Notification === "undefined" || Notification.permission !== "granted") return;
+  if (avisoJaDado(chave, horas)) return;
+  const reg = await navigator.serviceWorker?.getRegistration?.().catch(() => null);
+  const op = { body: corpo, icon: "icones/icone-192.png", badge: "icones/icone-192.png", tag: chave };
+  if (reg) reg.showNotification(titulo, op); else new Notification(titulo, op);
+}
+function verificarAvisos() {
+  const t = rioAcima.trecho || [], cid = t.at(-1);
+  if (cid?.u && Date.now() - ms(cid.u) < 2 * 36e5) {
+    const cota = cotasDe(estacoes.sp664).find(n => cid.u.nivel >= n.cm);
+    const anterior = ler("ultima-cota", null);
+    if (cota && cota.chave !== anterior && (!anterior || cotasDe(estacoes.sp664).findIndex(n => n.chave === cota.chave) < cotasDe(estacoes.sp664).findIndex(n => n.chave === anterior)))
+      notificar(`Rio Paraitinga: ${cota.nome}`, `Passarela em ${fmt(cid.u.nivel / 100, 2)} m (cota de ${cota.nome.toLowerCase()}: ${fmt(cota.cm / 100, 2)} m).`, "cota-" + cota.chave, 6);
+    guardar("ultima-cota", cota ? cota.chave : null);
+  }
+  for (const r of t) if (!r.cidade && r.dif != null && r.dif >= 20 && r.e.rio_acima?.horas_ate_cidade)
+    notificar(`Água subindo em ${r.e.nome}`, `+${fmt(r.dif, 0)} cm em 3 h (${fmt(r.u.nivel / 100, 2)} m). Chega à cidade em cerca de ${r.e.rio_acima.horas_ate_cidade} h.`, "sobe-" + r.e.codigo, 6);
+  if (rioAcima.represa?.[0] === "alto") notificar("Risco de represamento", rioAcima.represa[2], "represa", 12);
+  const pr = prev.chanceProxima;
+  if (pr && pr.p >= .3) notificar(`Previsão: ${fmt(pr.p * 100, 0)}% de chance de ${pr.nome.toLowerCase()}`, `Nas próximas 48 h, a Passarela pode chegar a ${fmt(pr.cm / 100, 2)} m.`, "prev-" + pr.chave, 12);
+}
+function configurarAvisos() {
+  const btn = $("#btnNotif");
+  const atualizar = () => {
+    const ativo = ler("avisos", false) && typeof Notification !== "undefined" && Notification.permission === "granted";
+    btn.textContent = ativo ? "Avisos ligados neste aparelho ✓" : "Avisar neste aparelho";
+    btn.classList.toggle("sec", ativo);
+  };
+  if (typeof Notification === "undefined") { btn.disabled = true; btn.textContent = "Este navegador não mostra avisos"; }
+  else btn.onclick = async () => {
+    if (ler("avisos", false) && Notification.permission === "granted") { guardar("avisos", false); atualizar(); return; }
+    const p = await Notification.requestPermission();
+    guardar("avisos", p === "granted"); atualizar();
+    if (p === "granted") notificar("Avisos ligados", "Você será avisado quando o rio passar de uma cota, a água subir rio acima ou a previsão indicar cheia.", "teste-" + Date.now(), 0);
+  };
+  atualizar();
+  if (config.telegram) { $("#lnkTelegram").href = config.telegram; $("#lnkTelegram").hidden = false; }
+  let pedido = null;
+  addEventListener("beforeinstallprompt", ev => { ev.preventDefault(); pedido = ev; $("#btnInstalar").hidden = false; });
+  $("#btnInstalar").onclick = async () => { if (!pedido) return; pedido.prompt(); await pedido.userChoice; pedido = null; $("#btnInstalar").hidden = true; };
 }
 
 // ================= folha de estações =================
@@ -1555,7 +1817,7 @@ function desenharTudo() {
   desenharHero(); desenharStats();
   trocarModo(estado.modo);
   desenharLinhas(); desenharCheias(); desenharCalor(); desenharPermanencia();
-  desenharPrevisao(); desenharRioAcima();
+  desenharPrevisao(); desenharRioAcima(); desenharImpactos(); desenharMemoria(); desenharFontes();
 }
 async function trocarEstacao(cod) {
   estado.estacao = cod; estado.destaques = new Map(); estado.janela = null;
@@ -1629,6 +1891,11 @@ async function iniciar() {
   setInterval(atualizarAoVivo, 5 * 60e3);
   setInterval(desenharPrevisao, 15 * 60e3);
   setInterval(desenharRioAcima, 5 * 60e3);
+  setInterval(desenharFontes, 5 * 60e3);
+  configurarAvisos();
+  $("#hero").addEventListener("click", ev => { const b = ev.target.closest(".trocar"); if (b) trocarEstacao(b.dataset.cod); });
+  addEventListener("load", () => desenharImpactos());   // o mapa precisa da biblioteca Leaflet
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
   $("#cardRio").addEventListener("click", ev => { const li = ev.target.closest("li[data-cod]"); if (li && li.dataset.cod !== estado.estacao) trocarEstacao(li.dataset.cod); });
   document.addEventListener("visibilitychange", () => { if (!document.hidden) { atualizarAoVivo(); desenharPrevisao(); } });
 }

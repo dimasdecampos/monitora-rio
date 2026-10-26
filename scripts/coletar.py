@@ -84,7 +84,7 @@ def baixar_mes_sibh(est, mes, tentativas=3):
         if m["station_prefix_id"] == est["id_nivel"]:
             if t.minute < h["min"]:
                 h["nivel"], h["min"] = round(float(m["value"]), 1), t.minute
-        else:
+        elif 0 <= float(m["value"]) <= 50:   # mais de 50 mm em 10 min é erro do pluviômetro
             h["chuva"] = round((h["chuva"] or 0) + float(m["value"]), 1)
     return [[k, h["nivel"], None, h["chuva"]] for k, h in sorted(horas.items())]
 
@@ -139,7 +139,7 @@ def gerar_diario(codigo):
     for dia in sorted(dias):
         niveis = [n for n, _, _ in dias[dia] if n is not None]
         vazoes = [v for _, v, _ in dias[dia] if v is not None and 0 <= v < 9000]  # 9999 = código de "sem dado"
-        chuvas = [c for _, _, c in dias[dia] if c is not None]
+        chuvas = [c for _, _, c in dias[dia] if c is not None and 0 <= c <= 150]   # > 150 mm/h é erro do sensor
         if not niveis and not chuvas:
             continue
         r = lambda x, casas=1: None if x is None else round(x, casas)
