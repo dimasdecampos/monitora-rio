@@ -141,7 +141,35 @@ def sem_picos_falsos(linhas, salto=100):
 
 
 def gerar_diario(codigo):
-    """Resume os arquivos mensais em um arquivo diário (usado pela página de análise)."""
+    """Resume os arquivos mensais em um arquivo diário e completa os dias sem leitura
+    com uma régua vizinha convertida (config: "preencher_com")."""
+    saida = resumo_diario(codigo)
+    config = json.loads((RAIZ / "public" / "config.json").read_text(encoding="utf-8"))
+    est = next((e for r in config["rios"] for e in r["estacoes"] if e["codigo"] == codigo), {})
+    preenchidos = []
+    if est.get("preencher_com") and (PASTA / est["preencher_com"]["codigo"]).exists():
+        pc = est["preencher_com"]; conv = lambda x: None if x is None else round(pc["a"] + pc["b"] * x, 1)
+        por_dia = {r[0]: r for r in saida}
+        for r in resumo_diario(pc["codigo"]):
+            atual = por_dia.get(r[0])
+            if atual is None or atual[7] < 6:          # dia sem leitura (ou quase) nesta régua
+                if r[7] < 6: continue
+                por_dia[r[0]] = [r[0], conv(r[1]), conv(r[2]), conv(r[3]), None, None, atual[6] if atual else None, r[7]]
+                preenchidos.append(r[0])
+        saida = [por_dia[d] for d in sorted(por_dia)]
+    (PASTA / codigo / "diario.json").write_text(
+        json.dumps({
+            "estacao": codigo,
+            "campos": ["dia", "nivel_min", "nivel_med", "nivel_max", "vazao_med", "vazao_max", "chuva", "leituras"],
+            "preenchidos": {"com": est.get("preencher_com", {}).get("codigo"), "dias": preenchidos} if preenchidos else None,
+            "dados": saida,
+        }, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    print(f"{codigo}: resumo diário com {len(saida)} dias ({len(preenchidos)} completados)")
+
+
+def resumo_diario(codigo):
     linhas = []
     for arquivo in sorted((PASTA / codigo).glob("????-??.json")):
         linhas += json.loads(arquivo.read_text(encoding="utf-8"))["dados"]
@@ -169,15 +197,7 @@ def gerar_diario(codigo):
             r(sum(chuvas)) if chuvas else None,
             len(niveis),
         ])
-    (PASTA / codigo / "diario.json").write_text(
-        json.dumps({
-            "estacao": codigo,
-            "campos": ["dia", "nivel_min", "nivel_med", "nivel_max", "vazao_med", "vazao_max", "chuva", "leituras"],
-            "dados": saida,
-        }, separators=(",", ":")),
-        encoding="utf-8",
-    )
-    print(f"{codigo}: resumo diário com {len(saida)} dias")
+    return saida
 
 
 def main():

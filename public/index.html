@@ -606,6 +606,7 @@
       <li>Leituras com erro de sensor são descartadas do histórico. Anos <em>parciais</em> têm falhas e podem subestimar picos.</li>
       <li>Em emergência ligue <strong>199</strong> (Defesa Civil) ou <strong>193</strong> (Bombeiros).</li>
       <li id="avisosRodape" hidden>Avisos ligados neste aparelho · <button class="link" id="btnDesligarAvisos">desligar</button></li>
+      <li>Quando uma régua da cidade fica sem transmitir (ex.: Passarela de 10 a 15/09/2026), os dias que faltam no histórico são completados com a outra régua convertida (ANA ≈ 1,23 m acima da Passarela).</li>
       <li>Definição das cotas (Manual das Salas de Situação de SP): <strong>atenção</strong> = risco significativo, mas incerto; <strong>alerta</strong> = perigo iminente, Defesa Civil de prontidão; <strong>emergência</strong> = situação crítica, ação imediata; <strong>transbordamento</strong> (extravasamento) = rio acima das margens.</li>
     </ul>
   </section>
@@ -715,7 +716,9 @@ async function buscarLeituras(est, dias) {
 async function buscarDiario(cod) {
   const r = await fetch(`historico/${cod}/diario.json`);
   if (!r.ok) return [];
-  return (await r.json()).dados.map(([d, nmin, nmed, nmax, vmed, vmax, chuva, n]) => ({ d, nmin, nmed, nmax, vmed, vmax, chuva, n }));
+  const j = await r.json(), comp = new Set(j.preenchidos?.dias || []);
+  // dias sem leitura nesta régua vêm completados com a régua vizinha convertida (marcados em "completado")
+  return j.dados.map(([d, nmin, nmed, nmax, vmed, vmax, chuva, n]) => ({ d, nmin, nmed, nmax, vmed, vmax, chuva, n, completado: comp.has(d) ? j.preenchidos.com : null }));
 }
 // junta o diário salvo com os dias recentes vindos ao vivo
 function diarioCompleto(c) {
@@ -1478,7 +1481,10 @@ function atualizarLeitura() {
     const pHoje = graficos.principal.options.plugins.hoje.x;
     const x = Math.round(estado.cursor ?? (pHoje != null && pHoje >= a && pHoje <= b ? pHoje : b));
     const itens = datasets.filter(d => d.marcarCursor).map(d => ({ d, y: d.data[x]?.y })).filter(i => i.y != null).sort((p, q) => q.y - p.y);
-    $("#leitura").innerHTML = `<time>${nomeDoDia(x)}${x === pHoje && estado.cursor == null ? " · hoje" : ""} — ${met.nome.toLowerCase()}</time><div class="vals">` +
+    // dias completados com a régua vizinha (a régua desta estação estava sem transmitir)
+    const comp = compCache.lista.filter(t => estado.destaques.has(t.s) && t.dias[x]?.completado).map(t => rotulo(t.s));
+    const nota = comp.length ? ` · <span title="Dia sem leitura nesta régua; completado com a ${estacoes[compCache.lista.find(t => t.dias[x]?.completado).dias[x].completado]?.nome || "régua vizinha"} convertida">${comp.join(", ")}: dia completado com a régua vizinha</span>` : "";
+    $("#leitura").innerHTML = `<time>${nomeDoDia(x)}${x === pHoje && estado.cursor == null ? " · hoje" : ""} — ${met.nome.toLowerCase()}${nota}</time><div class="vals">` +
       itens.map(i => `<span><i style="background:${i.d.borderColor}"></i><b>${fmt(i.y, met.casas)}</b>${i.d.label}${i.d.parcial ? "*" : ""}</span>`).join("") +
       (faixa && estado.mostrarFaixa && faixa.lo[x] != null ? `<span>faixa ${faixa.nome}: <b>${fmt(faixa.lo[x], met.casas)}–${fmt(faixa.hi[x], met.casas)}</b> ${met.un}</span>` : "") + "</div>";
   }

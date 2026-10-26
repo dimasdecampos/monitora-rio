@@ -41,7 +41,13 @@
               "cm": 529,
               "texto": "08/02/2022 — água na Praça da Matriz (≈ 6,52 m na régua da ANA)"
             }
-          ]
+          ],
+          "preencher_com": {
+            "codigo": "58040000",
+            "a": -121.34,
+            "b": 0.9833,
+            "_obs": "dias sem leitura completados com a régua da ANA: Passarela = a + b × ANA"
+          }
         },
         {
           "codigo": "58040000",
@@ -72,7 +78,13 @@
               "cm": 652,
               "texto": "08/02/2022 — água na Praça da Matriz"
             }
-          ]
+          ],
+          "preencher_com": {
+            "codigo": "sp664",
+            "a": 123.4,
+            "b": 1.017,
+            "_obs": "dias sem leitura completados com a Passarela: ANA = a + b × Passarela"
+          }
         },
         {
           "codigo": "58041000",

@@ -39,9 +39,9 @@ horas = sorted(H)
 print("Passarela:", len(horas), "horas,", horas[0], "a", horas[-1])
 
 # ---------- sazonal ----------
-por_dia = {}
-for t, n in H.items():
-    d = t.date(); por_dia[d] = max(por_dia.get(d, n), n)
+# usa o resumo diário (dias sem leitura da Passarela já completados com a régua da ANA)
+por_dia = {datetime.strptime(r[0], "%Y-%m-%d").date(): r[3] for r in
+           json.load(open(RAIZ / "public" / "historico" / "sp664" / "diario.json", encoding="utf-8"))["dados"] if r[3] is not None}
 anos_mes = {}
 for d, n in por_dia.items():
     k = (d.year, d.month); anos_mes.setdefault(k, []).append(n)
