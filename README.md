@@ -62,3 +62,17 @@ passou da cota de atenção): avisou 9 com 6 h de antecedência, 4 com 12 h e 2
 com 24 h; em 12 dos 30 dias com aviso a cheia não veio. Sem a previsão de
 chuva, seriam 6 avisadas com 6 h. Tempestades localizadas na serra ainda escapam.
 Não substitui os alertas da Defesa Civil.
+
+### Linha de previsão no gráfico
+
+Na visão "Últimos dias", o gráfico continua para o futuro:
+
+- **7 dias de previsão**: uma regressão por prazo (6 h a 7 dias,
+  `scripts/modelo_cheias/trajetoria.py`) estima a mudança de nível a partir da
+  chuva prevista; a faixa azul mostra 8 em 10 chances, tirada dos erros do
+  próprio modelo. Testada com previsões reais de 2024–2026: erro médio de 18 cm
+  em 2 dias e 26 cm em 7 dias (contra 24 e 35 cm de "o rio fica como está"); a
+  faixa acertou 74–84% das vezes. Ela não acerta bem o tamanho de subidas
+  grandes — para isso, veja a chance de cheia no cartão de previsão.
+- **Até 30 dias**: só a faixa típica do nível para a época (anos anteriores).
+  Previsão de chuva para meses não é confiável o bastante para prever o rio.

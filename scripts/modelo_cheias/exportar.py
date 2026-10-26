@@ -6,6 +6,8 @@ Ordem para refazer o modelo do zero:
   python estat.py          # monta a tabela de casos (nível, chuva passada/futura, subida em 48 h)
   python logistico.py      # treina (2015–2021) e testa (2022–2026) o modelo de probabilidade
   python exportar.py       # avalia com a previsão real e grava o JSON do site
+  python baixar_prev7.py   # previsões arquivadas feitas 1 a 7 dias antes
+  python trajetoria.py     # linha de previsão por prazo (6 h a 7 dias), junta ao JSON do site
 """
 import json, math
 from datetime import date
@@ -87,6 +89,10 @@ saida = {
     },
 }
 destino = f"{RAIZ}/public/modelo_cheias.json"
+try:  # mantém a linha de previsão gerada por trajetoria.py
+    saida["trajetoria"] = json.load(open(destino, encoding="utf-8"))["trajetoria"]
+except (OSError, KeyError):
+    pass
 json.dump(saida, open(destino, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 print("gravado", destino)
 print(json.dumps(saida["teste"], ensure_ascii=False))

@@ -150,6 +150,12 @@
   .ano[aria-pressed="true"] { color: var(--tinta); font-weight: 650; border-color: var(--eixo); }
   .ano em { font-style: normal; font-size: 11px; color: var(--tinta-3); font-weight: 400; }
 
+  .leg-agora { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--tinta-2); margin-top: 10px; }
+  .leg-agora span { display: inline-flex; align-items: center; gap: 6px; }
+  .leg-agora i { width: 16px; height: 3px; border-radius: 2px; display: inline-block; }
+  .leg-agora i.tracejado { height: 0; border-top: 2px dashed; background: none !important; }
+  .leg-agora i.area { height: 10px; border-radius: 3px; }
+
   /* ---------- ano a ano (linhas) ---------- */
   .linhas { display: flex; flex-direction: column; }
   .linha { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 10px 6px; border: 0; background: none;
@@ -345,6 +351,7 @@
       <div class="janela" id="navJanela"><span class="alca e" data-alca="e"></span><span class="alca d" data-alca="d"></span></div>
     </div>
     <div class="nav-dica"><span id="dicaNav">Arraste a janela para navegar · puxe as bordas para zoom</span><button id="verTudo">Ver tudo</button></div>
+    <div class="leg-agora" id="legAgora"></div>
     <div class="anos" id="anos" hidden></div>
   </section>
 
@@ -469,9 +476,8 @@ async function atualizarAoVivo() {
     const corte = Date.now() - 31 * 864e5;
     c.leituras = [...mapa.values()].filter(l => ms(l) >= corte).sort((a, b) => a.t < b.t ? -1 : 1);
     c.dias = diarioCompleto(c);
-    const naPonta = estado.janela && estado.janela[1] >= (graficos.limite?.[1] ?? 0) - 36e5;
     desenharHero(); desenharStats();
-    if (estado.modo === "agora") desenharAgora(naPonta);
+    if (estado.modo === "agora") desenharAgora(true);
   } catch { marcarVivo("erro"); }
 }
 
@@ -655,6 +661,7 @@ function opcoesBase() {
     interaction: { mode: "nearest", axis: "x", intersect: false },
     events: ["mousemove", "mouseout", "touchstart", "touchmove", "touchend", "click"],
     plugins: { legend: { display: false }, tooltip: { enabled: false } },
+    elements: { point: { hoverRadius: 0, radius: 0 } },
     scales: {
       x: { type: "linear", grid: { color: grade, drawTicks: false }, border: { color: tok("--eixo") },
            ticks: { color: t3, padding: 6, font: { size: 11.5 }, maxRotation: 0, autoSkipPadding: 22, align: "inner", maxTicksLimit: innerWidth < 700 ? 5 : 9 } },
@@ -718,6 +725,7 @@ function iniciarNavegador() {
   let arrasto = null;
   const valor = px => nav.min + (px / el.clientWidth) * (nav.max - nav.min);
   el.addEventListener("pointerdown", ev => {
+    estado.janelaManual = true;
     const r = el.getBoundingClientRect(), x = ev.clientX - r.left, [a, b] = estado.janela;
     const alca = ev.target.dataset?.alca;
     if (alca) arrasto = { tipo: alca, x0: x, a, b };
@@ -741,7 +749,7 @@ function iniciarNavegador() {
     else if (ev.key === "+" || ev.key === "=") definirJanela(a + passo, b - passo);
     else if (ev.key === "-") definirJanela(a - passo, b + passo);
     else return;
-    ev.preventDefault();
+    estado.janelaManual = true; ev.preventDefault();
   });
   // roda do mouse sobre o gráfico = zoom (no computador)
   $(".area-g").addEventListener("wheel", ev => {
@@ -749,16 +757,15 @@ function iniciarNavegador() {
       if (!graficos.principal) return;
       const ch = graficos.principal, cx = ch.scales.x.getValueForPixel(ev.offsetX), [a, b] = estado.janela, f = ev.deltaY > 0 ? 1.2 : 1 / 1.2;
       if (ev.deltaY === 0) return;
-      ev.preventDefault();
+      ev.preventDefault(); estado.janelaManual = true;
       definirJanela(cx - (cx - a) * f, cx + (b - cx) * f); marcarJanelasAtivas();
     }
   }, { passive: false });
-  $("#verTudo").onclick = () => { definirJanela(nav.min, nav.max); marcarJanelasAtivas(); };
+  $("#verTudo").onclick = () => { estado.janelaManual = true; definirJanela(nav.min, nav.max); marcarJanelasAtivas(); };
 }
 function marcarJanelasAtivas() {
   if (estado.modo !== "agora") return;
-  const [a, b] = estado.janela, larg = (b - a) / 864e5, naPonta = nav.max - b < 36e5;
-  document.querySelectorAll("#janelas button").forEach(bt => bt.setAttribute("aria-pressed", naPonta && Math.abs(larg - +bt.dataset.d) < .05 * +bt.dataset.d));
+  document.querySelectorAll("#janelas button").forEach(bt => bt.setAttribute("aria-pressed", !estado.janelaManual && +bt.dataset.d === estado.dias));
 }
 function ajustarY(chart, a, b, incluirCotas) {
   let lo = Infinity, hi = -Infinity;
@@ -792,13 +799,67 @@ function formatoTempo(v, larguraDias) {
   if (larguraDias <= 4) return `${d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")} ${d.getHours()}h`;
   return `${d.getDate()} ${MESES[d.getMonth()]}`;
 }
-function desenharAgora(manterNaPonta) {
+// ---- linha de previsão (modelo por prazo, régua da CESP) e faixa típica da época ----
+function interp(dados, x) {
+  if (!dados.length || x < dados[0].x || x > dados.at(-1).x) return null;
+  let j = dados.findIndex(p => p.x >= x);
+  if (dados[j].x === x || j === 0) return dados[j].y;
+  const a = dados[j - 1], b = dados[j];
+  return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x);
+}
+function linhaPrevista(ultimo) {
+  const m = prev.modelo, ref = prev.ref, d = prev.dados;
+  if (!m?.trajetoria || !ref || !d || estacoes[estado.estacao].rio !== "Rio Paraitinga") return null;
+  const i = d.tempo.indexOf(horaLocal(new Date(ref.t)));
+  if (i < 720) return null;
+  const f = m.fator_previsao, soma = (a, b) => d.media.slice(Math.max(0, a), Math.max(0, b)).reduce((s, v) => s + v, 0);
+  const x = { a: Math.log1p(soma(i - 24, i + 1)), b: Math.log1p(soma(i - 72, i + 1)), s: soma(i - 720, i - 72) / 100, n: ref.H0 / 100 };
+  // a linha parte da última leitura da estação mostrada e soma a variação prevista
+  const pts = [{ x: ultimo.x, lo: ultimo.y, md: ultimo.y, hi: ultimo.y }];
+  for (const pz of m.trajetoria.prazos) {
+    if (i + pz.h >= d.tempo.length) break;
+    const ra = Math.log1p(soma(i + 1, i + pz.h + 1) * f), rf = Math.log1p(soma(i + pz.h - 23, i + pz.h + 1) * f);
+    const v = [1, x.n, x.n * x.n, x.a, x.b, x.s, ra, rf, ra * x.s, rf * x.s, ra * x.n, x.a * (24 / (pz.h + 24))];
+    const p = pz.pesos.reduce((s, w, k) => s + w * v[k], 0);
+    const q = pz.faixas.find(fx => p <= fx.ate).q;
+    const piso = .8;   // o rio nunca ficou abaixo disso nessas réguas
+    pts.push({ x: ultimo.x + pz.h * 36e5, lo: Math.max(piso, ultimo.y + (p + q[1]) / 100), md: Math.max(piso, ultimo.y + (p + q[3]) / 100), hi: ultimo.y + (p + q[5]) / 100 });
+  }
+  const agoraH = d.tempo.indexOf(horaLocal(new Date()));
+  const chuva = d.tempo.map((t, j) => ({ x: new Date(t + ":00").getTime() + 18e5, y: d.media[j] * f, j })).filter(p => p.j > agoraH && p.y > 0);
+  return { pts, chuva };
+}
+function faixaTipica(dias, inicio) {
+  const ano = new Date().getFullYear(), out = [];
+  const doAno = d => Date.UTC(2024, +d.slice(5, 7) - 1, +d.slice(8, 10));
+  const hist = dias.filter(r => +r.d.slice(0, 4) < ano && r.nmed != null);
+  if (new Set(hist.map(r => r.d.slice(0, 4))).size < 3) return [];
+  for (let k = 0; k <= 30; k++) {
+    const dia = new Date(inicio + k * 864e5); dia.setHours(12, 0, 0, 0);
+    const alvo = Date.UTC(2024, dia.getMonth(), dia.getDate());
+    const v = hist.filter(r => { const dd = Math.abs(doAno(r.d) - alvo); return Math.min(dd, 366 * 864e5 - dd) <= 3 * 864e5; }).map(r => r.nmed / 100).sort((a, b) => a - b);
+    if (v.length < 10) continue;
+    out.push({ x: dia.getTime(), lo: v[Math.floor(.1 * (v.length - 1))], md: v[Math.floor(.5 * (v.length - 1))], hi: v[Math.ceil(.9 * (v.length - 1))] });
+  }
+  return out;
+}
+function janelaPadrao() {
+  const agora = Date.now(), d = estado.dias;
+  return [agora - d * 864e5, agora + Math.min(7, Math.max(1, d / 2)) * 864e5];
+}
+
+function desenharAgora(manterJanela) {
   const c = cache[estado.estacao], est = estacoes[estado.estacao], ls = c.leituras;
   const nivel = comNivel(ls).map(l => ({ x: ms(l), y: l.nivel / 100 }));
   const vazio = !nivel.length;
-  const max = vazio ? Date.now() : Math.max(nivel.at(-1).x, Date.now() - 36e5), min = max - 30 * 864e5;
+  const fimObs = vazio ? Date.now() : Math.max(nivel.at(-1).x, Date.now() - 36e5), min = fimObs - 30 * 864e5;
+  const previsto = vazio ? null : linhaPrevista(nivel.at(-1));
+  const tipica = faixaTipica(c.dias, Date.now());
+  const max = Math.max(fimObs, previsto ? previsto.pts.at(-1).x : 0, tipica.length ? tipica.at(-1).x : 0);
   graficos.limite = [min, max];
-  const chuvaHora = seriesChuva(ls, false), chuvaDia = seriesChuva(ls, true), temChuva = ls.some(l => l.chuva != null);
+  const chuvaHora = seriesChuva(ls, false), chuvaDia = seriesChuva(ls, true), temChuva = ls.some(l => l.chuva != null) || !!previsto;
+  const chuvaPrevHora = previsto ? previsto.chuva : [];
+  const chuvaPrevDia = (() => { const m = new Map(); for (const p of chuvaPrevHora) { const d = new Date(p.x); d.setHours(12, 0, 0, 0); m.set(+d, (m.get(+d) || 0) + p.y); } return [...m].map(([x, y]) => ({ x, y })); })();
   $("#boxChuva").hidden = !temChuva;
 
   const op = opcoesBase();
@@ -806,11 +867,28 @@ function desenharAgora(manterNaPonta) {
   op.scales.x.ticks.callback = function (v) { return formatoTempo(v, (this.max - this.min) / 864e5); };
   op.scales.y.ticks.callback = v => fmt(v, 1);
   op.plugins.cotas = { ativo: true };
+  op.plugins.hoje = { x: Date.now() };
   const grad = ctx => { const { ctx: g, chartArea: a } = ctx.chart; if (!a) return null; const gr = g.createLinearGradient(0, a.top, 0, a.bottom);
     gr.addColorStop(0, tok("--s1") + "40"); gr.addColorStop(1, tok("--s1") + "00"); return gr; };
-  const principal = criar("gPrincipal", "principal", { type: "line", options: op, data: { datasets: [
-    { label: "Nível", data: nivel, borderColor: tok("--s1"), backgroundColor: grad, fill: "start", borderWidth: 2, pointRadius: 0, tension: .15, marcarCursor: true, spanGaps: 3 * 36e5 },
-  ] } });
+  const ds = [
+    { label: "Nível", data: nivel, borderColor: tok("--s1"), backgroundColor: grad, fill: "start", borderWidth: 2, pointRadius: 0, tension: .15, marcarCursor: true, spanGaps: 3 * 36e5, order: 0 },
+  ];
+  if (tipica.length) {
+    ds.push({ label: "típico mín", tipo: "tip-lo", data: tipica.map(p => ({ x: p.x, y: p.lo })), borderWidth: 0, pointRadius: 0, fill: false, order: 9, foraDaEscala: true });
+    ds.push({ label: "típico máx", tipo: "tip-hi", data: tipica.map(p => ({ x: p.x, y: p.hi })), borderWidth: 0, pointRadius: 0, fill: "-1", backgroundColor: tok("--faixa"), order: 9, foraDaEscala: true, tension: .3 });
+  }
+  if (previsto) {
+    const azulClaro = tok("--s1") + "2e";
+    ds.push({ label: "prev mín", tipo: "prev-lo", data: previsto.pts.map(p => ({ x: p.x, y: p.lo })), borderWidth: 0, pointRadius: 0, fill: false, order: 5, tension: .3 });
+    ds.push({ label: "prev máx", tipo: "prev-hi", data: previsto.pts.map(p => ({ x: p.x, y: p.hi })), borderWidth: 0, pointRadius: 0, fill: "-1", backgroundColor: azulClaro, order: 5, tension: .3 });
+    ds.push({ label: "Previsão", tipo: "prev-md", data: previsto.pts.map(p => ({ x: p.x, y: p.md })), borderColor: tok("--s1"), borderWidth: 2, borderDash: [6, 4], pointRadius: 0, order: 1, tension: .3, marcarCursor: true });
+  }
+  const principal = criar("gPrincipal", "principal", { type: "line", options: op, data: { datasets: ds } });
+
+  $("#legAgora").innerHTML = `<span><i style="background:${tok("--s1")}"></i>medido</span>` +
+    (previsto ? `<span><i class="tracejado" style="border-color:${tok("--s1")}"></i>previsão provável</span><span><i class="area" style="background:${tok("--s1")}2e"></i>8 em 10 chances</span>` : "") +
+    (tipica.length ? `<span><i class="area" style="background:${tok("--faixa")}"></i>nível típico da época</span>` : "") +
+    (previsto ? `<span><i class="area" style="background:color-mix(in srgb, ${tok("--chuva")} 45%, transparent)"></i>chuva prevista</span>` : "");
 
   if (temChuva) {
     const opc = opcoesBase();
@@ -819,18 +897,21 @@ function desenharAgora(manterNaPonta) {
     opc.scales.x.ticks.display = false; opc.scales.x.grid.display = false;
     opc.scales.y.beginAtZero = true; opc.scales.y.suggestedMax = 2; opc.scales.y.ticks.maxTicksLimit = 3;
     opc.scales.y.ticks.callback = v => fmt(v, 0);
+    opc.plugins.hoje = { x: Date.now() };
     criar("gChuva", "chuva", { type: "bar", options: opc, data: { datasets: [
-      { label: "Chuva", data: chuvaHora, backgroundColor: tok("--chuva"), borderRadius: 2, barPercentage: 1, categoryPercentage: 1, maxBarThickness: 14 },
+      { label: "Chuva", data: chuvaHora, backgroundColor: tok("--chuva"), borderRadius: 2, barPercentage: 1, categoryPercentage: 1, maxBarThickness: 14, grouped: false },
+      { label: "Chuva prevista", data: chuvaPrevHora, backgroundColor: `color-mix(in srgb, ${tok("--chuva")} 45%, transparent)`, borderRadius: 2, barPercentage: 1, categoryPercentage: 1, maxBarThickness: 14, grouped: false },
     ] } });
   } else { graficos.chuva?.destroy(); graficos.chuva = null; }
 
-  navConfigurar(min, max, nivel, ([a, b]) => {
+  // linha "medida" no navegador + previsão tracejada
+  navConfigurar(min, max, nivel.concat(previsto ? previsto.pts.slice(1).map(p => ({ x: p.x, y: p.md })) : []), ([a, b]) => {
     for (const ch of [graficos.principal, graficos.chuva]) if (ch) { ch.options.scales.x.min = a; ch.options.scales.x.max = b; }
     ajustarY(principal, a, b, true);
     if (graficos.chuva) {
-      const porDia = (b - a) / 864e5 > 7, ds = graficos.chuva.data.datasets[0], novo = porDia ? chuvaDia : chuvaHora;
-      if (ds.data !== novo) ds.data = novo;
-      const vis = novo.filter(p => p.x >= a && p.x <= b).map(p => p.y);
+      const porDia = (b - a) / 864e5 > 7, [d0, d1] = graficos.chuva.data.datasets;
+      d0.data = porDia ? chuvaDia : chuvaHora; d1.data = porDia ? chuvaPrevDia : chuvaPrevHora;
+      const vis = d0.data.concat(d1.data).filter(p => p.x >= a && p.x <= b).map(p => p.y);
       graficos.chuva.options.scales.y.max = Math.max(2, Math.ceil(Math.max(0, ...vis) * 1.15));
       $("#rotChuva").textContent = porDia ? "Chuva (mm por dia)" : "Chuva (mm por hora)";
       graficos.chuva.update("none");
@@ -838,9 +919,8 @@ function desenharAgora(manterNaPonta) {
     principal.update("none");
     atualizarLeitura();
   });
-  const largura = estado.dias * 864e5;
-  if (!estado.janela || estado.janela[1] > max || estado.janela[0] < min || manterNaPonta !== false) definirJanela(max - largura, max);
-  else definirJanela(...estado.janela);
+  if (manterJanela && estado.janelaManual && estado.janela && estado.janela[0] >= min && estado.janela[1] <= max) definirJanela(...estado.janela);
+  else definirJanela(...janelaPadrao());
   marcarJanelasAtivas();
 }
 
@@ -977,7 +1057,22 @@ function atualizarLeitura() {
   if (estado.modo === "agora") {
     const c = cache[estado.estacao], nivel = graficos.principal.data.datasets[0].data;
     if (!nivel.length) { $("#leitura").innerHTML = "<time>Sem leituras</time>"; return; }
-    const alvo = estado.cursor ?? nivel.at(-1).x, p = pontoEm(nivel, alvo);
+    const alvo = estado.cursor ?? nivel.at(-1).x;
+    if (alvo > nivel.at(-1).x + 30 * 60e3) {   // cursor no futuro: previsão e faixa típica
+      const serie = tipo => graficos.principal.data.datasets.find(d => d.tipo === tipo)?.data || [];
+      const md = interp(serie("prev-md"), alvo), lo = interp(serie("prev-lo"), alvo), hi = interp(serie("prev-hi"), alvo);
+      const tlo = interp(serie("tip-lo"), alvo), thi = interp(serie("tip-hi"), alvo);
+      let chuva = "";
+      if (graficos.chuva) {
+        const dsp = graficos.chuva.data.datasets[1].data, porDia = $("#rotChuva").textContent.includes("dia"), q = pontoEm(dsp, alvo);
+        if (dsp.length && q && Math.abs(q.x - alvo) < (porDia ? 864e5 : 36e5)) chuva = `<span><i class="barra" style="background:color-mix(in srgb, ${tok("--chuva")} 45%, transparent)"></i><b>${fmt(q.y, 1)} mm</b>previstos ${porDia ? "no dia" : "na hora"}</span>`;
+      }
+      $("#leitura").innerHTML = `<time>${md != null ? "Previsão" : "Sem previsão para esta data"} · ${quando(alvo)}</time><div class="vals">` +
+        (md != null ? `<span><i style="background:${tok("--s1")}"></i><b>${fmt(md, 2)} m</b>provável</span><span>8 em 10 chances: <b>${fmt(lo, 2)}–${fmt(hi, 2)} m</b></span>` : "") +
+        (tlo != null ? `<span>típico da época: <b>${fmt(tlo, 1)}–${fmt(thi, 1)} m</b></span>` : "") + chuva + "</div>";
+      return;
+    }
+    const p = pontoEm(nivel, alvo);
     const l = c.leituras.find(x => ms(x) === p.x);
     let chuva = "";
     if (graficos.chuva) {
@@ -1096,7 +1191,7 @@ async function buscarPrevisao() {
   const m = prev.modelo, lat = m.pontos.map(p => p.lat).join(","), lon = m.pontos.map(p => p.lon).join(",");
   const base = `latitude=${lat}&longitude=${lon}&hourly=precipitation&timezone=America%2FSao_Paulo`;
   const [det, ens] = await Promise.all([
-    fetch(`https://api.open-meteo.com/v1/forecast?${base}&past_days=31&forecast_days=7`).then(r => { if (!r.ok) throw new Error(`Open-Meteo ${r.status}`); return r.json(); }),
+    fetch(`https://api.open-meteo.com/v1/forecast?${base}&past_days=31&forecast_days=8`).then(r => { if (!r.ok) throw new Error(`Open-Meteo ${r.status}`); return r.json(); }),
     fetch(`https://ensemble-api.open-meteo.com/v1/ensemble?${base}&models=gfs025&forecast_days=3`).then(r => r.ok ? r.json() : null).catch(() => null),
   ]);
   const pts = [].concat(det), tempo = pts[0].hourly.time;
@@ -1136,7 +1231,9 @@ async function desenharPrevisao() {
     if (!prev.dados || Date.now() - prev.quando > 30 * 60e3) { await buscarPrevisao(); prev.quando = Date.now(); }
     const ref = await nivelDeReferencia();
     if (!ref) throw new Error("sem leitura recente do rio");
+    prev.ref = ref;
     renderizarPrevisao(ref);
+    if (estado.modo === "agora" && cache[estado.estacao]) desenharAgora(true);   // acrescenta a linha de previsão ao gráfico
   } catch (e) {
     $("#pRisco").innerHTML = `<i style="background:${tok("--neutro")}"></i>indisponível`;
     $("#pCorpo").innerHTML = `<span class="prev-carregando">Não foi possível calcular agora (${e.message}). Tentaremos de novo em instantes.</span>`;
@@ -1259,9 +1356,9 @@ async function abrirFolha() {
 
 // ================= orquestração =================
 function trocarModo(modo) {
-  estado.modo = modo; estado.cursor = null;
+  estado.modo = modo; estado.cursor = null; estado.janelaManual = false;
   document.querySelectorAll("#modo button").forEach(b => b.setAttribute("aria-pressed", b.dataset.modo === modo));
-  $("#ctrlAgora").hidden = modo !== "agora"; $("#ctrlComp").hidden = modo !== "comparar"; $("#anos").hidden = modo !== "comparar";
+  $("#ctrlAgora").hidden = modo !== "agora"; $("#ctrlComp").hidden = modo !== "comparar"; $("#anos").hidden = modo !== "comparar"; $("#legAgora").hidden = modo !== "agora";
   estado.janela = null;
   if (modo === "agora") { $("#boxChuva").hidden = false; desenharAgora(); } else { $("#boxChuva").hidden = true; desenharComparar(); }
   salvarURL();
@@ -1325,7 +1422,7 @@ async function iniciar() {
   $("#modo").onclick = ev => { const b = ev.target.closest("button"); if (b && b.dataset.modo !== estado.modo) trocarModo(b.dataset.modo); };
   $("#janelas").onclick = ev => {
     const b = ev.target.closest("button"); if (!b) return;
-    estado.dias = +b.dataset.d; definirJanela(nav.max - estado.dias * 864e5, nav.max); marcarJanelasAtivas();
+    estado.dias = +b.dataset.d; estado.janelaManual = false; definirJanela(...janelaPadrao()); marcarJanelasAtivas();
   };
   $("#periodos").onclick = ev => {
     const b = ev.target.closest("button"); if (!b) return;
