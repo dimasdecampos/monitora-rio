@@ -44,6 +44,7 @@ jobs:
           TELEGRAM_CHAT: ${{ secrets.TELEGRAM_CHAT }}
           CALLMEBOT_PHONE: ${{ secrets.CALLMEBOT_PHONE }}
           CALLMEBOT_KEY: ${{ secrets.CALLMEBOT_KEY }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           TESTE: ${{ inputs.teste && '1' || '0' }}
         run: python scripts/alertas.py
       - uses: actions/cache/save@v4

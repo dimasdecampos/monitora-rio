@@ -11,6 +11,7 @@ Variáveis de ambiente:
   TELEGRAM_TOKEN, TELEGRAM_CHAT   canal do Telegram
   CALLMEBOT_PHONE, CALLMEBOT_KEY  WhatsApp pessoal via CallMeBot (número com DDI, ex. +5512999999999)
                                   sem nenhum dos dois, só mostra as mensagens (modo de teste)
+  NTFY_TOPIC                      notificação no app ntfy (ntfy.sh)
   TESTE=1                         envia já uma mensagem de teste com o nível atual
   ESTADO                          arquivo onde guarda o que já foi avisado (padrão .alertas/estado.json)
 """
@@ -124,7 +125,18 @@ def enviar(m):
                 print("falha no WhatsApp:", e)
             time.sleep(10 * (n + 1))
         time.sleep(5)   # o CallMeBot recusa mensagens muito seguidas
-    if not (token and chat) and not (fone and chave):
+    topico = os.environ.get("NTFY_TOPIC")
+    if topico:
+        # notificação no app ntfy: primeira linha vira título; vermelho/onda/represa tocam como urgentes
+        titulo, _, corpo = m.replace("*", "").partition("\n")
+        prio = "5" if m[:1] in "🔴🌊⚠" else "3" if m[:1] in "🟢🧪" else "4"
+        req = urllib.request.Request(f"https://ntfy.sh/{topico}", data=corpo.encode("utf-8"), method="POST",
+                                     headers={"Title": titulo.encode("utf-8").decode("latin-1"), "Priority": prio, "Click": SITE})
+        try:
+            urllib.request.urlopen(req, timeout=30)
+        except Exception as e:
+            print("falha no ntfy:", e)
+    if not (token and chat) and not (fone and chave) and not topico:
         print("--- (teste, sem Telegram nem WhatsApp configurado) ---\n" + m)
 
 

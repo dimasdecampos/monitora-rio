@@ -196,6 +196,10 @@ ou desliga a região.
   4. Em `public/config.json`, preencha `"telegram": "https://t.me/nome_do_canal"`.
 
   Sem os segredos, o robô roda em modo de teste e só registra as mensagens.
+- **App ntfy (recomendado):** notificação no celular com som de alarme, grátis e sem
+  cadastro. Instale o app **ntfy** (Android/iPhone), toque em **+** e assine o tópico
+  guardado no segredo `NTFY_TOPIC` (nome difícil de adivinhar, pois quem souber o nome
+  recebe os avisos). Para várias pessoas, todas assinam o mesmo tópico.
 - **WhatsApp (pessoal, via [CallMeBot](https://www.callmebot.com/blog/free-api-whatsapp-messages/)):**
   os mesmos avisos chegam no seu WhatsApp, de graça. Funciona só para números
   individuais (não para grupos), e cada número precisa ativar o próprio acesso.
