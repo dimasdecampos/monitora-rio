@@ -300,6 +300,19 @@
     .mapa { flex: 1; height: auto; min-height: 420px; }
   }
 
+  /* ---------- novas visões ---------- */
+  .area-media { position: relative; height: 300px; margin-top: 8px; }
+  @media (min-width: 900px) { .area-media { height: 340px; } }
+  ol.rec-lista { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+  ol.rec-lista li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 10px 12px; border-radius: 10px; background: var(--superficie-2); align-items: center; }
+  ol.rec-lista li.atual { box-shadow: inset 0 0 0 2px var(--acento); }
+  ol.rec-lista strong { font-size: 14px; }
+  ol.rec-lista small { grid-column: 1 / -1; font-size: 12px; color: var(--tinta-2); }
+  ol.rec-lista .h { font-size: 18px; font-weight: 750; font-variant-numeric: tabular-nums; }
+  ol.rec-lista .faixa { position: relative; grid-column: 1 / -1; height: 8px; border-radius: 4px; background: var(--superficie); }
+  ol.rec-lista .faixa span { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: color-mix(in srgb, var(--acento) 35%, transparent); }
+  ol.rec-lista .faixa i { position: absolute; top: -3px; bottom: -3px; width: 3px; border-radius: 2px; background: var(--acento); }
+
   /* ---------- memória das cheias ---------- */
   ol.linha-tempo { list-style: none; margin: 0; padding: 0 0 0 18px; position: relative; display: flex; flex-direction: column; gap: 14px; }
   ol.linha-tempo::before { content: ""; position: absolute; left: 5px; top: 6px; bottom: 6px; width: 2px; background: var(--grade); }
@@ -538,6 +551,38 @@
     <div class="area-perm"><canvas id="gPerm"></canvas></div>
   </details>
 
+  <section class="card largo recolhivel" id="cardResposta" aria-labelledby="tcardResposta">
+    <div class="cab" role="button" tabindex="0" aria-expanded="false" aria-controls="ccardResposta">
+      <div><h2 id="tcardResposta">Quanto o rio sobe com essa chuva</h2><p class="sub" id="scardResposta">Cada ponto é um dia de 2018 a 2026: chuva na bacia × quanto a Passarela subiu</p></div>
+      <span class="lado"><span class="pill" id="pcardResposta"><i></i>…</span><span class="seta-exp" aria-hidden="true"></span></span>
+    </div>
+    <div class="corpo" id="ccardResposta" hidden>
+      <p class="prev-frase" id="respTexto"></p>
+      <div class="area-media"><canvas id="gResposta" aria-label="Chuva na bacia versus subida do rio"></canvas></div>
+      <div class="leg-mapa" id="respLeg"></div>
+      <p class="nota">Chuva média na bacia (São Luiz, Lagoinha, Cunha e cabeceiras) de 24 h antes até 48 h depois; subida máxima da Passarela nas 72 h seguintes. Solo pela chuva dos 30 dias anteriores.</p>
+    </div>
+  </section>
+  <section class="card largo recolhivel" id="cardSazonal" aria-labelledby="tcardSazonal">
+    <div class="cab" role="button" tabindex="0" aria-expanded="false" aria-controls="ccardSazonal">
+      <div><h2 id="tcardSazonal">Quando o rio enche</h2><p class="sub" id="scardSazonal">Em quantos anos a Passarela passou de cada cota, mês a mês (desde 2018)</p></div>
+      <span class="lado"><span class="pill" id="pcardSazonal"><i></i>…</span><span class="seta-exp" aria-hidden="true"></span></span>
+    </div>
+    <div class="corpo" id="ccardSazonal" hidden>
+      <div class="area-media"><canvas id="gSazonal" aria-label="Frequência de cheias por mês"></canvas></div>
+      <div class="leg-mapa" id="sazLeg"></div>
+    </div>
+  </section>
+  <section class="card largo recolhivel" id="cardRecessao" aria-labelledby="tcardRecessao">
+    <div class="cab" role="button" tabindex="0" aria-expanded="false" aria-controls="ccardRecessao">
+      <div><h2 id="tcardRecessao">Depois do pico, quanto tempo para baixar</h2><p class="sub" id="scardRecessao">Horas até a Passarela voltar abaixo da atenção, nas cheias desde 2018</p></div>
+      <span class="lado"><span class="pill" id="pcardRecessao"><i></i>…</span><span class="seta-exp" aria-hidden="true"></span></span>
+    </div>
+    <div class="corpo" id="ccardRecessao" hidden>
+      <p class="prev-frase" id="recTexto"></p>
+      <ol class="rec-lista" id="recLista"></ol>
+    </div>
+  </section>
   <section class="card largo recolhivel" id="cardHist" aria-labelledby="tituloHist">
     <div class="cab" role="button" tabindex="0" aria-expanded="false" aria-controls="corpoHist">
       <div><h2 id="tituloHist">Memória das cheias</h2><p class="sub">Grandes cheias de São Luiz do Paraitinga, de 1863 até hoje</p></div>
@@ -556,8 +601,8 @@
   <section class="card largo sobre">
     <strong>Sobre os dados</strong>
     <ul>
-      <li>Rede telemétrica da <a href="https://www.snirh.gov.br/hidrotelemetria/" target="_blank" rel="noopener">ANA</a>: leituras a cada 15 min, buscadas direto no seu navegador. O histórico (desde 2015) é atualizado todo dia.</li>
-      <li>As cotas de atenção, alerta e inundação <strong>não são oficiais</strong>; no Paraitinga foram estimadas com cheias reais registradas na régua da cidade.</li>
+      <li>Réguas da <a href="https://cth.daee.sp.gov.br/sibh/" target="_blank" rel="noopener">SP Águas (SIBH)</a>, a cada 10 min, e da <a href="https://www.snirh.gov.br/hidrotelemetria/" target="_blank" rel="noopener">ANA</a>, a cada 15 min, buscadas direto no seu navegador. Chuva prevista: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>. O histórico (Passarela desde 2018) é atualizado todo dia.</li>
+      <li>Cotas de atenção, alerta, emergência e transbordamento: <strong>oficiais da SP Águas</strong> nas réguas dela; nas réguas da ANA e da CESP são as da Passarela convertidas.</li>
       <li>Leituras com erro de sensor são descartadas do histórico. Anos <em>parciais</em> têm falhas e podem subestimar picos.</li>
       <li>Em emergência ligue <strong>199</strong> (Defesa Civil) ou <strong>193</strong> (Bombeiros).</li>
       <li id="avisosRodape" hidden>Avisos ligados neste aparelho · <button class="link" id="btnDesligarAvisos">desligar</button></li>
@@ -1592,7 +1637,7 @@ async function desenharPrevisao() {
     if (!ref) throw new Error("sem leitura recente do rio");
     prev.ref = ref;
     renderizarPrevisao(ref);
-    desenharImpactos(); verificarAvisos(); desenharFontes();
+    desenharImpactos(); verificarAvisos(); desenharFontes(); desenharVisoes();
     if (estado.modo === "agora" && cache[estado.estacao]) desenharAgora(true);   // acrescenta a linha de previsão ao gráfico
   } catch (e) {
     $("#pRisco").innerHTML = `<i style="background:${tok("--neutro")}"></i>indisponível`;
@@ -1820,6 +1865,118 @@ async function desenharImpactos() {
   setTimeout(() => mapa.invalidateSize(), 50);
 }
 
+// ================= visões: resposta à chuva, sazonalidade, recessão =================
+let estat = null;
+const carregarEstat = async () => estat ??= await fetch("estatisticas.json").then(r => r.json()).catch(() => null);
+const cardAberto = id => !$("#c" + id).hidden;
+const NOMES_SOLO = ["solo seco", "solo úmido", "solo encharcado"], CORES_SOLO = ["--r250", "--r450", "--r650"];
+
+function situacaoAtualChuva() {
+  // mesma janela do histórico: 24 h passadas + 48 h previstas; solo pela chuva dos 30 dias anteriores
+  const d = prev.dados, m = prev.modelo; if (!d || !m || !estat?.resposta) return null;
+  let i = d.tempo.indexOf(horaLocal(new Date())); if (i < 0) i = d.tempo.findLastIndex(t => t <= horaLocal(new Date()));
+  const soma = (a, b) => d.media.slice(Math.max(0, a), Math.max(0, b)).reduce((s, v) => s + v, 0);
+  const x = soma(i - 24, i + 1) + soma(i + 1, i + 49) * m.fator_previsao, solo = soma(i - 24 - 720, i - 24);
+  const [l1, l2] = estat.resposta.solo_limites_mm;
+  return { x, classe: solo < l1 ? 0 : solo < l2 ? 1 : 2, solo };
+}
+function parecidos(sit) {
+  const pts = estat.resposta.pontos, larg = Math.max(5, sit.x * .25);
+  let viz = pts.filter(p => p[2] === sit.classe && Math.abs(p[0] - sit.x) <= larg);
+  if (viz.length < 15) viz = pts.filter(p => Math.abs(p[0] - sit.x) <= larg * 1.5);
+  const ys = viz.map(p => p[1]).sort((a, b) => a - b), q = f => ys[Math.min(ys.length - 1, Math.floor(f * (ys.length - 1)))];
+  return ys.length ? { n: ys.length, p10: q(.1), p50: q(.5), p90: q(.9) } : null;
+}
+async function desenharResposta() {
+  await carregarEstat(); if (!estat?.resposta) { $("#cardResposta").hidden = true; return; }
+  const sit = situacaoAtualChuva(), viz = sit && parecidos(sit);
+  const u = comNivel(cache.sp664?.leituras || rioAcima.dados.sp664 || []).at(-1);
+  if (sit && viz) {
+    $("#pcardResposta").innerHTML = `<i style="background:${tok(viz.p50 >= 50 ? "--alerta" : viz.p50 >= 20 ? "--atencao" : "--bom")}"></i>Agora: sobe ~${fmt(viz.p50 / 100, 1)} m`;
+    $("#respTexto").innerHTML = `Agora: <strong>${fmt(sit.x, 0)} mm</strong> na bacia (24 h passadas + 48 h previstas), com <strong>${NOMES_SOLO[sit.classe]}</strong>. ` +
+      `Em ${viz.n} situações parecidas, a Passarela subiu em média <strong>${fmt(viz.p50 / 100, 2)} m</strong> (de ${fmt(viz.p10 / 100, 2)} a ${fmt(viz.p90 / 100, 2)} m em 8 de cada 10 casos)` +
+      (u ? ` — a partir de agora, isso levaria a cerca de <strong>${fmt((u.nivel + viz.p50) / 100, 2)} m</strong>, podendo chegar a ${fmt((u.nivel + viz.p90) / 100, 2)} m.` : ".");
+  } else $("#pcardResposta").innerHTML = `<i style="background:${tok("--neutro")}"></i>Chuva × subida`;
+  if (!cardAberto("cardResposta")) return;
+  const op = opcoesBase();
+  op.parsing = false; op.interaction = { mode: "nearest", intersect: true };
+  op.plugins.tooltip = { enabled: true, callbacks: { label: c => ` ${fmt(c.parsed.x, 0)} mm → subiu ${fmt(c.parsed.y, 2)} m` } };
+  op.onHover = null;
+  op.scales.x.min = 0; op.scales.x.max = Math.min(160, Math.max(100, Math.ceil((sit?.x || 0) * 1.3 / 10) * 10));
+  op.scales.x.ticks.callback = v => v + " mm"; op.scales.x.ticks.align = "center";
+  op.scales.y.min = -0.2; op.scales.y.ticks.callback = v => fmt(v, 1) + " m";
+  const ds = [0, 1, 2].map(c => ({ type: "scatter", label: NOMES_SOLO[c], data: estat.resposta.pontos.filter(p => p[2] === c).map(p => ({ x: p[0], y: p[1] / 100 })),
+    backgroundColor: tok(CORES_SOLO[c]) + "aa", borderColor: tok("--superficie"), borderWidth: .5, pointRadius: 3, pointHoverRadius: 6 }));
+  const marca = { id: "agoraChuva", afterDatasetsDraw(ch) {
+    if (!sit) return; const { ctx, chartArea: a, scales: { x, y } } = ch, px = x.getPixelForValue(sit.x);
+    if (px < a.left || px > a.right) return;
+    ctx.save();
+    if (viz) { ctx.fillStyle = tok("--alerta") + "33"; ctx.fillRect(px - 6, y.getPixelForValue(viz.p90 / 100), 12, y.getPixelForValue(viz.p10 / 100) - y.getPixelForValue(viz.p90 / 100)); }
+    ctx.strokeStyle = tok("--alerta"); ctx.lineWidth = 2; ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(px, a.top); ctx.lineTo(px, a.bottom); ctx.stroke(); ctx.setLineDash([]);
+    if (viz) { const py = y.getPixelForValue(viz.p50 / 100); ctx.beginPath(); ctx.arc(px, py, 6, 0, 7); ctx.fillStyle = tok("--alerta"); ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = tok("--superficie"); ctx.stroke(); }
+    ctx.font = "650 11.5px system-ui"; ctx.fillStyle = tok("--tinta"); ctx.textAlign = px > (a.left + a.right) / 2 ? "right" : "left";
+    ctx.fillText("agora", px + (ctx.textAlign === "left" ? 6 : -6), a.top + 12); ctx.restore();
+  } };
+  graficos.resposta?.destroy();
+  graficos.resposta = new Chart($("#gResposta"), { type: "scatter", data: { datasets: ds }, options: op, plugins: [marca] });
+  $("#respLeg").innerHTML = [0, 1, 2].map(c => `<span><i style="background:${tok(CORES_SOLO[c])}"></i>${NOMES_SOLO[c]}</span>`).join("") +
+    `<span><i style="background:${tok("--alerta")}"></i>agora (faixa de 8 em 10 casos parecidos)</span>`;
+}
+
+async function desenharSazonal() {
+  await carregarEstat(); if (!estat?.sazonal) { $("#cardSazonal").hidden = true; return; }
+  const mesAt = new Date().getMonth() + 1, sm = estat.sazonal.find(x => x.mes === mesAt);
+  const maisCheio = estat.sazonal.slice().sort((a, b) => b.emergencia / b.anos - a.emergencia / a.anos)[0];
+  $("#pcardSazonal").innerHTML = `<i style="background:${tok(sm.atencao / sm.anos >= .5 ? "--alerta" : sm.atencao ? "--atencao" : "--bom")}"></i>${MESES[mesAt - 1]}: atenção em ${sm.atencao} de ${sm.anos} anos`;
+  $("#scardSazonal").textContent = `Mês mais perigoso: ${MESES[maisCheio.mes - 1]} (emergência em ${maisCheio.emergencia} de ${maisCheio.anos} anos). Em quantos anos a Passarela passou de cada cota, desde 2018.`;
+  if (!cardAberto("cardSazonal")) return;
+  const niveis = [["atencao", "Atenção", "--atencao"], ["alerta", "Alerta", "--alerta"], ["emergencia", "Emergência", "--inundacao"], ["extravasamento", "Transbordamento", "--extravasa"]];
+  const op = opcoesBase();
+  op.parsing = true; op.onHover = null;
+  op.interaction = { mode: "index", intersect: false };
+  op.plugins.tooltip = { enabled: true, callbacks: { title: c => MESES[c[0].dataIndex], label: c => ` ${c.dataset.label}: ${estat.sazonal[c.dataIndex][niveis[c.datasetIndex][0]]} de ${estat.sazonal[c.dataIndex].anos} anos` } };
+  op.scales.x = { type: "category", grid: { display: false }, ticks: { color: tok("--tinta-3"), font: c => ({ size: 12, weight: c.index === mesAt - 1 ? "800" : "400" }) } };
+  op.scales.y.min = 0; op.scales.y.max = 100; op.scales.y.ticks.callback = v => v + "%";
+  const ds = niveis.map(([k, nome, cor], j) => ({ label: nome, data: estat.sazonal.map(x => x.anos ? x[k] / x.anos * 100 : 0), backgroundColor: tok(cor),
+    grouped: false, barPercentage: .78 - j * .14, categoryPercentage: .9, borderRadius: { topLeft: 3, topRight: 3 }, borderSkipped: "bottom", order: -j }));
+  const destaque = { id: "mesAtual", beforeDatasetsDraw(ch) {
+    const { ctx, chartArea: a, scales: { x } } = ch, w = (a.right - a.left) / 12, px = x.getPixelForValue(mesAt - 1);
+    ctx.save(); ctx.fillStyle = tok("--acento") + "14"; ctx.fillRect(px - w / 2, a.top, w, a.bottom - a.top); ctx.restore();
+  } };
+  graficos.sazonal?.destroy();
+  graficos.sazonal = new Chart($("#gSazonal"), { type: "bar", data: { labels: MESES, datasets: ds }, options: op, plugins: [destaque] });
+  $("#sazLeg").innerHTML = niveis.map(([, nome, cor]) => `<span><i style="background:${tok(cor)}"></i>passou da ${nome.toLowerCase()}</span>`).join("") + `<span>· destaque = mês atual</span>`;
+}
+
+async function desenharRecessao() {
+  await carregarEstat(); if (!estat?.recessao) { $("#cardRecessao").hidden = true; return; }
+  const fx = estat.recessao.faixas, at = estat.cotas.atencao;
+  const ls = comNivel(cache.sp664?.leituras || rioAcima.dados.sp664 || []), u = ls.at(-1);
+  let atual = null, texto = "A Passarela está abaixo da cota de atenção.";
+  if (u && u.nivel >= at) {
+    const ult = ls.filter(l => ms(u) - ms(l) <= 72 * 36e5), pico = ult.reduce((m, l) => l.nivel > m.nivel ? l : m, ult[0]);
+    const desde = (ms(u) - ms(pico)) / 36e5, v = variacao(ls, 3);
+    atual = fx.find(f => pico.nivel >= f.de && pico.nivel < f.ate);
+    const baixando = (desde >= 3 && u.nivel <= pico.nivel - 3) || (v && v.delta <= -2);
+    if (atual && baixando) {
+      const resto = h => Math.max(1, h - desde), quandoH = h => new Date(Date.now() + resto(h) * 36e5).toLocaleString("pt-BR", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+      texto = `O pico foi de <strong>${fmt(pico.nivel / 100, 2)} m</strong> há ${fmt(desde, 0)} h e o rio está baixando. Pelo histórico, deve voltar abaixo da atenção em cerca de <strong>${fmt(resto(atual.mediana_h), 0)} h</strong> (${quandoH(atual.mediana_h)}), normalmente entre ${fmt(resto(atual.p25_h), 0)} e ${fmt(resto(atual.p75_h), 0)} h — se não chover mais.`;
+      $("#pcardRecessao").innerHTML = `<i style="background:${tok("--atencao")}"></i>Volta abaixo da atenção em ~${fmt(resto(atual.mediana_h), 0)} h`;
+    } else {
+      texto = `A Passarela está acima da atenção (${fmt(u.nivel / 100, 2)} m) e ainda não começou a baixar.`;
+      $("#pcardRecessao").innerHTML = `<i style="background:${tok("--alerta")}"></i>Ainda não baixando`;
+    }
+  } else $("#pcardRecessao").innerHTML = `<i style="background:${tok("--bom")}"></i>Abaixo da atenção`;
+  $("#recTexto").innerHTML = texto;
+  const maxH = Math.max(...fx.map(f => f.p75_h));
+  $("#recLista").innerHTML = fx.map(f => `<li class="${f === atual ? "atual" : ""}"><strong>Pico ${f.nome} (${fmt(f.de / 100, 2)}${f.ate < 9000 ? `–${fmt(f.ate / 100, 2)}` : "+"} m)</strong>
+      <span class="h">~${fmt(f.mediana_h, 0)} h</span>
+      <span class="faixa"><span style="left:${f.p25_h / maxH * 100}%;width:${(f.p75_h - f.p25_h) / maxH * 100}%"></span><i style="left:${f.mediana_h / maxH * 100}%"></i></span>
+      <small>${f.eventos} cheia${f.eventos > 1 ? "s" : ""} · metade delas baixou entre ${fmt(f.p25_h, 0)} e ${fmt(f.p75_h, 0)} h</small></li>`).join("");
+}
+function desenharVisoes() { desenharResposta(); desenharSazonal(); desenharRecessao(); }
+
 // ================= memória das cheias =================
 async function desenharMemoria() {
   impactos ??= await fetch("impactos.json").then(r => r.json()).catch(() => null);
@@ -1959,7 +2116,7 @@ function desenharTudo() {
   desenharHero(); desenharStats();
   trocarModo(estado.modo);
   desenharLinhas(); desenharCheias(); desenharCalor(); desenharPermanencia();
-  desenharPrevisao(); desenharRioAcima(); desenharImpactos(); desenharMemoria(); desenharFontes();
+  desenharPrevisao(); desenharRioAcima(); desenharImpactos(); desenharMemoria(); desenharFontes(); desenharVisoes();
 }
 async function trocarEstacao(cod) {
   estado.estacao = cod; estado.destaques = new Map(); estado.janela = null;
@@ -2031,7 +2188,7 @@ async function iniciar() {
   // cartões recolhíveis: começam fechados; o navegador lembra a escolha
   document.querySelectorAll(".recolhivel").forEach(card => {
     const cab = card.querySelector(".cab"), corpo = card.querySelector(".corpo"), chave = "aberto-" + card.id;
-    const abrir = sim => { cab.setAttribute("aria-expanded", sim); corpo.hidden = !sim; };
+    const abrir = sim => { cab.setAttribute("aria-expanded", sim); corpo.hidden = !sim; if (sim) setTimeout(() => card.dispatchEvent(new CustomEvent("abriu")), 0); };
     abrir(ler(chave, false));
     const alternar = () => { const sim = corpo.hidden; abrir(sim); guardar(chave, sim); };
     cab.addEventListener("click", ev => { if (!ev.target.closest("a, li[data-cod]")) alternar(); });
@@ -2051,6 +2208,9 @@ async function iniciar() {
   setInterval(desenharRioAcima, 5 * 60e3);
   setInterval(desenharFontes, 5 * 60e3);
   configurarAvisos();
+  $("#cardResposta").addEventListener("abriu", desenharResposta);
+  $("#cardSazonal").addEventListener("abriu", desenharSazonal);
+  $("#cardRecessao").addEventListener("abriu", desenharRecessao);
   $("#hero").addEventListener("click", ev => { const b = ev.target.closest(".trocar"); if (b) trocarEstacao(b.dataset.cod); });
   addEventListener("load", () => desenharImpactos());   // o mapa precisa da biblioteca Leaflet
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});

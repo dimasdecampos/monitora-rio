@@ -34,12 +34,16 @@ jobs:
         if: github.event_name != 'push'
         run: python scripts/coletar.py
 
+      - name: Estatísticas para as visões do painel
+        if: github.event_name != 'push'
+        run: python scripts/estatisticas.py
+
       - name: Salvar histórico no repositório
         if: github.event_name != 'push'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/historico
+          git add public/historico public/estatisticas.json
           if git diff --cached --quiet; then
             echo "Nada novo."
           else
