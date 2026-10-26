@@ -988,13 +988,15 @@ function destaquesPadrao(lista) {
   if (recorde) estado.destaques.set(recorde.s, anterior ? "--s3" : "--s2");
 }
 function alternarDestaque(s) {
-  const d = estado.destaques;
-  if (d.get(s) === "--s1") return;
-  if (d.has(s)) d.delete(s);
+  // até 3 anos em destaque, qualquer um (inclusive desligar o atual); sempre fica pelo menos um
+  const d = estado.destaques, ehAtual = temporadas().lista.find(t => t.atual)?.s === s;
+  if (d.has(s)) { if (d.size > 1) d.delete(s); }
   else {
-    const livres = ["--s2", "--s3"].filter(c => ![...d.values()].includes(c));
-    if (!livres.length) { const velho = [...d.keys()].find(k => d.get(k) !== "--s1"); livres.push(d.get(velho)); d.delete(velho); }
-    d.set(s, livres[0]);
+    const usadas = [...d.values()];
+    const ordem = ehAtual ? ["--s1", "--s2", "--s3"] : ["--s2", "--s3", "--s1"];   // o ano atual volta azul quando dá
+    let cor = ordem.find(c => !usadas.includes(c));
+    if (!cor) { const maisAntigo = [...d.keys()][0]; cor = d.get(maisAntigo); d.delete(maisAntigo); }
+    d.set(s, cor);
   }
   if (estado.modo === "comparar") desenharComparar(true); else trocarModo("comparar");
   desenharLinhas();
