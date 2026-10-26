@@ -419,6 +419,7 @@ const ha = horas => horas < 1 ? `há ${Math.max(1, Math.round(horas * 60))} min`
 const estado = { estacao: ESTACAO_PADRAO, modo: "agora", dias: 3, de: 1, ate: 12, metrica: "nmax", destaques: new Map(), janela: null, cursor: null };
 let config, estacoes = {};
 window.monitor = estado;   // facilita testes e depuração pelo console
+window.monitorGraficos = () => graficos;
 const cache = {};          // codigo -> { leituras (15 min, 30 dias), diario, quando }
 let graficos = {};
 
@@ -883,7 +884,12 @@ function desenharAgora(manterJanela) {
     ds.push({ label: "prev máx", tipo: "prev-hi", data: previsto.pts.map(p => ({ x: p.x, y: p.hi })), borderWidth: 0, pointRadius: 0, fill: "-1", backgroundColor: azulClaro, order: 5, tension: .3 });
     ds.push({ label: "Previsão", tipo: "prev-md", data: previsto.pts.map(p => ({ x: p.x, y: p.md })), borderColor: tok("--s1"), borderWidth: 2, borderDash: [6, 4], pointRadius: 0, order: 1, tension: .3, marcarCursor: true });
   }
-  const principal = criar("gPrincipal", "principal", { type: "line", options: op, data: { datasets: ds } });
+  // mantém a borda direita do gráfico de chuva igual à do nível (inclusive ao girar o celular)
+  const sincronizar = { id: "sincronizar", afterLayout(ch) {
+    const c = graficos.chuva, r = ch.width - ch.chartArea.right;
+    if (c && c !== ch && c.options.layout.padding.right !== r) { c.options.layout.padding.right = r; c.update("none"); }
+  } };
+  const principal = criar("gPrincipal", "principal", { type: "line", options: op, data: { datasets: ds }, plugins: [sincronizar] });
 
   $("#legAgora").innerHTML = `<span><i style="background:${tok("--s1")}"></i>medido</span>` +
     (previsto ? `<span><i class="tracejado" style="border-color:${tok("--s1")}"></i>previsão provável</span><span><i class="area" style="background:${tok("--s1")}2e"></i>8 em 10 chances</span>` : "") +
@@ -893,8 +899,10 @@ function desenharAgora(manterJanela) {
   if (temChuva) {
     const opc = opcoesBase();
     opc.layout.padding.top = 14;
+    opc.layout.padding.right = principal.width - principal.chartArea.right;   // mesma borda direita do gráfico de nível
     opc.scales.x.min = min; opc.scales.x.max = max;
     opc.scales.x.ticks.display = false; opc.scales.x.grid.display = false;
+    opc.scales.x.offset = false;   // barras não podem deslocar o eixo: ele precisa casar com o do nível
     opc.scales.y.beginAtZero = true; opc.scales.y.suggestedMax = 2; opc.scales.y.ticks.maxTicksLimit = 3;
     opc.scales.y.ticks.callback = v => fmt(v, 0);
     opc.plugins.hoje = { x: Date.now() };
