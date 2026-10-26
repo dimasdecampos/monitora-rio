@@ -11,8 +11,9 @@ na ANA, pelo navegador, e lê o histórico salvo neste repositório.
 
 | Parte | O que faz |
 |---|---|
-| `public/index.html` | Página de tempo real |
-| `public/analise.html` | Histórico e comparação entre anos (estação, período do ano, medida) |
+| `public/index.html` | Painel principal: agora, últimos dias com chuva, comparação entre anos e histórico (pensado para celular) |
+| `public/classico.html` | Versão anterior da página de tempo real |
+| `public/analise.html` | Versão anterior da página de histórico e comparação |
 | `public/historico/<estação>/diario.json` | Resumo diário usado na página de análise (gerado pelo coletor) |
 | `public/config.json` | Estações e cotas de atenção/alerta/inundação |
 | `public/historico/` | Histórico salvo, um arquivo por estação e mês |

@@ -2,491 +2,1145 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Monitor Paraitinga Paraibuna</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f9f9f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
+<title>Rio Paraitinga Agora</title>
+<meta name="description" content="Nível, chuva e histórico dos rios Paraitinga e Paraibuna em tempo real, com dados da ANA">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root {
-    --bg: #f4f6f8; --card: #ffffff; --text: #17212b; --muted: #5f6b77; --line: #e1e6eb;
-    --rio: #1f6fb2; --chuva: #8fb3d9; --sel: #1f6fb2;
-    --normal: #2e8b57; --atencao: #d4a017; --alerta: #e06c1b; --inundacao: #c62828; --semdado: #8a96a3;
+    color-scheme: light;
+    --plano: #f9f9f7; --superficie: #fcfcfb; --superficie-2: #f0efeb; --elevado: #ffffff;
+    --tinta: #0b0b0b; --tinta-2: #52514e; --tinta-3: #898781;
+    --grade: #e8e7e1; --eixo: #c3c2b7; --borda: rgba(11,11,11,.09);
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --neutro: #c4c2b9; --faixa: rgba(137,135,129,.15); --mediana: #6f6d68;
+    --chuva: #5598e7; --bom: #0ca30c; --atencao: #fab219; --alerta: #ec835a; --inundacao: #d03b3b;
+    --acento: #2a78d6; --sobe: #b42318; --desce: #006300; --sombra: 0 1px 2px rgba(0,0,0,.05), 0 4px 16px rgba(0,0,0,.04);
+    --r100:#cde2fb; --r150:#b7d3f6; --r200:#9ec5f4; --r250:#86b6ef; --r300:#6da7ec; --r350:#5598e7; --r400:#3987e5;
+    --r450:#2a78d6; --r500:#256abf; --r550:#1c5cab; --r600:#184f95; --r650:#104281; --r700:#0d366b;
   }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #0f151b; --card: #18212a; --text: #e6edf3; --muted: #93a1ae; --line: #2a3541;
-            --rio: #5aa9e6; --chuva: #3d5f82; --sel: #5aa9e6; }
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --plano: #0d0d0d; --superficie: #1a1a19; --superficie-2: #252523; --elevado: #222220;
+      --tinta: #f0efec; --tinta-2: #c3c2b7; --tinta-3: #898781;
+      --grade: #2c2c2a; --eixo: #44443f; --borda: rgba(255,255,255,.09);
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --neutro: #55544f; --faixa: rgba(195,194,183,.10); --mediana: #a3a197;
+      --chuva: #5598e7; --acento: #5598e7; --sobe: #f97066; --desce: #0ca30c; --sombra: none;
+    }
   }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text);
-         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
-           padding: 16px 24px; border-bottom: 1px solid var(--line); background: var(--card); }
-  h1 { font-size: 20px; margin: 0; }
-  h2 { font-size: 17px; margin: 0; }
-  .sub { color: var(--muted); font-size: 13px; }
-  button { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line);
-           border-radius: 8px; padding: 6px 10px; cursor: pointer; }
-  button.ativo { background: var(--rio); border-color: var(--rio); color: #fff; }
-  .link-analise { font-size: 14px; font-weight: 600; color: #fff; background: var(--rio); text-decoration: none; padding: 7px 14px; border-radius: 8px; }
-  .ao-vivo { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
-  .ponto { width: 9px; height: 9px; border-radius: 50%; background: var(--normal); flex: none; }
-  .ponto.vivo { animation: pulsa 2s infinite; }
-  .ponto.atrasado { background: var(--atencao); }
-  .ponto.erro { background: var(--inundacao); }
-  @keyframes pulsa { 0%,100% { opacity: 1 } 50% { opacity: .3 } }
-  main { max-width: 1200px; margin: 0 auto; padding: 20px 24px 40px; display: grid; gap: 16px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
-  .rotulo { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
-  .valor { font-size: 34px; font-weight: 650; font-variant-numeric: tabular-nums; margin-top: 4px; }
-  .valor small { font-size: 16px; font-weight: 500; color: var(--muted); }
-  .info { margin-top: 6px; color: var(--muted); font-size: 13px; }
-  .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; color: #fff; font-weight: 600; font-size: 13px; background: var(--semdado); }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --plano: #0d0d0d; --superficie: #1a1a19; --superficie-2: #252523; --elevado: #222220;
+    --tinta: #f0efec; --tinta-2: #c3c2b7; --tinta-3: #898781;
+    --grade: #2c2c2a; --eixo: #44443f; --borda: rgba(255,255,255,.09);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --neutro: #55544f; --faixa: rgba(195,194,183,.10); --mediana: #a3a197;
+    --chuva: #5598e7; --acento: #5598e7; --sobe: #f97066; --desce: #0ca30c; --sombra: none;
+  }
 
-  /* visão geral */
-  .rios { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
-  .rio h2 { margin-bottom: 4px; }
-  .rio .sub { margin-bottom: 10px; }
-  .estacoes { display: grid; gap: 10px; }
-  .mini { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; text-align: left; width: 100%;
-          background: var(--bg); border: 2px solid transparent; border-left: 5px solid var(--semdado); border-radius: 10px; padding: 10px 12px; }
-  .mini.sel { border-color: var(--sel); border-left-color: inherit; }
-  .mini .nome { font-weight: 600; }
-  .mini .num { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; text-align: right; }
-  .mini .num small { font-size: 13px; color: var(--muted); font-weight: 500; }
-  .mini .det { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
-  .mini svg { width: 100%; height: 30px; grid-column: 1 / -1; }
-  .seta { font-size: 13px; font-weight: 600; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--plano); color: var(--tinta); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  button, select { font: inherit; color: inherit; }
+  a { color: var(--acento); }
+  .rot { font-size: 11.5px; color: var(--tinta-3); text-transform: uppercase; letter-spacing: .06em; font-weight: 650; }
 
-  /* detalhe */
-  .titulo-detalhe { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; justify-content: space-between; }
-  .grade { display: grid; gap: 16px; grid-template-columns: 1.3fr 1fr 1fr 1fr; }
-  .principal { border-left: 6px solid var(--normal); display: flex; gap: 18px; align-items: stretch; }
-  .principal .valor { font-size: 46px; }
-  .status { margin-top: 6px; font-size: 14px; padding: 3px 12px; }
-  .regua { width: 22px; border-radius: 6px; position: relative; overflow: hidden; background: var(--line); min-height: 130px; flex: none; }
-  .regua .agua { position: absolute; bottom: 0; left: 0; right: 0; background: var(--rio); transition: height .6s; }
-  .regua .marca { position: absolute; left: 0; right: 0; height: 2px; }
-  .tendencia { font-size: 15px; font-weight: 600; margin-top: 6px; }
-  .grafico-topo { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-  .grafico-topo .botoes { display: flex; gap: 6px; flex-wrap: wrap; }
-  .caixa-grafico { position: relative; height: 380px; }
-  .legenda { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); margin-top: 8px; }
-  .legenda span::before { content: ""; display: inline-block; width: 14px; height: 3px; margin-right: 6px; vertical-align: middle; background: var(--c); }
-  .aviso { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; font-size: 13px; color: var(--muted); }
-  .aviso strong { color: var(--text); }
+  /* ---------- barra do topo ---------- */
+  .barra { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--plano) 85%, transparent);
+           backdrop-filter: saturate(1.4) blur(12px); -webkit-backdrop-filter: saturate(1.4) blur(12px);
+           border-bottom: 1px solid var(--borda); padding-top: env(safe-area-inset-top); }
+  .barra-in { max-width: 1200px; margin: 0 auto; padding: 10px 20px; display: flex; align-items: center; gap: 12px; justify-content: space-between; }
+  .seletor { display: flex; align-items: center; gap: 10px; border: 0; background: none; padding: 4px 6px 4px 0; cursor: pointer; text-align: left; min-width: 0; }
+  .seletor .gota { width: 36px; height: 36px; border-radius: 10px; background: var(--acento); color: #fff; display: grid; place-items: center; flex: none; }
+  .seletor span.txt { display: flex; flex-direction: column; min-width: 0; }
+  .seletor small { font-size: 12px; color: var(--tinta-2); line-height: 1.2; }
+  .seletor strong { font-size: 16px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .seletor svg.seta { flex: none; color: var(--tinta-3); }
+  .vivo { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--tinta-2); white-space: nowrap; }
+  .vivo i { width: 8px; height: 8px; border-radius: 50%; background: var(--bom); flex: none; }
+  .vivo.ok i { animation: pulso 2s infinite; }
+  .vivo.atraso i { background: var(--atencao); }
+  .vivo.erro i { background: var(--inundacao); }
+  @keyframes pulso { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--bom) 50%, transparent); } 50% { box-shadow: 0 0 0 5px transparent; } }
+
+  /* ---------- estrutura ---------- */
+  main { max-width: 1200px; margin: 0 auto; padding: 16px 20px calc(40px + env(safe-area-inset-bottom));
+         display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); transition: opacity .2s; }
+  main.carregando { opacity: .5; }
+  .card { background: var(--superficie); border: 1px solid var(--borda); border-radius: 18px; padding: 18px; box-shadow: var(--sombra); min-width: 0; }
+  .card h2 { font-size: 17px; margin: 0; letter-spacing: -.01em; }
+  .card .sub { font-size: 13px; color: var(--tinta-2); margin: 3px 0 0; }
+  .cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+
+  /* ---------- destaque (agora) ---------- */
+  .hero { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 10px; }
+  .hero::before { content: ""; position: absolute; inset: -60px -60px auto auto; width: 220px; height: 220px; border-radius: 50%;
+                  background: radial-gradient(circle, color-mix(in srgb, var(--cor-status, var(--acento)) 22%, transparent), transparent 70%); pointer-events: none; }
+  .hero-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 650; padding: 4px 11px 4px 9px; border-radius: 999px; background: var(--superficie-2); white-space: nowrap; }
+  .pill i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .hero-linha { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+  .hero-num { font-size: clamp(56px, 16vw, 76px); font-weight: 750; letter-spacing: -.045em; line-height: .95; }
+  .hero-num small { font-size: .36em; font-weight: 500; color: var(--tinta-2); letter-spacing: 0; margin-left: 2px; }
+  .tend { display: flex; flex-direction: column; gap: 1px; padding-bottom: 6px; }
+  .tend b { font-size: 16px; }
+  .tend span { font-size: 13px; color: var(--tinta-2); }
+  .medidor { margin-top: 4px; }
+  .medidor .trilho { position: relative; height: 10px; border-radius: 6px; background: var(--superficie-2); overflow: visible; }
+  .medidor .agua { position: absolute; inset: 0 auto 0 0; border-radius: 6px; background: linear-gradient(90deg, color-mix(in srgb, var(--acento) 55%, transparent), var(--acento)); transition: width .6s; }
+  .medidor .marca { position: absolute; top: -4px; bottom: -4px; width: 2px; border-radius: 1px; }
+  .medidor .escala { position: relative; height: 16px; font-size: 11px; color: var(--tinta-3); margin-top: 6px; }
+  .medidor .escala span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .hero p { margin: 0; font-size: 14px; color: var(--tinta-2); position: relative; }
+  .hero p strong { color: var(--tinta); }
+  .aviso-atraso { color: var(--alerta); font-weight: 600; }
+
+  /* ---------- números rápidos ---------- */
+  .stats { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(140px, 1fr); gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory;
+           margin: 0 -20px; padding: 2px 20px 6px; scrollbar-width: none; }
+  .stats::-webkit-scrollbar { display: none; }
+  .stat { scroll-snap-align: start; background: var(--superficie); border: 1px solid var(--borda); border-radius: 16px; padding: 12px 14px; box-shadow: var(--sombra);
+          display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .stat .v { font-size: 24px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; white-space: nowrap; }
+  .stat .v small { font-size: 13px; font-weight: 500; color: var(--tinta-2); letter-spacing: 0; }
+  .stat .n { font-size: 12px; color: var(--tinta-2); line-height: 1.35; }
+  .sobe { color: var(--sobe); } .desce { color: var(--desce); }
+
+  /* ---------- gráfico ---------- */
+  .seg { display: inline-flex; background: var(--superficie-2); border-radius: 11px; padding: 3px; gap: 2px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .seg::-webkit-scrollbar { display: none; }
+  .seg button { border: 0; background: none; padding: 7px 12px; border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--tinta-2); white-space: nowrap; font-weight: 500; }
+  .seg button[aria-pressed="true"] { background: var(--elevado); color: var(--tinta); font-weight: 650; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  .seg button:disabled { opacity: .35; }
+  .seg.grande { display: flex; width: 100%; }
+  .seg.grande button { flex: 1; padding: 9px 12px; font-size: 15px; }
+  .controles { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 12px 0 10px; }
+  .controles select { background: var(--superficie-2); border: 0; border-radius: 10px; padding: 8px 10px; font-size: 14px; }
+
+  .leitura { min-height: 58px; display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; background: var(--superficie-2); margin-bottom: 8px; }
+  .leitura time { font-size: 12.5px; color: var(--tinta-2); font-weight: 600; }
+  .leitura .vals { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; align-items: baseline; }
+  .leitura .vals span { display: inline-flex; align-items: baseline; gap: 5px; white-space: nowrap; color: var(--tinta-2); }
+  .leitura .vals b { color: var(--tinta); font-size: 15px; font-variant-numeric: tabular-nums; }
+  .leitura .vals i { width: 10px; height: 3px; border-radius: 2px; display: inline-block; align-self: center; }
+  .leitura .vals i.barra { height: 9px; width: 6px; border-radius: 2px; }
+
+  .area-g { position: relative; height: 300px; touch-action: pan-y; }
+  .area-chuva { position: relative; height: 92px; margin-top: 2px; touch-action: pan-y; }
+  .area-chuva .rot-chuva { position: absolute; left: 50px; top: 0; font-size: 11px; color: var(--tinta-3); font-weight: 600; pointer-events: none; }
+
+  .nav { position: relative; height: 46px; margin-top: 10px; border-radius: 10px; background: var(--superficie-2); touch-action: none; user-select: none; cursor: pointer; }
+  .nav svg { position: absolute; inset: 6px 0; width: 100%; height: calc(100% - 12px); }
+  .nav .janela { position: absolute; top: 0; bottom: 0; border-radius: 10px; background: color-mix(in srgb, var(--acento) 14%, transparent);
+                 box-shadow: inset 0 0 0 2px var(--acento); cursor: grab; }
+  .nav .janela:active { cursor: grabbing; }
+  .nav .alca { position: absolute; top: 50%; width: 22px; height: 46px; transform: translate(-50%, -50%); cursor: ew-resize; display: grid; place-items: center; }
+  .nav .alca::after { content: ""; width: 8px; height: 24px; border-radius: 4px; background: var(--acento); box-shadow: 0 0 0 2px var(--superficie); }
+  .nav .alca.e { left: 0; } .nav .alca.d { left: 100%; }
+  .nav-dica { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; color: var(--tinta-3); margin-top: 6px; }
+  .nav-dica button { border: 0; background: none; color: var(--acento); font-weight: 600; font-size: 13px; cursor: pointer; padding: 4px 0; }
+
+  .anos { display: flex; gap: 6px; overflow-x: auto; margin: 12px -18px 0; padding: 0 18px 2px; scrollbar-width: none; }
+  .anos::-webkit-scrollbar { display: none; }
+  .ano { flex: none; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--borda); background: var(--superficie); border-radius: 999px;
+         padding: 6px 12px 6px 10px; font-size: 13.5px; cursor: pointer; color: var(--tinta-2); font-variant-numeric: tabular-nums; }
+  .ano i { width: 14px; height: 4px; border-radius: 2px; background: var(--neutro); }
+  .ano[aria-pressed="true"] { color: var(--tinta); font-weight: 650; border-color: var(--eixo); }
+  .ano em { font-style: normal; font-size: 11px; color: var(--tinta-3); font-weight: 400; }
+
+  /* ---------- ano a ano (linhas) ---------- */
+  .linhas { display: flex; flex-direction: column; }
+  .linha { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 10px 6px; border: 0; background: none;
+           text-align: left; border-bottom: 1px solid var(--grade); cursor: pointer; border-radius: 8px; }
+  .linha:last-child { border-bottom: 0; }
+  .linha:hover { background: var(--superficie-2); }
+  .linha .ano-n { font-weight: 650; font-variant-numeric: tabular-nums; font-size: 14px; }
+  .linha .ano-n em { display: block; font-style: normal; font-size: 11px; color: var(--tinta-3); font-weight: 500; }
+  .linha .trilho { position: relative; height: 12px; border-radius: 4px; background: var(--superficie-2); }
+  .linha .enche { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--neutro); }
+  .linha .marca { position: absolute; top: -3px; bottom: -3px; width: 2px; border-radius: 1px; opacity: .9; }
+  .linha .val { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .linha .det { grid-column: 2 / 4; font-size: 12px; color: var(--tinta-2); display: flex; gap: 10px; flex-wrap: wrap; }
+  .linha .det .dias { display: inline-flex; gap: 6px; }
+  .linha .det .dias span { display: inline-flex; align-items: center; gap: 4px; }
+  .linha .det .dias i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+  .legenda-cotas { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--tinta-2); margin-top: 10px; }
+  .legenda-cotas span { display: inline-flex; align-items: center; gap: 5px; }
+  .legenda-cotas i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+
+  /* ---------- mapa de calor ---------- */
+  .rolagem { overflow-x: auto; margin: 0 -18px; padding: 0 18px; }
+  table.calor { border-collapse: separate; border-spacing: 2px; width: 100%; min-width: 560px; font-variant-numeric: tabular-nums; }
+  table.calor th { font-size: 11.5px; font-weight: 600; color: var(--tinta-3); padding: 3px; }
+  table.calor th[scope="row"] { text-align: right; padding-right: 8px; color: var(--tinta-2); position: sticky; left: 0; background: var(--superficie); }
+  table.calor td { height: 30px; text-align: center; font-size: 12px; border-radius: 4px; background: var(--superficie-2); color: var(--tinta-3); }
+  table.calor td.max { box-shadow: inset 0 0 0 2px var(--tinta); font-weight: 700; }
+  .escala-calor { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--tinta-2); margin-top: 10px; flex-wrap: wrap; }
+  .escala-calor .barra { display: flex; height: 8px; width: 140px; border-radius: 3px; overflow: hidden; }
+  .escala-calor .barra i { flex: 1; }
+
+  /* ---------- cheias ---------- */
+  ol.cheias { list-style: none; margin: 0; padding: 0; counter-reset: c; }
+  ol.cheias li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--grade); counter-increment: c; }
+  ol.cheias li:last-child { border-bottom: 0; }
+  ol.cheias li::before { content: counter(c); grid-row: span 2; color: var(--tinta-3); font-size: 13px; font-weight: 600; text-align: center; }
+  ol.cheias .quando { font-weight: 600; font-size: 14px; }
+  ol.cheias .quando em { font-style: normal; font-size: 11px; font-weight: 700; color: var(--acento); margin-left: 6px; text-transform: uppercase; letter-spacing: .04em; }
+  ol.cheias .pico { font-weight: 750; font-size: 17px; text-align: right; font-variant-numeric: tabular-nums; }
+  ol.cheias .extra { font-size: 12px; color: var(--tinta-2); }
+  ol.cheias .pill { justify-self: end; font-size: 12px; padding: 2px 9px 2px 7px; }
+
+  details.card summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+  details.card summary::-webkit-details-marker { display: none; }
+  details.card summary::after { content: "+"; font-size: 22px; color: var(--tinta-3); line-height: 1; }
+  details.card[open] summary::after { content: "–"; }
+  .area-perm { position: relative; height: 260px; margin-top: 12px; }
+  .sobre { font-size: 13px; color: var(--tinta-2); line-height: 1.6; }
+  .sobre ul { margin: 8px 0 0; padding-left: 18px; }
   #erro { display: none; border-color: var(--inundacao); color: var(--inundacao); }
-  @media (max-width: 900px) { .grade { grid-template-columns: 1fr 1fr; } .principal { grid-column: 1 / -1; } .rios { grid-template-columns: 1fr; } }
-  @media (max-width: 520px) { header, main { padding-left: 16px; padding-right: 16px; } .grade { grid-template-columns: 1fr; }
-                              .caixa-grafico { height: 300px; } }
+
+  /* ---------- folha de estações ---------- */
+  dialog.folha { border: 0; padding: 0; margin: auto auto 0; width: 100%; max-width: 560px; max-height: 85vh; border-radius: 22px 22px 0 0;
+                 background: var(--superficie); color: var(--tinta); box-shadow: 0 -10px 40px rgba(0,0,0,.25); }
+  dialog.folha::backdrop { background: rgba(0,0,0,.4); backdrop-filter: blur(2px); }
+  dialog.folha[open] { animation: sobe .22s ease-out; }
+  @keyframes sobe { from { transform: translateY(40px); opacity: 0; } }
+  .folha-in { padding: 10px 18px calc(18px + env(safe-area-inset-bottom)); }
+  .folha .puxador { width: 40px; height: 5px; border-radius: 3px; background: var(--eixo); margin: 0 auto 12px; }
+  .folha h3 { font-size: 13px; color: var(--tinta-3); text-transform: uppercase; letter-spacing: .06em; margin: 14px 0 6px; }
+  .op-est { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; width: 100%; text-align: left; border: 1px solid var(--borda); background: var(--superficie);
+            border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; align-items: center; }
+  .op-est[aria-current="true"] { border-color: var(--acento); box-shadow: inset 0 0 0 1px var(--acento); }
+  .op-est strong { font-size: 15px; }
+  .op-est small { font-size: 12px; color: var(--tinta-2); grid-column: 1; }
+  .op-est .nv { grid-row: 1 / 3; grid-column: 2; text-align: right; font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums; }
+  .op-est .nv small { display: block; font-size: 11px; font-weight: 500; color: var(--tinta-3); }
+  .selo { font-size: 10px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; color: var(--acento); border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; margin-left: 6px; vertical-align: 2px; }
+
+  /* ---------- telas maiores ---------- */
+  @media (min-width: 900px) {
+    .barra-in { padding: 12px 28px; }
+    main { padding: 22px 28px 48px; grid-template-columns: 340px minmax(0, 1fr); gap: 20px; align-items: start; }
+    .coluna { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 84px; }
+    .stats { grid-auto-flow: row; grid-template-columns: 1fr 1fr; overflow: visible; margin: 0; padding: 0; }
+    .stats .stat:last-child:nth-child(odd) { grid-column: span 2; }
+    .grafico { grid-column: 2; }
+    .largo { grid-column: 1 / -1; }
+    .duas { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+    .area-g { height: 380px; }
+    .area-chuva { height: 110px; }
+    dialog.folha { margin: auto; border-radius: 22px; }
+    .card { padding: 22px; }
+    .anos { margin: 12px 0 0; padding: 0 0 2px; flex-wrap: wrap; overflow: visible; }
+  }
+  @media (max-width: 899px) {
+    .coluna { display: contents; }
+    .duas { display: contents; }
+  }
 </style>
 </head>
 <body>
-<header>
-  <div>
-    <h1 id="titulo">Rios Paraitinga e Paraibuna</h1>
-    <div class="sub">Monitoramento em tempo real · telemetria ANA</div>
-  </div>
-  <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap">
-    <span class="ao-vivo"><span id="ponto" class="ponto"></span><span id="situacao">Carregando…</span></span>
-    <a class="link-analise" href="analise.html">Histórico e comparação entre anos →</a>
+<header class="barra">
+  <div class="barra-in">
+    <button class="seletor" id="btnEstacao" aria-haspopup="dialog">
+      <span class="gota"><svg width="16" height="18" viewBox="0 0 14 16" aria-hidden="true"><path d="M7 1C7 1 1.5 7.2 1.5 10.4a5.5 5.5 0 0 0 11 0C12.5 7.2 7 1 7 1Z" fill="currentColor"/></svg></span>
+      <span class="txt"><small id="selRio">Rio Paraitinga</small><strong id="selNome">São Luiz do Paraitinga</strong></span>
+      <svg class="seta" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+    </button>
+    <span class="vivo" id="vivo"><i></i><span id="vivoTxt">Carregando…</span></span>
   </div>
 </header>
 
-<main>
-  <div id="erro" class="aviso"></div>
-
-  <section class="rios" id="rios"></section>
-
-  <section class="card">
-    <div class="titulo-detalhe">
-      <div>
-        <div class="rotulo" id="detRio"></div>
-        <h2 id="detNome">—</h2>
-      </div>
-      <div class="sub" id="detInfo"></div>
-    </div>
-  </section>
-
-  <section class="grade">
-    <div class="card principal" id="cardNivel">
-      <div class="regua" id="regua"><div class="agua" id="agua"></div></div>
-      <div>
-        <div class="rotulo">Nível do rio</div>
-        <div class="valor" id="nivel">—</div>
-        <div class="pill status" id="status">—</div>
-        <div class="info" id="horaLeitura"></div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="rotulo">Tendência</div>
-      <div class="valor" id="taxa">—</div>
-      <div class="tendencia" id="tendencia"></div>
-      <div class="info" id="variacao"></div>
-    </div>
-    <div class="card">
-      <div class="rotulo">Vazão</div>
-      <div class="valor" id="vazao">—</div>
-      <div class="info" id="vazaoMax"></div>
-    </div>
-    <div class="card">
-      <div class="rotulo">Chuva na estação</div>
-      <div class="valor" id="chuva24">—</div>
-      <div class="info" id="chuva1h"></div>
-    </div>
-  </section>
-
-  <section class="card">
-    <div class="grafico-topo">
-      <div class="rotulo">Nível do rio e chuva</div>
-      <div class="botoes" id="periodos">
-        <button data-dias="1">24 h</button>
-        <button data-dias="3" class="ativo">3 dias</button>
-        <button data-dias="7">7 dias</button>
-        <button data-dias="30">30 dias</button>
-        <button data-dias="182">6 meses</button>
-        <button data-dias="365">1 ano</button>
-        <button data-dias="730">2 anos</button>
-        <button data-dias="99999">Tudo</button>
-      </div>
-    </div>
-    <div class="caixa-grafico"><canvas id="grafico"></canvas></div>
-    <div class="legenda" id="legenda"></div>
-  </section>
-
-  <div class="aviso">
-    <strong>As cotas não são as oficiais</strong> (a Defesa Civil não as publica). No Paraitinga foram estimadas a partir de
-    cheias reais registradas na régua da cidade; no Paraibuna, pelo histórico de 2026. Ajuste em <code>config.json</code>. Fonte: rede telemétrica da ANA. A página atualiza sozinha.
-    Em emergência ligue <strong>199</strong> (Defesa Civil) ou <strong>193</strong> (Bombeiros).
+<dialog class="folha" id="folha" aria-label="Escolher estação">
+  <div class="folha-in">
+    <div class="puxador"></div>
+    <div id="listaEstacoes"></div>
   </div>
+</dialog>
+
+<main id="principal" class="carregando">
+  <div id="erro" class="card largo"></div>
+
+  <div class="coluna">
+    <section class="card hero" id="hero">
+      <div class="hero-top"><span class="rot" id="hRot">Agora</span><span class="pill" id="hStatus"><i></i>—</span></div>
+      <div class="hero-linha">
+        <div class="hero-num" id="hNum">—</div>
+        <div class="tend" id="hTend"></div>
+      </div>
+      <div class="medidor" id="medidor"><div class="trilho"><div class="agua" id="mAgua"></div></div><div class="escala" id="mEscala"></div></div>
+      <p id="hFrase"></p>
+    </section>
+    <section class="stats" id="stats" aria-label="Números rápidos"></section>
+  </div>
+
+  <section class="card grafico">
+    <div class="seg grande" id="modo" role="tablist">
+      <button data-modo="agora" role="tab">Últimos dias</button>
+      <button data-modo="comparar" role="tab">Comparar anos</button>
+    </div>
+    <div class="controles" id="ctrlAgora">
+      <div class="seg" id="janelas">
+        <button data-d="1">24 h</button><button data-d="3">3 dias</button><button data-d="7">7 dias</button><button data-d="30">30 dias</button>
+      </div>
+    </div>
+    <div class="controles" id="ctrlComp" hidden>
+      <div class="seg" id="periodos">
+        <button data-de="1" data-ate="12">Ano</button><button data-de="10" data-ate="3">Chuvoso</button><button data-de="12" data-ate="3">Verão</button><button data-de="10" data-ate="9">Hidrológico</button>
+      </div>
+      <select id="metrica" aria-label="Medida">
+        <option value="nmax">Nível máximo</option><option value="nmed">Nível médio</option><option value="vmed">Vazão</option><option value="chuva">Chuva acumulada</option>
+      </select>
+    </div>
+
+    <div class="leitura" id="leitura" aria-live="polite"></div>
+    <div class="area-g"><canvas id="gPrincipal" aria-label="Gráfico do nível do rio"></canvas></div>
+    <div class="area-chuva" id="boxChuva"><span class="rot-chuva" id="rotChuva">Chuva (mm)</span><canvas id="gChuva" aria-label="Gráfico de chuva"></canvas></div>
+    <div class="nav" id="nav" role="slider" aria-label="Período visível do gráfico" tabindex="0">
+      <svg viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true"><path id="navLinha" fill="none" stroke="var(--tinta-3)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>
+      <div class="janela" id="navJanela"><span class="alca e" data-alca="e"></span><span class="alca d" data-alca="d"></span></div>
+    </div>
+    <div class="nav-dica"><span id="dicaNav">Arraste a janela para navegar · puxe as bordas para zoom</span><button id="verTudo">Ver tudo</button></div>
+    <div class="anos" id="anos" hidden></div>
+  </section>
+
+  <div class="duas">
+    <section class="card">
+      <div class="cab"><div><h2>Ano a ano</h2><p class="sub" id="anoSub">Maior nível de cada ano e dias acima das cotas. Toque num ano para comparar no gráfico.</p></div></div>
+      <div class="linhas" id="linhas"></div>
+      <div class="legenda-cotas" id="legCotas"></div>
+    </section>
+    <section class="card">
+      <div class="cab"><div><h2>Maiores cheias</h2><p class="sub" id="cheiasSub">Os 10 maiores picos registrados nesta estação.</p></div></div>
+      <ol class="cheias" id="cheias"></ol>
+    </section>
+  </div>
+
+  <section class="card largo">
+    <div class="cab"><div><h2>Nível máximo de cada mês</h2><p class="sub">Mais escuro = rio mais alto. O contorno marca o recorde do mês.</p></div></div>
+    <div class="rolagem"><table class="calor" id="calor"></table></div>
+    <div class="escala-calor" id="escalaCalor"></div>
+  </section>
+
+  <details class="card largo" id="detPerm">
+    <summary><div><h2>Com que frequência o rio fica alto</h2><p class="sub" id="permSub">Curva de permanência do nível médio diário.</p></div></summary>
+    <div class="area-perm"><canvas id="gPerm"></canvas></div>
+  </details>
+
+  <section class="card largo sobre">
+    <strong>Sobre os dados</strong>
+    <ul>
+      <li>Rede telemétrica da <a href="https://www.snirh.gov.br/hidrotelemetria/" target="_blank" rel="noopener">ANA</a>: leituras a cada 15 min, buscadas direto no seu navegador. O histórico (desde 2015) é atualizado todo dia.</li>
+      <li>As cotas de atenção, alerta e inundação <strong>não são oficiais</strong>; no Paraitinga foram estimadas com cheias reais registradas na régua da cidade.</li>
+      <li>Leituras com erro de sensor são descartadas do histórico. Anos <em>parciais</em> têm falhas e podem subestimar picos.</li>
+      <li>Em emergência ligue <strong>199</strong> (Defesa Civil) ou <strong>193</strong> (Bombeiros).</li>
+      <li>Versões anteriores: <a href="classico.html">tempo real</a> · <a href="analise.html">histórico e comparação</a>.</li>
+    </ul>
+  </section>
 </main>
 
 <script>
-const $ = id => document.getElementById(id);
-const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-let config, grafico, dias = 3, selecionada;
-const estacoes = {};      // codigo -> estação (com .rio)
-const resumo = {};        // codigo -> leituras dos últimos 3 dias
-
-const NIVEIS = [
+// ================= configuração e utilidades =================
+const ESTACAO_PADRAO = "58040000";
+const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const COTAS = [
   { chave: "inundacao", nome: "Inundação", cor: "--inundacao" },
-  { chave: "alerta",    nome: "Alerta",    cor: "--alerta" },
-  { chave: "atencao",   nome: "Atenção",   cor: "--atencao" },
+  { chave: "alerta", nome: "Alerta", cor: "--alerta" },
+  { chave: "atencao", nome: "Atenção", cor: "--atencao" },
 ];
+const METRICAS = {
+  nmax: { nome: "Nível máximo", un: "m", casas: 2 },
+  nmed: { nome: "Nível médio", un: "m", casas: 2 },
+  vmed: { nome: "Vazão média", un: "m³/s", casas: 1 },
+  chuva: { nome: "Chuva acumulada", un: "mm", casas: 0 },
+};
+const $ = s => document.querySelector(s);
+const tok = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt = (v, c = 2) => v == null || !isFinite(v) ? "—" : v.toLocaleString("pt-BR", { minimumFractionDigits: c, maximumFractionDigits: c });
+const media = a => a.reduce((s, x) => s + x, 0) / a.length;
+const mediana = a => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const ms = l => new Date(l.t).getTime();
+const dataCurta = d => `${+d.slice(8, 10)} ${MESES[+d.slice(5, 7) - 1]} ${d.slice(0, 4)}`;
+const quando = x => new Date(x).toLocaleString("pt-BR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const hojeISO = () => { const h = new Date(); return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, "0")}-${String(h.getDate()).padStart(2, "0")}`; };
+const ha = horas => horas < 1 ? `há ${Math.max(1, Math.round(horas * 60))} min` : horas < 48 ? `há ${fmt(horas, horas < 10 ? 1 : 0)} h` : `há ${fmt(horas / 24, 0)} dias`;
 
-function classificar(cm, est) {
-  for (const n of NIVEIS) if (cm >= est.cotas_cm[n.chave]) return n;
-  return { nome: "Normal", cor: "--normal" };
+const estado = { estacao: ESTACAO_PADRAO, modo: "agora", dias: 3, de: 1, ate: 12, metrica: "nmax", destaques: new Map(), janela: null, cursor: null };
+let config, estacoes = {};
+window.monitor = estado;   // facilita testes e depuração pelo console
+const cache = {};          // codigo -> { leituras (15 min, 30 dias), diario, quando }
+let graficos = {};
+
+// ================= dados =================
+const URL_ANA = "https://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos";
+const dataBR = d => d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+async function buscarAna(cod, dias) {
+  const agora = new Date();
+  const r = await fetch(`${URL_ANA}?codEstacao=${cod}&dataInicio=${dataBR(new Date(agora - dias * 864e5))}&dataFim=${dataBR(new Date(+agora + 864e5))}`);
+  if (!r.ok) throw new Error(`ANA respondeu ${r.status}`);
+  const xml = new DOMParser().parseFromString(await r.text(), "text/xml");
+  const campo = (n, k) => { const v = n.getElementsByTagName(k)[0]?.textContent.trim(); return v ? +v : null; };
+  const out = new Map();
+  for (const n of xml.getElementsByTagName("DadosHidrometereologicos")) {
+    const t = n.getElementsByTagName("DataHora")[0]?.textContent.trim();
+    if (!t) continue;
+    let nivel = campo(n, "Nivel"), vazao = campo(n, "Vazao");
+    if (nivel != null && nivel < 0) nivel = null;
+    if (vazao != null && (vazao < 0 || vazao >= 9000)) vazao = null;
+    out.set(t, { t: t.replace(" ", "T"), nivel, vazao, chuva: campo(n, "Chuva") });
+  }
+  return [...out.values()].sort((a, b) => a.t < b.t ? -1 : 1);
+}
+async function buscarDiario(cod) {
+  const r = await fetch(`historico/${cod}/diario.json`);
+  if (!r.ok) return [];
+  return (await r.json()).dados.map(([d, nmin, nmed, nmax, vmed, vmax, chuva, n]) => ({ d, nmin, nmed, nmax, vmed, vmax, chuva, n }));
+}
+// junta o diário salvo com os dias recentes vindos ao vivo
+function diarioCompleto(c) {
+  const dias = new Map(c.diario.map(r => [r.d, r]));
+  const porDia = {};
+  for (const l of c.leituras) (porDia[l.t.slice(0, 10)] ??= []).push(l);
+  for (const [d, ls] of Object.entries(porDia)) {
+    const nv = ls.map(l => l.nivel).filter(v => v != null), vz = ls.map(l => l.vazao).filter(v => v != null), ch = ls.map(l => l.chuva).filter(v => v != null);
+    if (!nv.length || (dias.get(d)?.n || 0) > nv.length) continue;
+    dias.set(d, { d, nmin: Math.min(...nv), nmed: media(nv), nmax: Math.max(...nv), vmed: vz.length ? media(vz) : null,
+                  vmax: vz.length ? Math.max(...vz) : null, chuva: ch.length ? ch.reduce((s, x) => s + x, 0) : null, n: nv.length });
+  }
+  return [...dias.values()].sort((a, b) => a.d < b.d ? -1 : 1);
+}
+async function carregar(cod) {
+  if (!cache[cod]) {
+    const [leituras, diario] = await Promise.all([buscarAna(cod, 30), buscarDiario(cod)]);
+    cache[cod] = { leituras, diario, quando: Date.now() };
+  }
+  cache[cod].dias = diarioCompleto(cache[cod]);
+  return cache[cod];
+}
+async function atualizarAoVivo() {
+  const c = cache[estado.estacao]; if (!c) return;
+  try {
+    const novas = await buscarAna(estado.estacao, 2), mapa = new Map(c.leituras.map(l => [l.t, l]));
+    for (const l of novas) mapa.set(l.t, l);
+    const corte = Date.now() - 31 * 864e5;
+    c.leituras = [...mapa.values()].filter(l => ms(l) >= corte).sort((a, b) => a.t < b.t ? -1 : 1);
+    c.dias = diarioCompleto(c);
+    const naPonta = estado.janela && estado.janela[1] >= (graficos.limite?.[1] ?? 0) - 36e5;
+    desenharHero(); desenharStats();
+    if (estado.modo === "agora") desenharAgora(naPonta);
+  } catch { marcarVivo("erro"); }
 }
 
-const fmt = (v, casas = 0) => v == null || !isFinite(v) ? "—" : v.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas });
-const ms = l => new Date(l.t).getTime();
-const hora = d => new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-const sinal = v => v == null ? "—" : (v > 0 ? "+" : "") + fmt(v);
+// ================= estado ao vivo =================
 const comNivel = ls => ls.filter(l => l.nivel != null);
-
-// Compara a última leitura com a mais recente que tenha pelo menos `horas` de diferença.
-// Em estações com poucas leituras por dia, isso vira "desde a leitura anterior".
+function classificar(cm) {
+  const c = estacoes[estado.estacao].cotas_cm;
+  return COTAS.find(n => cm >= c[n.chave]) || { nome: "Normal", cor: "--bom" };
+}
 function variacao(ls, horas) {
   const n = comNivel(ls); if (n.length < 2) return null;
   const u = n.at(-1);
-  for (let i = n.length - 2; i >= 0; i--) {
-    const h = (ms(u) - ms(n[i])) / 3600e3;
-    if (h >= horas * 0.92) return { delta: u.nivel - n[i].nivel, horas: h };
-  }
+  for (let i = n.length - 2; i >= 0; i--) { const h = (ms(u) - ms(n[i])) / 36e5; if (h >= horas * .92) return { delta: u.nivel - n[i].nivel, horas: h }; }
   return null;
 }
-
-function tendencia(ls) {
-  const v = variacao(ls, 1);
-  if (!v) return { taxa: null, texto: "—", cor: "--muted", seta: "" };
-  const taxa = v.delta / v.horas;
-  // Defesa Civil local: nas cheias o rio sobe de 8 a 10 cm/h no centro
-  if (taxa >= 10) return { taxa, texto: "⬆ Subindo rápido", cor: "--inundacao", seta: "⬆" };
-  if (taxa >= 5)  return { taxa, texto: "↑ Subindo", cor: "--alerta", seta: "↑" };
-  if (taxa <= -5) return { taxa, texto: "↓ Baixando", cor: "--normal", seta: "↓" };
-  return { taxa, texto: "→ Estável", cor: "--muted", seta: "→" };
+function marcarVivo(tipo, texto) {
+  $("#vivo").className = "vivo " + tipo;
+  $("#vivoTxt").textContent = texto || (tipo === "erro" ? "Sem conexão com a ANA" : "");
 }
 
-function somaChuva(ls, horas) {
-  const fim = ms(ls.at(-1));
-  return ls.filter(l => fim - ms(l) < horas * 3600e3).reduce((s, l) => s + (l.chuva || 0), 0);
-}
+// ================= destaque =================
+function desenharHero() {
+  const est = estacoes[estado.estacao], c = cache[estado.estacao], u = comNivel(c.leituras).at(-1);
+  if (!u) { $("#hNum").textContent = "—"; $("#hFrase").textContent = "A estação não enviou leituras nos últimos 30 dias."; marcarVivo("erro", "Estação sem dados"); return; }
+  const horas = (Date.now() - ms(u)) / 36e5, atrasada = horas > est.atraso_max_horas, st = classificar(u.nivel);
+  document.documentElement.style.setProperty("--cor-status", tok(st.cor));
+  $("#hRot").innerHTML = atrasada ? `<span class="aviso-atraso">⚠ Última leitura ${ha(horas)}</span>` : `Agora · ${new Date(ms(u)).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  $("#hStatus").innerHTML = `<i style="background:${tok(st.cor)}"></i>${st.nome}`;
+  $("#hNum").innerHTML = `${fmt(u.nivel / 100, 2)}<small>m</small>`;
+  marcarVivo(atrasada ? "atraso" : "ok", atrasada ? `Sem leitura nova ${ha(horas)}` : `Ao vivo · ${ha(horas)}`);
 
-const atrasada = (u, est) => (Date.now() - ms(u)) / 3600e3 > est.atraso_max_horas;
+  const v = variacao(c.leituras, 1), taxa = v ? v.delta / v.horas : null;
+  let txt = "Estável", cls = "";
+  if (taxa != null && taxa >= 10) { txt = "Subindo rápido"; cls = "sobe"; }
+  else if (taxa != null && taxa >= 2) { txt = "Subindo"; cls = "sobe"; }
+  else if (taxa != null && taxa <= -2) { txt = "Baixando"; cls = "desce"; }
+  const seta = cls === "sobe" ? "▲" : cls === "desce" ? "▼" : "▬";
+  $("#hTend").innerHTML = taxa == null ? "" : `<b class="${cls}">${seta} ${txt}</b><span>${taxa > 0 ? "+" : ""}${fmt(taxa, 0)} cm/h</span>`;
 
-function sparkline(ls) {
-  const n = comNivel(ls); if (n.length < 2) return "";
-  const x0 = ms(n[0]), x1 = ms(n.at(-1)) || x0 + 1;
-  const ys = n.map(l => l.nivel), y0 = Math.min(...ys), y1 = Math.max(...ys) || y0 + 1;
-  const pts = n.map(l => `${((ms(l) - x0) / (x1 - x0 || 1) * 300).toFixed(1)},${(28 - (l.nivel - y0) / (y1 - y0 || 1) * 26).toFixed(1)}`).join(" ");
-  return `<svg viewBox="0 0 300 30" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${css("--rio")}" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>`;
-}
-
-// ---------- visão geral ----------
-function montarVisaoGeral() {
-  $("rios").innerHTML = config.rios.map(rio => `
-    <div class="card rio">
-      <h2>${rio.nome}</h2>
-      <div class="sub">${rio.estacoes.length} ${rio.estacoes.length === 1 ? "estação" : "estações"} · clique para ver os detalhes · gráfico das últimas 72 h</div>
-      <div class="estacoes">
-        ${rio.estacoes.map(e => `<button class="mini" id="mini-${e.codigo}" data-cod="${e.codigo}">
-            <span class="nome">${e.nome}</span><span class="num">…</span>
-            <span class="det"></span><span></span></button>`).join("")}
-      </div>
-    </div>`).join("");
-  $("rios").onclick = ev => { const b = ev.target.closest(".mini"); if (b) selecionar(b.dataset.cod); };
-}
-
-function desenharMini(cod) {
-  const est = estacoes[cod], b = $("mini-" + cod), ls = resumo[cod];
-  b.classList.toggle("sel", cod === selecionada);
-  if (!ls || !comNivel(ls).length) {
-    b.style.borderLeftColor = css("--semdado");
-    b.innerHTML = `<span class="nome">${est.nome}</span><span class="num">—</span><span class="det">${ls ? "sem leituras recentes" : "sem conexão"}</span><span></span>`;
-    return;
+  // medidor com as cotas
+  const cotas = est.cotas_cm, topo = Math.max(cotas.inundacao * 1.25, u.nivel * 1.05);
+  $("#mAgua").style.width = Math.min(100, u.nivel / topo * 100) + "%";
+  $("#mAgua").style.background = `linear-gradient(90deg, color-mix(in srgb, ${tok("--acento")} 45%, transparent), ${tok("--acento")})`;
+  $("#medidor .trilho").querySelectorAll(".marca").forEach(m => m.remove());
+  for (const n of COTAS) {
+    const m = document.createElement("span"); m.className = "marca";
+    m.style.left = cotas[n.chave] / topo * 100 + "%"; m.style.background = tok(n.cor); m.title = `${n.nome}: ${fmt(cotas[n.chave] / 100, 2)} m`;
+    $("#medidor .trilho").appendChild(m);
   }
-  const u = comNivel(ls).at(-1), st = classificar(u.nivel, est), t = tendencia(ls);
-  const velha = atrasada(u, est);
-  b.style.borderLeftColor = css(st.cor);
-  b.innerHTML = `
-    <span class="nome">${est.nome}</span>
-    <span class="num">${fmt(u.nivel / 100, 2)} <small>m</small></span>
-    <span class="det"><span class="pill" style="background:${css(st.cor)}">${st.nome}</span>
-      <span class="seta" style="color:${css(t.cor)}">${t.seta} ${t.taxa == null ? "" : sinal(t.taxa) + " cm/h"}</span></span>
-    <span class="det" style="justify-content:flex-end">${velha ? "⚠ " : ""}${hora(ms(u))}</span>
-    ${sparkline(ls)}`;
-}
+  $("#mEscala").innerHTML = `<span style="left:0;transform:none">0</span>` +
+    COTAS.slice().reverse().map(n => `<span style="left:${cotas[n.chave] / topo * 100}%">${fmt(cotas[n.chave] / 100, 1)}</span>`).join("");
 
-// Leituras recentes direto da ANA (o serviço aceita HTTPS e libera acesso pelo navegador).
-const URL_ANA = "https://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos";
-const dataBR = d => d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
-
-async function buscarAna(cod, d) {
-  const agora = new Date();
-  const r = await fetch(`${URL_ANA}?codEstacao=${cod}&dataInicio=${dataBR(new Date(agora - d * 86400e3))}&dataFim=${dataBR(new Date(+agora + 86400e3))}`);
-  if (!r.ok) throw new Error(`ANA respondeu ${r.status}`);
-  const xml = new DOMParser().parseFromString(await r.text(), "text/xml");
-  const campo = (n, nome) => { const v = n.getElementsByTagName(nome)[0]?.textContent.trim(); return v ? +v : null; };
-  const porHora = new Map();
-  for (const n of xml.getElementsByTagName("DadosHidrometereologicos")) {
-    const t = n.getElementsByTagName("DataHora")[0]?.textContent.trim();
-    if (t) porHora.set(t, { t: t.replace(" ", "T"), nivel: campo(n, "Nivel"), vazao: campo(n, "Vazao"), chuva: campo(n, "Chuva") });
-  }
-  return [...porHora.values()].sort((a, b) => ms(a) - ms(b));
-}
-
-// Reserva: a função api/dados (servidor local ou Vercel), caso a ANA bloqueie o navegador.
-async function buscarApi(cod, d) {
-  try { return await buscarAna(cod, d); }
-  catch (erroAna) {
-    const r = await fetch(`api/dados?estacao=${cod}&dias=${d}`).catch(() => null);
-    if (!r || !r.ok) throw erroAna;
-    return (await r.json()).leituras;
-  }
-}
-
-// Histórico salvo em /historico/<codigo>/<AAAA-MM>.json (atualizado 1x por dia)
-let indiceHist = null;
-const cacheMes = {};
-async function mesesDisponiveis(cod) {
-  if (!indiceHist) {
-    try { indiceHist = (await (await fetch("historico/index.json")).json()).meses; } catch { indiceHist = {}; }
-  }
-  return indiceHist[cod] || [];
-}
-function mesHist(cod, mes) {
-  const k = `${cod}/${mes}`;
-  cacheMes[k] ??= fetch(`historico/${k}.json`)
-    .then(r => r.ok ? r.json() : { dados: [] })
-    .then(j => j.dados.map(([t, nivel, vazao, chuva]) => ({ t, nivel, vazao, chuva })));
-  return cacheMes[k];
-}
-
-async function buscar(cod, d) {
-  if (d <= 30) return buscarApi(cod, d);
-  const tudo = d >= 99999, corte = Date.now() - d * 86400e3;
-  const primeiro = tudo ? "" : new Date(corte).toISOString().slice(0, 7);
-  const meses = (await mesesDisponiveis(cod)).filter(m => m >= primeiro);
-  const [partes, recentes] = await Promise.all([
-    Promise.all(meses.map(m => mesHist(cod, m))),
-    buscarApi(cod, 10).catch(() => []),   // cobre os dias que o histórico ainda não tem
-  ]);
-  const porHora = new Map();
-  for (const l of partes.flat().concat(recentes)) porHora.set(l.t.slice(0, 16), l);
-  return [...porHora.values()].filter(l => tudo || ms(l) >= corte).sort((a, b) => ms(a) - ms(b));
-}
-
-const maior = (arr, f) => arr.reduce((m, x) => (m == null || f(x) > f(m) ? x : m), null);
-
-async function atualizarResumo() {
-  const cods = Object.keys(estacoes);
-  const res = await Promise.allSettled(cods.map(c => buscar(c, 3)));
-  let falhas = 0, velhas = 0;
-  res.forEach((r, i) => {
-    const c = cods[i];
-    if (r.status === "fulfilled") resumo[c] = r.value; else { falhas++; delete resumo[c]; }
-    const n = resumo[c] && comNivel(resumo[c]);
-    if (n && n.length && atrasada(n.at(-1), estacoes[c])) velhas++;
-    desenharMini(c);
+  // comparação com o normal da época (±7 dias, anos anteriores)
+  const hoje = hojeISO(), ano = +hoje.slice(0, 4), alvo = Date.UTC(2024, +hoje.slice(5, 7) - 1, +hoje.slice(8, 10));
+  const janela = c.dias.filter(r => {
+    if (+r.d.slice(0, 4) >= ano || r.nmed == null) return false;
+    const x = Date.UTC(2024, +r.d.slice(5, 7) - 1, +r.d.slice(8, 10)), d = Math.abs(x - alvo);
+    return Math.min(d, 366 * 864e5 - d) <= 7 * 864e5;
   });
-  const agora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-  if (falhas === cods.length) { $("ponto").className = "ponto erro"; $("situacao").textContent = "Sem conexão com a ANA"; }
-  else if (falhas || velhas) { $("ponto").className = "ponto atrasado"; $("situacao").textContent = `Atualizado ${agora} · ${falhas + velhas} estação(ões) sem leitura recente`; }
-  else { $("ponto").className = "ponto vivo"; $("situacao").textContent = `Ao vivo · atualizado ${agora}`; }
+  const normal = mediana(janela.map(r => r.nmed));
+  const verbo = atrasada ? "estava" : "está";
+  if (normal != null) {
+    const dif = (u.nivel - normal) / 100;
+    $("#hFrase").innerHTML = `O ${est.rio.replace("Rio ", "rio ")} ${verbo} <strong>${fmt(Math.abs(dif), 2)} m ${dif >= 0 ? "acima" : "abaixo"} do normal</strong> para ${+hoje.slice(8, 10)} de ${MESES[+hoje.slice(5, 7) - 1]} (${fmt(normal / 100, 2)} m).` +
+      (atrasada ? ` <span class="aviso-atraso">A estação parou de transmitir; o nível real pode ser outro.</span>` : "");
+  } else $("#hFrase").textContent = "";
 }
 
-// ---------- detalhe ----------
-function atualizarCards(ls, est) {
-  const n = comNivel(ls);
-  if (!n.length) { $("nivel").textContent = "sem dados"; return; }
-  const u = n.at(-1), st = classificar(u.nivel, est), cor = css(st.cor);
-
-  $("nivel").innerHTML = `${fmt(u.nivel / 100, 2)} <small>m</small>`;
-  $("status").textContent = st.nome;
-  $("status").style.background = cor;
-  $("cardNivel").style.borderLeftColor = cor;
-  $("horaLeitura").textContent = `${atrasada(u, est) ? "⚠ Leitura antiga: " : "Leitura de "}${hora(ms(u))} · ${fmt(u.nivel)} cm na régua`;
-
-  const topo = est.cotas_cm.inundacao * 1.2;
-  $("agua").style.height = Math.min(100, u.nivel / topo * 100) + "%";
-  $("regua").querySelectorAll(".marca").forEach(m => m.remove());
-  for (const nv of NIVEIS) {
-    const m = document.createElement("div");
-    m.className = "marca";
-    m.style.bottom = (est.cotas_cm[nv.chave] / topo * 100) + "%";
-    m.style.background = css(nv.cor);
-    $("regua").appendChild(m);
-  }
-
-  const t = tendencia(ls);
-  $("taxa").innerHTML = `${t.taxa == null ? "—" : sinal(t.taxa)} <small>cm/h</small>`;
-  $("tendencia").textContent = t.texto;
-  $("tendencia").style.color = css(t.cor);
-  const v3 = variacao(ls, 3);
-  $("variacao").textContent = v3 ? `Variação de ${sinal(v3.delta)} cm em ${fmt(v3.horas, v3.horas < 10 ? 1 : 0)} h` : "";
-
-  const cv = ls.filter(l => l.vazao != null);
-  $("vazao").innerHTML = cv.length ? `${fmt(cv.at(-1).vazao, 1)} <small>m³/s</small>` : "—";
-  $("vazaoMax").textContent = cv.length ? `Máxima no período: ${fmt(maior(cv, l => l.vazao).vazao, 1)} m³/s` : "Estação não informa vazão";
-
+function desenharStats() {
+  const est = estacoes[estado.estacao], c = cache[estado.estacao], ls = c.leituras;
+  const fim = ls.length ? ms(ls.at(-1)) : Date.now();
+  const soma = h => ls.filter(l => fim - ms(l) < h * 36e5).reduce((s, l) => s + (l.chuva || 0), 0);
   const temChuva = ls.some(l => l.chuva != null);
-  $("chuva24").innerHTML = temChuva ? `${fmt(somaChuva(ls, 24), 1)} <small>mm/24h</small>` : "—";
-  $("chuva1h").textContent = temChuva ? `Última hora: ${fmt(somaChuva(ls, 1), 1)} mm` : "Estação não mede chuva";
+  const vz = ls.filter(l => l.vazao != null).at(-1);
+  const ano = new Date().getFullYear(), doAno = c.dias.filter(r => +r.d.slice(0, 4) === ano && r.nmax != null);
+  const pico = doAno.reduce((m, r) => (!m || r.nmax > m.nmax ? r : m), null);
+  const acima = doAno.filter(r => r.nmax >= est.cotas_cm.atencao).length;
+  // pico do ano entre todos os anos
+  const picos = new Map();
+  for (const r of c.dias) { const y = r.d.slice(0, 4); if (r.nmax != null && (!picos.has(y) || r.nmax > picos.get(y))) picos.set(y, r.nmax); }
+  const rank = pico ? [...picos.values()].sort((a, b) => b - a).indexOf(pico.nmax) + 1 : null;
+  const cards = [
+    temChuva ? ["Chuva 24 h", `${fmt(soma(24), 1)}<small> mm</small>`, `Última hora: ${fmt(soma(1), 1)} mm`] : null,
+    temChuva ? ["Chuva 7 dias", `${fmt(soma(168), 0)}<small> mm</small>`, `30 dias: ${fmt(soma(720), 0)} mm`] : null,
+    vz ? ["Vazão", `${fmt(vz.vazao, 0)}<small> m³/s</small>`, "Volume de água passando"] : null,
+    pico ? [`Pico de ${ano}`, `${fmt(pico.nmax / 100, 2)}<small> m</small>`, `${dataCurta(pico.d)} · ${rank}º maior de ${picos.size} anos`] : null,
+    [`Dias acima da atenção`, `${acima}<small> em ${ano}</small>`, `Cota de atenção: ${fmt(est.cotas_cm.atencao / 100, 2)} m`],
+  ].filter(Boolean);
+  $("#stats").innerHTML = cards.map(([r, v, n]) => `<div class="stat"><span class="rot">${r}</span><span class="v">${v}</span><span class="n">${n}</span></div>`).join("");
 }
 
-const linhasCota = {
-  id: "linhasCota",
-  afterDatasetsDraw(chart) {
-    const { ctx, chartArea: a, scales: { y } } = chart, est = estacoes[selecionada];
+// ================= plugins de desenho =================
+const pluginCotas = {
+  id: "cotas",
+  afterDatasetsDraw(c, _, op) {
+    if (!op?.ativo) return;
+    const { ctx, chartArea: a, scales: { y } } = c, cotas = estacoes[estado.estacao].cotas_cm;
     ctx.save();
-    for (const n of NIVEIS) {
-      const v = est.cotas_cm[n.chave] / 100;
+    for (const n of COTAS) {
+      const v = cotas[n.chave] / 100;
       if (v > y.max || v < y.min) continue;
-      const py = y.getPixelForValue(v);
-      ctx.strokeStyle = css(n.cor); ctx.setLineDash([6, 4]); ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(a.left, py); ctx.lineTo(a.right, py); ctx.stroke();
-      ctx.fillStyle = css(n.cor); ctx.font = "12px system-ui"; ctx.textAlign = "right";
-      ctx.fillText(n.nome, a.right - 4, py - 4);
+      const py = Math.round(y.getPixelForValue(v)) + .5;
+      ctx.strokeStyle = tok(n.cor); ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
+      ctx.beginPath(); ctx.moveTo(a.left, py); ctx.lineTo(a.right, py); ctx.stroke(); ctx.setLineDash([]);
+      ctx.font = "600 10.5px system-ui"; ctx.textAlign = "right"; ctx.textBaseline = "bottom";
+      const t = n.nome, w = ctx.measureText(t).width;
+      ctx.fillStyle = tok("--superficie"); ctx.globalAlpha = .85; ctx.fillRect(a.right - w - 8, py - 14, w + 6, 13); ctx.globalAlpha = 1;
+      ctx.fillStyle = tok("--tinta-2"); ctx.fillText(t, a.right - 4, py - 2);
     }
     ctx.restore();
-  }
+  },
 };
+const pluginCursor = {
+  id: "cursor",
+  afterDatasetsDraw(c) {
+    if (estado.cursor == null) return;
+    const { ctx, chartArea: a, scales: { x } } = c;
+    if (estado.cursor < x.min || estado.cursor > x.max) return;
+    const px = Math.round(x.getPixelForValue(estado.cursor)) + .5;
+    ctx.save(); ctx.strokeStyle = tok("--tinta-3"); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(px, a.top); ctx.lineTo(px, a.bottom); ctx.stroke();
+    // pontos nas linhas
+    c.data.datasets.forEach((ds, i) => {
+      if (!ds.marcarCursor || !c.isDatasetVisible(i)) return;
+      const p = pontoEm(ds.data, estado.cursor); if (!p || p.y == null) return;
+      ctx.beginPath(); ctx.arc(px, c.scales.y.getPixelForValue(p.y), 4.5, 0, 7);
+      ctx.fillStyle = ds.borderColor; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = tok("--superficie"); ctx.stroke();
+    });
+    ctx.restore();
+  },
+};
+const pluginHoje = {
+  id: "hoje",
+  beforeDatasetsDraw(c, _, op) {
+    if (op?.x == null) return;
+    const { ctx, chartArea: a, scales: { x } } = c;
+    if (op.x < x.min || op.x > x.max) return;
+    const px = Math.round(x.getPixelForValue(op.x)) + .5;
+    ctx.save(); ctx.strokeStyle = tok("--eixo"); ctx.setLineDash([2, 3]);
+    ctx.beginPath(); ctx.moveTo(px, a.top); ctx.lineTo(px, a.bottom); ctx.stroke();
+    ctx.restore();
+  },
+};
+const pluginRotuloFinal = {
+  id: "rotuloFinal",
+  afterDatasetsDraw(c) {
+    const { ctx, chartArea: a, scales: { x } } = c;
+    ctx.save(); ctx.font = "650 11.5px system-ui"; ctx.textBaseline = "middle";
+    const usados = [];
+    c.data.datasets.forEach((ds, i) => {
+      if (!ds.rotuloFinal || !c.isDatasetVisible(i)) return;
+      let idx = -1;
+      for (let k = ds.data.length - 1; k >= 0; k--) if (ds.data[k].y != null && ds.data[k].x <= x.max && ds.data[k].x >= x.min) { idx = k; break; }
+      if (idx < 0) return;
+      const pt = c.getDatasetMeta(i).data[idx]; let y = pt.y;
+      while (usados.some(u => Math.abs(u - y) < 14)) y -= 14;
+      usados.push(y);
+      const w = ctx.measureText(ds.rotuloFinal).width, lx = Math.min(pt.x + 7, a.right - w - 2);
+      ctx.fillStyle = tok("--superficie"); ctx.globalAlpha = .85; ctx.fillRect(lx - 3, y - 8, w + 6, 16); ctx.globalAlpha = 1;
+      ctx.fillStyle = tok("--tinta"); ctx.fillText(ds.rotuloFinal, lx, y);
+    });
+    ctx.restore();
+  },
+};
+Chart.register(pluginCotas, pluginCursor, pluginHoje, pluginRotuloFinal);
 
-function desenharGrafico(ls, est) {
-  const longo = dias > 30;
-  const nivel = comNivel(ls).map(l => ({ x: ms(l), y: l.nivel / 100 }));
-  let chuva = ls.filter(l => l.chuva).map(l => ({ x: ms(l), y: l.chuva }));
-  if (longo) {  // períodos longos: chuva somada por dia
-    const porDia = new Map();
-    for (const p of chuva) { const d = new Date(p.x).setHours(12, 0, 0, 0); porDia.set(d, (porDia.get(d) || 0) + p.y); }
-    chuva = [...porDia].map(([x, y]) => ({ x, y }));
-  }
-  const esparsa = est.atraso_max_horas > 6 && !longo;
-  const pico = maior(nivel, p => p.y);
-  const maxNivel = pico ? pico.y : 0;
-  const topoY = Math.max(maxNivel * 1.15, est.cotas_cm.atencao / 100 * 1.05);
-  const muted = css("--muted"), linha = css("--line");
+function pontoEm(dados, x) {
+  // busca binária do ponto mais próximo de x
+  let lo = 0, hi = dados.length - 1;
+  if (hi < 0) return null;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (dados[m].x < x) lo = m; else hi = m; }
+  return Math.abs(dados[lo].x - x) <= Math.abs(dados[hi].x - x) ? dados[lo] : dados[hi];
+}
 
-  const opcoes = {
-    responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
+const LARGURA_Y = 46;  // eixo Y com largura fixa para alinhar nível e chuva
+function opcoesBase() {
+  const t3 = tok("--tinta-3"), grade = tok("--grade");
+  return {
+    responsive: true, maintainAspectRatio: false, animation: false, parsing: false, normalized: true,
+    layout: { padding: { top: 8, right: 4 } },
     interaction: { mode: "nearest", axis: "x", intersect: false },
-    plugins: {
-      legend: { display: false },
-      decimation: { enabled: true, algorithm: "lttb", samples: 1500 },
-      tooltip: { callbacks: {
-        title: i => longo && i[0].datasetIndex === 1 ? new Date(i[0].parsed.x).toLocaleDateString("pt-BR") : hora(i[0].parsed.x),
-        label: i => i.datasetIndex === 0 ? `Nível: ${fmt(i.parsed.y, 2)} m` : `Chuva: ${fmt(i.parsed.y, 1)} mm${longo ? " no dia" : ""}`,
-      } },
-    },
+    events: ["mousemove", "mouseout", "touchstart", "touchmove", "touchend", "click"],
+    plugins: { legend: { display: false }, tooltip: { enabled: false } },
     scales: {
-      x: { type: "linear", grid: { color: linha }, ticks: { color: muted, maxTicksLimit: 8,
-           callback: v => dias <= 1 ? new Date(v).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
-                        : longo ? new Date(v).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" }) : hora(v) } },
-      y: { position: "left", min: 0, max: Math.ceil(topoY * 2) / 2, grid: { color: linha },
-           title: { display: true, text: "Nível (m)", color: muted }, ticks: { color: muted } },
-      y2: { position: "right", min: 0, suggestedMax: 10, reverse: true, grid: { display: false }, display: chuva.length > 0,
-            title: { display: true, text: "Chuva (mm)", color: muted }, ticks: { color: muted } },
+      x: { type: "linear", grid: { color: grade, drawTicks: false }, border: { color: tok("--eixo") },
+           ticks: { color: t3, padding: 6, font: { size: 11.5 }, maxRotation: 0, autoSkipPadding: 22, align: "inner", maxTicksLimit: innerWidth < 700 ? 5 : 9 } },
+      y: { grid: { color: grade, drawTicks: false }, border: { display: false }, afterFit: ax => { ax.width = LARGURA_Y; },
+           ticks: { color: t3, padding: 6, font: { size: 11.5 }, maxTicksLimit: 6 } },
     },
+    onHover: (ev, _, chart) => moverCursor(ev, chart),
   };
-  const ds = [
-    { type: "line", label: "Nível", data: nivel, yAxisID: "y", borderColor: css("--rio"), backgroundColor: css("--rio") + "22",
-      fill: true, pointRadius: esparsa ? 3 : 0, borderWidth: longo ? 1.5 : 2, tension: longo ? 0 : .2 },
-    { type: "bar", label: "Chuva", data: chuva, yAxisID: "y2", backgroundColor: css("--chuva"),
-      barThickness: dias > 400 ? 1 : longo ? 2 : dias > 7 ? 1 : 3 },
-  ];
-  if (grafico) grafico.destroy();
-  grafico = new Chart($("grafico"), { data: { datasets: ds }, options: opcoes, plugins: [linhasCota] });
-
-  $("legenda").innerHTML =
-    `<span style="--c:${css("--rio")}">Nível do rio${pico ? ` · máximo no período: ${fmt(pico.y, 2)} m em ${hora(pico.x)}` : ""}</span>` +
-    (chuva.length ? `<span style="--c:${css("--chuva")}">Chuva ${longo ? "por dia " : ""}(barras de cima para baixo)</span>` : "") +
-    NIVEIS.slice().reverse().map(n => `<span style="--c:${css(n.cor)}">${n.nome}: ${fmt(est.cotas_cm[n.chave] / 100, 2)} m</span>`).join("") +
-    (est.referencias || []).map(r => `<span style="--c:${css("--muted")}">${fmt(r.cm / 100, 2)} m · ${r.texto}</span>`).join("");
+}
+function moverCursor(ev, chart) {
+  const a = chart.chartArea;
+  if (ev.type === "touchend") return;   // no celular o valor tocado fica na faixa de leitura
+  if (ev.type === "mouseout" || ev.x < a.left || ev.x > a.right) { estado.cursor = null; }
+  else estado.cursor = chart.scales.x.getValueForPixel(ev.x);
+  redesenharCursor();
+}
+let quadroCursor = 0;
+function redesenharCursor() {
+  cancelAnimationFrame(quadroCursor);
+  quadroCursor = requestAnimationFrame(() => { graficos.principal?.draw(); graficos.chuva?.draw(); atualizarLeitura(); });
+}
+function criar(id, nome, cfg) {
+  graficos[nome]?.destroy();
+  const canvas = document.getElementById(id);
+  graficos[nome] = new Chart(canvas, cfg);
+  canvas.onmouseleave = () => { estado.cursor = null; redesenharCursor(); };
+  return graficos[nome];
 }
 
-async function carregarDetalhe() {
-  const est = estacoes[selecionada];
-  $("detRio").textContent = est.rio;
-  $("detNome").textContent = est.nome;
-  $("detInfo").textContent = `Estação ${est.codigo} · ${est.operadora}${est.observacao ? " · " + est.observacao : ""}`;
-  if (dias > 30) $("legenda").textContent = "Carregando histórico…";
-  try {
-    const ls = await buscar(selecionada, dias);
-    if (!ls.length) throw new Error("a estação não enviou leituras nesse período.");
-    $("erro").style.display = "none";
-    atualizarCards(ls, est);
-    desenharGrafico(ls, est);
-  } catch (e) {
-    $("erro").style.display = "block";
-    $("erro").textContent = `Não foi possível carregar ${est.nome}: ${e.message}`;
+// ================= navegador (zoom e rolagem) =================
+const nav = { el: null, min: 0, max: 1, ao: null };
+function navConfigurar(min, max, pontos, ao) {
+  nav.min = min; nav.max = max; nav.ao = ao;
+  const ys = pontos.map(p => p.y).filter(v => v != null), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  let d = "", desenhando = false;
+  for (const p of pontos) {
+    if (p.y == null) { desenhando = false; continue; }
+    const X = ((p.x - min) / (max - min || 1) * 1000).toFixed(1), Y = (95 - (p.y - y0) / (y1 - y0 || 1) * 90).toFixed(1);
+    d += (desenhando ? "L" : "M") + X + " " + Y; desenhando = true;
+  }
+  $("#navLinha").setAttribute("d", d);
+}
+function navMostrar() {
+  const [a, b] = estado.janela, w = nav.max - nav.min || 1;
+  const j = $("#navJanela");
+  j.style.left = (a - nav.min) / w * 100 + "%";
+  j.style.width = Math.max(.5, (b - a) / w * 100) + "%";
+}
+function definirJanela(a, b, origem) {
+  const minLarg = (nav.max - nav.min) * .02;
+  if (b - a < minLarg) { if (origem === "e") a = b - minLarg; else b = a + minLarg; }
+  if (a < nav.min) { b += nav.min - a; a = nav.min; }
+  if (b > nav.max) { a -= b - nav.max; b = nav.max; }
+  estado.janela = [Math.max(nav.min, a), Math.min(nav.max, b)];
+  navMostrar();
+  cancelAnimationFrame(nav.quadro);
+  nav.quadro = requestAnimationFrame(() => nav.ao?.(estado.janela));
+}
+function iniciarNavegador() {
+  const el = $("#nav");
+  let arrasto = null;
+  const valor = px => nav.min + (px / el.clientWidth) * (nav.max - nav.min);
+  el.addEventListener("pointerdown", ev => {
+    const r = el.getBoundingClientRect(), x = ev.clientX - r.left, [a, b] = estado.janela;
+    const alca = ev.target.dataset?.alca;
+    if (alca) arrasto = { tipo: alca, x0: x, a, b };
+    else if (ev.target.closest("#navJanela")) arrasto = { tipo: "mover", x0: x, a, b };
+    else { const meio = valor(x), l = b - a; definirJanela(meio - l / 2, meio + l / 2); arrasto = { tipo: "mover", x0: x, a: estado.janela[0], b: estado.janela[1] }; }
+    el.setPointerCapture(ev.pointerId); ev.preventDefault();
+  });
+  el.addEventListener("pointermove", ev => {
+    if (!arrasto) return;
+    const r = el.getBoundingClientRect(), dx = (ev.clientX - r.left - arrasto.x0) / el.clientWidth * (nav.max - nav.min);
+    if (arrasto.tipo === "mover") definirJanela(arrasto.a + dx, arrasto.b + dx);
+    else if (arrasto.tipo === "e") definirJanela(Math.min(arrasto.a + dx, arrasto.b), arrasto.b, "e");
+    else definirJanela(arrasto.a, Math.max(arrasto.b + dx, arrasto.a), "d");
+  });
+  const soltar = () => { arrasto = null; marcarJanelasAtivas(); };
+  el.addEventListener("pointerup", soltar); el.addEventListener("pointercancel", soltar);
+  el.addEventListener("keydown", ev => {
+    const [a, b] = estado.janela, passo = (b - a) * .2;
+    if (ev.key === "ArrowLeft") definirJanela(a - passo, b - passo);
+    else if (ev.key === "ArrowRight") definirJanela(a + passo, b + passo);
+    else if (ev.key === "+" || ev.key === "=") definirJanela(a + passo, b - passo);
+    else if (ev.key === "-") definirJanela(a - passo, b + passo);
+    else return;
+    ev.preventDefault();
+  });
+  // roda do mouse sobre o gráfico = zoom (no computador)
+  $(".area-g").addEventListener("wheel", ev => {
+    if (ev.ctrlKey || ev.metaKey) {
+      if (!graficos.principal) return;
+      const ch = graficos.principal, cx = ch.scales.x.getValueForPixel(ev.offsetX), [a, b] = estado.janela, f = ev.deltaY > 0 ? 1.2 : 1 / 1.2;
+      if (ev.deltaY === 0) return;
+      ev.preventDefault();
+      definirJanela(cx - (cx - a) * f, cx + (b - cx) * f); marcarJanelasAtivas();
+    }
+  }, { passive: false });
+  $("#verTudo").onclick = () => { definirJanela(nav.min, nav.max); marcarJanelasAtivas(); };
+}
+function marcarJanelasAtivas() {
+  if (estado.modo !== "agora") return;
+  const [a, b] = estado.janela, larg = (b - a) / 864e5, naPonta = nav.max - b < 36e5;
+  document.querySelectorAll("#janelas button").forEach(bt => bt.setAttribute("aria-pressed", naPonta && Math.abs(larg - +bt.dataset.d) < .05 * +bt.dataset.d));
+}
+function ajustarY(chart, a, b, incluirCotas) {
+  let lo = Infinity, hi = -Infinity;
+  for (const ds of chart.data.datasets) {
+    if (ds.foraDaEscala) continue;
+    for (const p of ds.data) if (p.y != null && p.x >= a && p.x <= b) { if (p.y < lo) lo = p.y; if (p.y > hi) hi = p.y; }
+  }
+  if (!isFinite(lo)) return;
+  if (incluirCotas) {
+    const at = estacoes[estado.estacao].cotas_cm.atencao / 100;
+    if (at > hi && at - hi < Math.max(.8, (hi - lo) * .6)) hi = at;   // mostra a cota de atenção quando o rio está perto dela
+  }
+  const folga = Math.max(.1, (hi - lo) * .12);
+  chart.options.scales.y.min = Math.max(0, Math.floor((lo - folga) * 10) / 10);
+  chart.options.scales.y.max = Math.ceil((hi + folga) * 10) / 10;
+}
+
+// ================= visão "últimos dias" =================
+function seriesChuva(ls, porDia) {
+  const mapa = new Map();
+  for (const l of ls) {
+    if (l.chuva == null) continue;
+    const k = porDia ? l.t.slice(0, 10) + "T12:00:00" : l.t.slice(0, 13) + ":30:00";
+    mapa.set(k, (mapa.get(k) || 0) + l.chuva);
+  }
+  return [...mapa].map(([k, y]) => ({ x: new Date(k).getTime(), y })).sort((a, b) => a.x - b.x);
+}
+function formatoTempo(v, larguraDias) {
+  const d = new Date(v);
+  if (larguraDias <= 1.5) return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  if (larguraDias <= 4) return `${d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")} ${d.getHours()}h`;
+  return `${d.getDate()} ${MESES[d.getMonth()]}`;
+}
+function desenharAgora(manterNaPonta) {
+  const c = cache[estado.estacao], est = estacoes[estado.estacao], ls = c.leituras;
+  const nivel = comNivel(ls).map(l => ({ x: ms(l), y: l.nivel / 100 }));
+  const vazio = !nivel.length;
+  const max = vazio ? Date.now() : Math.max(nivel.at(-1).x, Date.now() - 36e5), min = max - 30 * 864e5;
+  graficos.limite = [min, max];
+  const chuvaHora = seriesChuva(ls, false), chuvaDia = seriesChuva(ls, true), temChuva = ls.some(l => l.chuva != null);
+  $("#boxChuva").hidden = !temChuva;
+
+  const op = opcoesBase();
+  op.scales.x.min = min; op.scales.x.max = max;
+  op.scales.x.ticks.callback = function (v) { return formatoTempo(v, (this.max - this.min) / 864e5); };
+  op.scales.y.ticks.callback = v => fmt(v, 1);
+  op.plugins.cotas = { ativo: true };
+  const grad = ctx => { const { ctx: g, chartArea: a } = ctx.chart; if (!a) return null; const gr = g.createLinearGradient(0, a.top, 0, a.bottom);
+    gr.addColorStop(0, tok("--s1") + "40"); gr.addColorStop(1, tok("--s1") + "00"); return gr; };
+  const principal = criar("gPrincipal", "principal", { type: "line", options: op, data: { datasets: [
+    { label: "Nível", data: nivel, borderColor: tok("--s1"), backgroundColor: grad, fill: "start", borderWidth: 2, pointRadius: 0, tension: .15, marcarCursor: true, spanGaps: 3 * 36e5 },
+  ] } });
+
+  if (temChuva) {
+    const opc = opcoesBase();
+    opc.layout.padding.top = 14;
+    opc.scales.x.min = min; opc.scales.x.max = max;
+    opc.scales.x.ticks.display = false; opc.scales.x.grid.display = false;
+    opc.scales.y.beginAtZero = true; opc.scales.y.suggestedMax = 2; opc.scales.y.ticks.maxTicksLimit = 3;
+    opc.scales.y.ticks.callback = v => fmt(v, 0);
+    criar("gChuva", "chuva", { type: "bar", options: opc, data: { datasets: [
+      { label: "Chuva", data: chuvaHora, backgroundColor: tok("--chuva"), borderRadius: 2, barPercentage: 1, categoryPercentage: 1, maxBarThickness: 14 },
+    ] } });
+  } else { graficos.chuva?.destroy(); graficos.chuva = null; }
+
+  navConfigurar(min, max, nivel, ([a, b]) => {
+    for (const ch of [graficos.principal, graficos.chuva]) if (ch) { ch.options.scales.x.min = a; ch.options.scales.x.max = b; }
+    ajustarY(principal, a, b, true);
+    if (graficos.chuva) {
+      const porDia = (b - a) / 864e5 > 7, ds = graficos.chuva.data.datasets[0], novo = porDia ? chuvaDia : chuvaHora;
+      if (ds.data !== novo) ds.data = novo;
+      const vis = novo.filter(p => p.x >= a && p.x <= b).map(p => p.y);
+      graficos.chuva.options.scales.y.max = Math.max(2, Math.ceil(Math.max(0, ...vis) * 1.15));
+      $("#rotChuva").textContent = porDia ? "Chuva (mm por dia)" : "Chuva (mm por hora)";
+      graficos.chuva.update("none");
+    }
+    principal.update("none");
+    atualizarLeitura();
+  });
+  const largura = estado.dias * 864e5;
+  if (!estado.janela || estado.janela[1] > max || estado.janela[0] < min || manterNaPonta !== false) definirJanela(max - largura, max);
+  else definirJanela(...estado.janela);
+  marcarJanelasAtivas();
+}
+
+// ================= visão "comparar anos" =================
+const vira = () => estado.de > estado.ate;
+const noPeriodo = m => vira() ? (m >= estado.de || m <= estado.ate) : (m >= estado.de && m <= estado.ate);
+const temporada = d => { const y = +d.slice(0, 4), m = +d.slice(5, 7); return vira() && m <= estado.ate ? y - 1 : y; };
+const rotulo = s => vira() ? `${s}/${String(s + 1).slice(2)}` : String(s);
+const refIni = () => Date.UTC(vira() ? 2023 : 2024, estado.de - 1, 1);
+const refAno = m => vira() ? (m >= estado.de ? 2023 : 2024) : 2024;
+const posicao = d => { const m = +d.slice(5, 7); return Math.round((Date.UTC(refAno(m), m - 1, +d.slice(8, 10)) - refIni()) / 864e5); };
+const duracao = () => Math.round((Date.UTC(2024, estado.ate, 1) - refIni()) / 864e5);
+const nomeDoDia = x => { const d = new Date(refIni() + Math.round(x) * 864e5); return `${d.getUTCDate()} ${MESES[d.getUTCMonth()]}`; };
+function inicioDosMeses() {
+  const n = vira() ? 12 - estado.de + 1 + estado.ate : estado.ate - estado.de + 1, out = [];
+  for (let k = 0; k < n; k++) { const m = (estado.de - 1 + k) % 12 + 1; out.push({ x: Math.round((Date.UTC(refAno(m), m - 1, 1) - refIni()) / 864e5), m }); }
+  return out;
+}
+function temporadas() {
+  const len = duracao(), mapa = new Map(), dias = cache[estado.estacao].dias;
+  for (const r of dias) {
+    if (!noPeriodo(+r.d.slice(5, 7))) continue;
+    const s = temporada(r.d);
+    if (!mapa.has(s)) mapa.set(s, { s, dias: new Array(len).fill(null) });
+    const p = posicao(r.d);
+    if (p >= 0 && p < len) mapa.get(s).dias[p] = r;
+  }
+  const hoje = hojeISO(), sHoje = noPeriodo(+hoje.slice(5, 7)) ? temporada(hoje) : null, pHoje = sHoje != null ? posicao(hoje) : null;
+  const lista = [...mapa.values()].sort((a, b) => a.s - b.s);
+  lista.forEach((t, i) => {
+    const validos = t.dias.filter(r => r && r.nmax != null), primeiro = t.dias.findIndex(r => r);
+    t.atual = t.s === sHoje;
+    const esperado = (t.atual ? pHoje + 1 : len) - (i === 0 ? Math.max(0, primeiro) : 0);
+    t.parcial = !t.atual && (validos.length / Math.max(1, esperado) < .8 || (validos.length ? media(validos.map(r => r.n)) : 0) < 6);
+    t.pico = validos.reduce((m, r) => (!m || r.nmax > m.nmax ? r : m), null);
+  });
+  return { lista, pHoje, len };
+}
+function valores(t) {
+  const m = estado.metrica;
+  if (m === "chuva") {
+    const ult = t.dias.findLastIndex(r => r && r.chuva != null);
+    let acc = 0, comecou = false;
+    return t.dias.map((r, i) => { if (i > ult) return null; if (r && r.chuva != null) { acc += r.chuva; comecou = true; } return comecou ? acc : null; });
+  }
+  return t.dias.map(r => r && r[m] != null ? (m === "vmed" ? r[m] : r[m] / 100) : null);
+}
+function destaquesPadrao(lista) {
+  estado.destaques = new Map();
+  const atual = lista.find(t => t.atual) || lista.at(-1);
+  if (!atual) return;
+  estado.destaques.set(atual.s, "--s1");
+  const outros = lista.filter(t => t !== atual && t.pico);
+  const anterior = outros.filter(t => t.s < atual.s).at(-1);
+  const recorde = [...outros].sort((a, b) => b.pico.nmax - a.pico.nmax).find(t => t !== anterior);
+  if (anterior) estado.destaques.set(anterior.s, "--s2");
+  if (recorde) estado.destaques.set(recorde.s, anterior ? "--s3" : "--s2");
+}
+function alternarDestaque(s) {
+  const d = estado.destaques;
+  if (d.get(s) === "--s1") return;
+  if (d.has(s)) d.delete(s);
+  else {
+    const livres = ["--s2", "--s3"].filter(c => ![...d.values()].includes(c));
+    if (!livres.length) { const velho = [...d.keys()].find(k => d.get(k) !== "--s1"); livres.push(d.get(velho)); d.delete(velho); }
+    d.set(s, livres[0]);
+  }
+  if (estado.modo === "comparar") desenharComparar(true); else trocarModo("comparar");
+  desenharLinhas();
+}
+
+let compCache = null;
+function desenharComparar(manterJanela) {
+  const { lista, pHoje, len } = temporadas(), met = METRICAS[estado.metrica], ehNivel = estado.metrica.startsWith("n");
+  if (!estado.destaques.size || ![...estado.destaques.keys()].some(s => lista.find(t => t.s === s))) destaquesPadrao(lista);
+  const series = new Map(lista.map(t => [t.s, valores(t)]));
+  const ref = lista.filter(t => !t.atual && !t.parcial);
+  const pontos = arr => arr.map((y, x) => ({ x, y }));
+  const datasets = [];
+  let faixa = null;
+  if (ref.length >= 2) {
+    const lo = [], hi = [], md = [];
+    for (let x = 0; x < len; x++) {
+      const vs = ref.map(t => series.get(t.s)[x]).filter(v => v != null);
+      lo.push(vs.length >= 2 ? Math.min(...vs) : null); hi.push(vs.length >= 2 ? Math.max(...vs) : null); md.push(vs.length >= 2 ? mediana(vs) : null);
+    }
+    faixa = { lo, hi, md, nome: `${rotulo(ref[0].s)}–${rotulo(ref.at(-1).s)}` };
+    datasets.push({ label: "mín", data: pontos(lo), borderWidth: 0, pointRadius: 0, fill: false, order: 9, foraDaEscala: false });
+    datasets.push({ label: "máx", data: pontos(hi), borderWidth: 0, pointRadius: 0, fill: "-1", backgroundColor: tok("--faixa"), order: 9 });
+    datasets.push({ label: "Mediana", data: pontos(md), borderColor: tok("--mediana"), borderWidth: 1.5, pointRadius: 0, order: 5, tension: .2, marcarCursor: true, cor: "--mediana" });
+  }
+  for (const t of lista) {
+    const cor = estado.destaques.get(t.s);
+    if (!cor) continue;
+    datasets.push({ label: rotulo(t.s), data: pontos(series.get(t.s)), borderColor: tok(cor), borderWidth: cor === "--s1" ? 2.6 : 2, pointRadius: 0,
+                    order: cor === "--s1" ? 0 : 1, rotuloFinal: rotulo(t.s), spanGaps: 3, tension: .2, marcarCursor: true, cor, parcial: t.parcial });
+  }
+  compCache = { datasets, faixa, met, lista };
+
+  const op = opcoesBase(), marcos = inicioDosMeses();
+  op.scales.x.min = 0; op.scales.x.max = len - 1;
+  op.scales.x.afterBuildTicks = ax => {
+    const larg = ax.max - ax.min;
+    ax.ticks = (larg < 75 ? Array.from({ length: Math.ceil(len / 7) }, (_, i) => ({ value: i * 7 })) : marcos.map(m => ({ value: m.x })))
+      .filter(t => t.value >= ax.min && t.value <= ax.max);
+  };
+  op.scales.x.ticks.callback = function (v) { const m = marcos.find(k => k.x === v); return (this.max - this.min) < 75 ? nomeDoDia(v) : m ? MESES[m.m - 1] : ""; };
+  op.scales.y.ticks.callback = v => fmt(v, met.casas === 2 ? 1 : 0);
+  op.plugins.cotas = { ativo: ehNivel };
+  op.plugins.hoje = { x: pHoje };
+  const ch = criar("gPrincipal", "principal", { type: "line", data: { datasets }, options: op });
+  graficos.chuva?.destroy(); graficos.chuva = null;
+
+  const atual = lista.find(t => t.atual), base = atual ? series.get(atual.s) : faixa?.md || [];
+  navConfigurar(0, len - 1, pontos(faixa?.md || base), ([a, b]) => {
+    ch.options.scales.x.min = a; ch.options.scales.x.max = b;
+    if (ehNivel || estado.metrica === "vmed") ajustarY(ch, a, b, ehNivel);
+    else { ch.options.scales.y.min = 0; ch.options.scales.y.max = undefined; }
+    ch.update("none"); atualizarLeitura();
+  });
+  if (manterJanela && estado.janela && estado.janela[1] <= len - 1) definirJanela(...estado.janela);
+  else if (innerWidth < 700 && pHoje != null && len > 120) definirJanela(pHoje - 75, pHoje + 15);   // celular: abre perto de hoje
+  else definirJanela(0, len - 1);
+
+  $("#anos").innerHTML = lista.slice().reverse().map(t => {
+    const cor = estado.destaques.get(t.s);
+    return `<button class="ano" data-s="${t.s}" aria-pressed="${!!cor}"><i style="${cor ? `background:${tok(cor)}` : ""}"></i>${rotulo(t.s)}${t.atual ? " <em>atual</em>" : t.parcial ? " <em>parcial</em>" : ""}</button>`;
+  }).join("");
+}
+
+// ================= faixa de leitura (substitui o balão) =================
+function atualizarLeitura() {
+  if (!graficos.principal) return;
+  if (estado.modo === "agora") {
+    const c = cache[estado.estacao], nivel = graficos.principal.data.datasets[0].data;
+    if (!nivel.length) { $("#leitura").innerHTML = "<time>Sem leituras</time>"; return; }
+    const alvo = estado.cursor ?? nivel.at(-1).x, p = pontoEm(nivel, alvo);
+    const l = c.leituras.find(x => ms(x) === p.x);
+    let chuva = "";
+    if (graficos.chuva) {
+      const ds = graficos.chuva.data.datasets[0].data, q = pontoEm(ds, alvo), porDia = $("#rotChuva").textContent.includes("dia");
+      chuva = `<span><i class="barra" style="background:${tok("--chuva")}"></i><b>${fmt(q && Math.abs(q.x - alvo) < (porDia ? 864e5 : 36e5) ? q.y : 0, 1)} mm</b>${porDia ? "no dia" : "na hora"}</span>`;
+    }
+    $("#leitura").innerHTML = `<time>${estado.cursor == null ? "Última leitura · " : ""}${quando(p.x)}</time><div class="vals">
+      <span><i style="background:${tok("--s1")}"></i><b>${fmt(p.y, 2)} m</b>nível</span>${chuva}
+      ${l?.vazao != null ? `<span><b>${fmt(l.vazao, 0)} m³/s</b>vazão</span>` : ""}</div>`;
+  } else if (compCache) {
+    const { datasets, faixa, met } = compCache, [a, b] = estado.janela;
+    const pHoje = graficos.principal.options.plugins.hoje.x;
+    const x = Math.round(estado.cursor ?? (pHoje != null && pHoje >= a && pHoje <= b ? pHoje : b));
+    const itens = datasets.filter(d => d.marcarCursor).map(d => ({ d, y: d.data[x]?.y })).filter(i => i.y != null).sort((p, q) => q.y - p.y);
+    $("#leitura").innerHTML = `<time>${nomeDoDia(x)}${x === pHoje && estado.cursor == null ? " · hoje" : ""} — ${met.nome.toLowerCase()}</time><div class="vals">` +
+      itens.map(i => `<span><i style="background:${i.d.borderColor}"></i><b>${fmt(i.y, met.casas)}</b>${i.d.label}${i.d.parcial ? "*" : ""}</span>`).join("") +
+      (faixa && faixa.lo[x] != null ? `<span>faixa ${faixa.nome}: <b>${fmt(faixa.lo[x], met.casas)}–${fmt(faixa.hi[x], met.casas)}</b> ${met.un}</span>` : "") + "</div>";
   }
 }
 
-function selecionar(cod) {
-  selecionada = cod;
-  try { localStorage.setItem("estacao", cod); } catch {}
-  Object.keys(estacoes).forEach(c => $("mini-" + c).classList.toggle("sel", c === cod));
-  carregarDetalhe();
+// ================= ano a ano, cheias, mapa, permanência =================
+function desenharLinhas() {
+  const est = estacoes[estado.estacao], cot = est.cotas_cm, { lista } = temporadas();
+  const comPico = lista.filter(t => t.pico).reverse();
+  const topo = Math.max(cot.inundacao * 1.15, ...comPico.map(t => t.pico.nmax)) ;
+  $("#linhas").innerHTML = comPico.map(t => {
+    const cor = estado.destaques.get(t.s), dias = { atencao: 0, alerta: 0, inundacao: 0 };
+    for (const r of t.dias) { if (!r || r.nmax == null) continue; if (r.nmax >= cot.inundacao) dias.inundacao++; else if (r.nmax >= cot.alerta) dias.alerta++; else if (r.nmax >= cot.atencao) dias.atencao++; }
+    const total = dias.atencao + dias.alerta + dias.inundacao;
+    return `<button class="linha" data-s="${t.s}" aria-pressed="${!!cor}">
+      <span class="ano-n">${rotulo(t.s)}${t.atual ? "<em>atual</em>" : t.parcial ? "<em>parcial</em>" : ""}</span>
+      <span class="trilho"><span class="enche" style="width:${t.pico.nmax / topo * 100}%;${cor ? `background:${tok(cor)}` : ""}"></span>
+        ${COTAS.map(n => `<span class="marca" style="left:${cot[n.chave] / topo * 100}%;background:${tok(n.cor)}"></span>`).join("")}</span>
+      <span class="val">${fmt(t.pico.nmax / 100, 2)} m</span>
+      <span class="det"><span>${dataCurta(t.pico.d)}</span>${total ? `<span class="dias">${COTAS.slice().reverse().filter(n => dias[n.chave]).map(n => `<span><i style="background:${tok(n.cor)}"></i>${dias[n.chave]} d</span>`).join("")}</span>` : "<span>nenhum dia acima da atenção</span>"}</span>
+    </button>`;
+  }).join("");
+  $("#legCotas").innerHTML = COTAS.slice().reverse().map(n => `<span><i style="background:${tok(n.cor)}"></i>${n.nome} ≥ ${fmt(cot[n.chave] / 100, 2)} m</span>`).join("") + `<span>· d = dias</span>`;
+  const nome = estado.de === 1 && estado.ate === 12 ? "" : ` (${MESES[estado.de - 1]}–${MESES[estado.ate - 1]})`;
+  $("#anoSub").textContent = `Maior nível de cada ${vira() ? "temporada" : "ano"}${nome} e dias acima das cotas. Toque para comparar no gráfico.`;
 }
 
-async function ciclo() { await atualizarResumo(); await carregarDetalhe(); }
+function desenharCheias() {
+  const dias = cache[estado.estacao].dias.filter(r => r.nmax != null);
+  const ord = [...dias].sort((a, b) => b.nmax - a.nmax), esc = [], t = d => Date.parse(d + "T12:00");
+  for (const r of ord) { if (esc.length >= 10) break; if (esc.every(e => Math.abs(t(e.d) - t(r.d)) > 7 * 864e5)) esc.push(r); }
+  const porData = new Map(dias.map(r => [r.d, r])), ano = String(new Date().getFullYear());
+  $("#cheias").innerHTML = esc.map(r => {
+    const ontem = porData.get(new Date(t(r.d) - 864e5).toISOString().slice(0, 10));
+    const sub = ontem?.nmin != null ? r.nmax - Math.min(ontem.nmin, r.nmin ?? Infinity) : null, st = classificar(r.nmax);
+    return `<li><span class="quando">${dataCurta(r.d)}${r.d.startsWith(ano) ? "<em>este ano</em>" : ""}</span><span class="pico">${fmt(r.nmax / 100, 2)} m</span>
+      <span class="extra">${sub != null ? `subiu ${fmt(sub / 100, 2)} m em 24 h` : ""}${r.vmax != null ? ` · ${fmt(r.vmax, 0)} m³/s` : ""}</span>
+      <span class="pill"><i style="background:${tok(st.cor)}"></i>${st.nome}</span></li>`;
+  }).join("");
+  const desde = dias[0]?.d.slice(0, 4);
+  $("#cheiasSub").textContent = `Os 10 maiores picos desde ${desde}, com pelo menos 7 dias entre eles.`;
+}
+
+function desenharCalor() {
+  const dias = cache[estado.estacao].dias, porMes = new Map();
+  for (const r of dias) { if (r.nmax == null) continue; const k = r.d.slice(0, 7), a = porMes.get(k); if (!a || r.nmax > a.nmax) porMes.set(k, r); }
+  const anos = [...new Set([...porMes.keys()].map(k => +k.slice(0, 4)))].sort((a, b) => b - a);
+  const vals = [...porMes.values()].map(r => r.nmax), lo = Math.min(...vals), hi = Math.max(...vals);
+  const passos = ["--r100", "--r150", "--r200", "--r250", "--r300", "--r350", "--r400", "--r450", "--r500", "--r550", "--r600", "--r650", "--r700"];
+  const recorde = new Map();
+  for (const [k, r] of porMes) { const m = k.slice(5); if (!recorde.has(m) || r.nmax > recorde.get(m)) recorde.set(m, r.nmax); }
+  let h = `<thead><tr><th></th>${MESES.map(m => `<th scope="col">${m}</th>`).join("")}</tr></thead><tbody>`;
+  for (const a of anos) {
+    h += `<tr><th scope="row">${a}</th>`;
+    for (let m = 1; m <= 12; m++) {
+      const k = `${a}-${String(m).padStart(2, "0")}`, r = porMes.get(k);
+      if (!r) { h += "<td>·</td>"; continue; }
+      const i = Math.min(passos.length - 1, Math.floor((r.nmax - lo) / (hi - lo || 1) * passos.length));
+      h += `<td class="${recorde.get(k.slice(5)) === r.nmax ? "max" : ""}" style="background:${tok(passos[i])};color:${i >= 7 ? "#fff" : "#0b0b0b"}" title="${MESES[m - 1]}/${a}: ${fmt(r.nmax / 100, 2)} m em ${dataCurta(r.d)}">${fmt(r.nmax / 100, 1)}</td>`;
+    }
+    h += "</tr>";
+  }
+  $("#calor").innerHTML = h + "</tbody>";
+  $("#escalaCalor").innerHTML = `<span>${fmt(lo / 100, 1)} m</span><span class="barra">${passos.map(p => `<i style="background:${tok(p)}"></i>`).join("")}</span><span>${fmt(hi / 100, 1)} m</span>`;
+}
+
+function desenharPermanencia() {
+  if (!$("#detPerm").open) return;
+  const { lista } = temporadas(), atual = lista.find(t => t.atual), ref = lista.filter(t => !t.atual && !t.parcial);
+  const q = vs => { const s = [...vs].sort((a, b) => b - a); return Array.from({ length: 101 }, (_, i) => ({ x: i, y: s[Math.round(i / 100 * (s.length - 1))] / 100 })); };
+  const vRef = ref.flatMap(t => t.dias.filter(r => r?.nmed != null).map(r => r.nmed)), vAt = atual ? atual.dias.filter(r => r?.nmed != null).map(r => r.nmed) : [];
+  const op = opcoesBase();
+  op.scales.x.min = 0; op.scales.x.max = 100; op.scales.x.ticks.callback = v => v + "%"; op.scales.x.ticks.stepSize = 25;
+  op.scales.y.ticks.callback = v => fmt(v, 1) + " m";
+  op.plugins.cotas = { ativo: true };
+  op.onHover = null;
+  const ds = [];
+  if (vRef.length) ds.push({ label: "Anos completos", data: q(vRef), borderColor: tok("--mediana"), borderWidth: 2, pointRadius: 0 });
+  if (vAt.length) ds.push({ label: rotulo(atual.s), data: q(vAt), borderColor: tok("--s1"), borderWidth: 2.5, pointRadius: 0, rotuloFinal: rotulo(atual.s) });
+  graficos.perm?.destroy();
+  graficos.perm = new Chart($("#gPerm"), { type: "line", data: { datasets: ds }, options: op });
+  const at = estacoes[estado.estacao].cotas_cm.atencao, pct = vs => vs.length ? vs.filter(v => v >= at).length / vs.length * 100 : null;
+  $("#permSub").textContent = `Em ${fmt(pct(vRef), 1)}% dos dias dos anos completos o nível médio passou da cota de atenção` + (vAt.length ? `; em ${rotulo(atual.s)}, ${fmt(pct(vAt), 1)}%.` : ".");
+}
+
+// ================= folha de estações =================
+async function abrirFolha() {
+  const lista = $("#listaEstacoes");
+  lista.innerHTML = config.rios.map(rio => `<h3>${rio.nome}</h3>` + rio.estacoes.map(e => `
+    <button class="op-est" data-cod="${e.codigo}" aria-current="${e.codigo === estado.estacao}">
+      <strong>${e.nome}${e.codigo === ESTACAO_PADRAO ? '<span class="selo">referência</span>' : ""}</strong>
+      <span class="nv" id="nv-${e.codigo}">…</span>
+      <small>${e.operadora} · ${e.codigo}${e.observacao ? " · " + e.observacao : ""}</small>
+    </button>`).join("")).join("");
+  $("#folha").showModal();
+  for (const rio of config.rios) for (const e of rio.estacoes) {
+    const c = cache[e.codigo];
+    const ls = c ? c.leituras : await buscarAna(e.codigo, 1).catch(() => []);
+    const u = comNivel(ls).at(-1), el = document.getElementById("nv-" + e.codigo);
+    if (el) el.innerHTML = u ? `${fmt(u.nivel / 100, 2)} m<small>${ha((Date.now() - ms(u)) / 36e5)}</small>` : "—";
+  }
+}
+
+// ================= orquestração =================
+function trocarModo(modo) {
+  estado.modo = modo; estado.cursor = null;
+  document.querySelectorAll("#modo button").forEach(b => b.setAttribute("aria-pressed", b.dataset.modo === modo));
+  $("#ctrlAgora").hidden = modo !== "agora"; $("#ctrlComp").hidden = modo !== "comparar"; $("#anos").hidden = modo !== "comparar";
+  estado.janela = null;
+  if (modo === "agora") { $("#boxChuva").hidden = false; desenharAgora(); } else { $("#boxChuva").hidden = true; desenharComparar(); }
+  salvarURL();
+}
+function marcarControles() {
+  document.querySelectorAll("#periodos button").forEach(b => b.setAttribute("aria-pressed", +b.dataset.de === estado.de && +b.dataset.ate === estado.ate));
+  const c = cache[estado.estacao], temChuva = c.dias.some(r => r.chuva > 0), temVazao = c.dias.some(r => r.vmed != null);
+  if ((estado.metrica === "chuva" && !temChuva) || (estado.metrica === "vmed" && !temVazao)) estado.metrica = "nmax";
+  $("#metrica").querySelector('[value="chuva"]').disabled = !temChuva;
+  $("#metrica").querySelector('[value="vmed"]').disabled = !temVazao;
+  $("#metrica").value = estado.metrica;
+}
+function salvarURL() {
+  const p = new URLSearchParams({ estacao: estado.estacao, modo: estado.modo });
+  if (estado.modo === "comparar") { p.set("de", estado.de); p.set("ate", estado.ate); p.set("medida", estado.metrica); }
+  history.replaceState(null, "", "?" + p);
+}
+function desenharTudo() {
+  marcarControles();
+  const { lista } = temporadas();
+  if (!estado.destaques.size) destaquesPadrao(lista);
+  desenharHero(); desenharStats();
+  trocarModo(estado.modo);
+  desenharLinhas(); desenharCheias(); desenharCalor(); desenharPermanencia();
+}
+async function trocarEstacao(cod) {
+  estado.estacao = cod; estado.destaques = new Map(); estado.janela = null;
+  const est = estacoes[cod];
+  $("#selRio").textContent = est.rio; $("#selNome").textContent = est.nome;
+  $("#principal").classList.add("carregando");
+  try {
+    await carregar(cod);
+    $("#erro").style.display = "none";
+    desenharTudo();
+  } catch (e) {
+    $("#erro").style.display = "block"; $("#erro").textContent = "Não foi possível carregar os dados: " + e.message;
+    marcarVivo("erro");
+  }
+  $("#principal").classList.remove("carregando");
+}
 
 async function iniciar() {
   config = await (await fetch("config.json")).json();
-  $("titulo").textContent = config.titulo;
   config.rios.forEach(r => r.estacoes.forEach(e => estacoes[e.codigo] = { ...e, rio: r.nome }));
-  let salva = null;
-  try { salva = localStorage.getItem("estacao"); } catch {}
-  selecionada = estacoes[salva] ? salva : config.rios[0].estacoes[0].codigo;
+  const p = new URLSearchParams(location.search);
+  if (estacoes[p.get("estacao")]) estado.estacao = p.get("estacao");
+  if (p.get("modo") === "comparar") estado.modo = "comparar";
+  if (+p.get("de") >= 1 && +p.get("de") <= 12 && +p.get("ate") >= 1 && +p.get("ate") <= 12) { estado.de = +p.get("de"); estado.ate = +p.get("ate"); }
+  if (METRICAS[p.get("medida")]) estado.metrica = p.get("medida");
 
-  montarVisaoGeral();
-  $("periodos").onclick = ev => {
+  iniciarNavegador();
+  if (matchMedia("(pointer: fine)").matches) $("#dicaNav").textContent = "Arraste a janela ou as bordas abaixo · Ctrl + roda do mouse no gráfico para zoom";
+  else $("#dicaNav").textContent = "Toque no gráfico para ver os valores · arraste a janela para navegar, puxe as bordas para zoom";
+  $("#btnEstacao").onclick = abrirFolha;
+  $("#folha").addEventListener("click", ev => {
+    const b = ev.target.closest(".op-est");
+    if (b) { $("#folha").close(); if (b.dataset.cod !== estado.estacao) trocarEstacao(b.dataset.cod); }
+    else if (ev.target === $("#folha")) $("#folha").close();     // toque fora fecha
+  });
+  $("#modo").onclick = ev => { const b = ev.target.closest("button"); if (b && b.dataset.modo !== estado.modo) trocarModo(b.dataset.modo); };
+  $("#janelas").onclick = ev => {
     const b = ev.target.closest("button"); if (!b) return;
-    dias = +b.dataset.dias;
-    $("periodos").querySelectorAll("button").forEach(x => x.classList.toggle("ativo", x === b));
-    carregarDetalhe();
+    estado.dias = +b.dataset.d; definirJanela(nav.max - estado.dias * 864e5, nav.max); marcarJanelasAtivas();
   };
-  await ciclo();
-  setInterval(ciclo, config.atualizar_a_cada_minutos * 60e3);
+  $("#periodos").onclick = ev => {
+    const b = ev.target.closest("button"); if (!b) return;
+    estado.de = +b.dataset.de; estado.ate = +b.dataset.ate; estado.destaques = new Map();
+    marcarControles(); desenharComparar(); desenharLinhas(); salvarURL();
+  };
+  $("#metrica").onchange = e => { estado.metrica = e.target.value; desenharComparar(true); salvarURL(); };
+  $("#anos").onclick = ev => { const b = ev.target.closest(".ano"); if (b) alternarDestaque(+b.dataset.s); };
+  $("#linhas").onclick = ev => {
+    const b = ev.target.closest(".linha"); if (!b) return;
+    alternarDestaque(+b.dataset.s);
+    if (innerWidth < 900) document.querySelector(".grafico").scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  $("#detPerm").addEventListener("toggle", desenharPermanencia);
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => desenharTudo());
+
+  await trocarEstacao(estado.estacao);
+  setInterval(atualizarAoVivo, 5 * 60e3);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) atualizarAoVivo(); });
 }
 iniciar();
 </script>
