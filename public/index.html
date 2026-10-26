@@ -606,7 +606,7 @@
       <li>Leituras com erro de sensor são descartadas do histórico. Anos <em>parciais</em> têm falhas e podem subestimar picos.</li>
       <li>Em emergência ligue <strong>199</strong> (Defesa Civil) ou <strong>193</strong> (Bombeiros).</li>
       <li id="avisosRodape" hidden>Avisos ligados neste aparelho · <button class="link" id="btnDesligarAvisos">desligar</button></li>
-      <li>Réguas da ANA e da <a href="https://cth.daee.sp.gov.br/sibh/" target="_blank" rel="noopener">SP Águas (SIBH)</a>. Cotas oficiais da SP Águas onde existem. Versões anteriores (só réguas da ANA): <a href="classico.html">tempo real</a> · <a href="analise.html">histórico</a>.</li>
+      <li>Definição das cotas (Manual das Salas de Situação de SP): <strong>atenção</strong> = risco significativo, mas incerto; <strong>alerta</strong> = perigo iminente, Defesa Civil de prontidão; <strong>emergência</strong> = situação crítica, ação imediata; <strong>transbordamento</strong> (extravasamento) = rio acima das margens.</li>
     </ul>
   </section>
 </main>
@@ -697,7 +697,15 @@ async function buscarSibh(ests, dias) {
     const mapa = new Map();
     for (const m of porId[e.id_nivel] || []) { const t = hora(m); mapa.set(t, { t, nivel: +m.value >= 0 ? +m.value : null, vazao: null, chuva: null }); }
     for (const m of porId[e.id_chuva] || []) { const t = hora(m), l = mapa.get(t) || { t, nivel: null, vazao: null, chuva: null }; l.chuva = +m.value >= 0 && +m.value <= 50 ? +m.value : null; mapa.set(t, l); }
-    out[e.codigo] = [...mapa.values()].sort((a, b) => a.t < b.t ? -1 : 1);
+    const ls = [...mapa.values()].sort((a, b) => a.t < b.t ? -1 : 1);
+    // régua voltando de falha às vezes manda valor absurdo e travado (ex.: 10,31 m): salto > 3 m em até 6 h é descartado
+    let bom = null;
+    for (const l of ls) {
+      if (l.nivel == null) continue;
+      if (bom && Math.abs(l.nivel - bom.nivel) > 300 && ms(l) - ms(bom) <= 6 * 36e5) { l.nivel = null; l.suspeita = true; continue; }
+      bom = l;
+    }
+    out[e.codigo] = ls;
   }
   return out;
 }

@@ -51,7 +51,12 @@ def leituras_sibh(codigos, horas=14):
         if m["value"] is None or m["station_prefix_id"] not in por_id: continue
         t = datetime.strptime(m["date"], "%Y/%m/%d %H:%M").replace(tzinfo=timezone.utc)
         out[por_id[m["station_prefix_id"]]].append((t, float(m["value"])))
-    for c in out: out[c].sort()
+    for c in out:
+        out[c].sort(); limpo = []
+        for t, v in out[c]:   # descarta salto > 3 m em até 6 h (régua voltando de falha com valor travado)
+            if limpo and abs(v - limpo[-1][1]) > 300 and (t - limpo[-1][0]) <= timedelta(hours=6): continue
+            limpo.append((t, v))
+        out[c] = limpo
     return out
 
 

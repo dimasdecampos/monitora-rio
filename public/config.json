@@ -51,10 +51,10 @@
           "lat": -23.2386,
           "lon": -45.3067,
           "atraso_max_horas": 2,
-          "observacao": "Marca cerca de 1,23 m a mais que a Passarela. Cotas oficiais da Passarela convertidas.",
+          "observacao": "Atenção (2,73 m) e alerta (3,16 m): cotas oficiais desta régua no SIBH. Emergência e transbordamento: os da Passarela convertidos (≈ +1,23 m).",
           "cotas_cm": {
-            "atencao": 319,
-            "alerta": 359,
+            "atencao": 273,
+            "alerta": 316,
             "emergencia": 400,
             "extravasamento": 441,
             "inundacao": 400

@@ -114,6 +114,22 @@ def sem_picos_falsos(linhas, salto=100):
                     break
         i += 1
 
+    # Sensor travado: depois de um salto de mais de 2 m, o mesmo valor se repete por 6 leituras ou mais
+    # (ex.: régua volta de uma falha marcando 10,31 m fixos). Cheia de verdade não fica parada no mesmo milímetro.
+    i = 1
+    while i < len(pontos):
+        if abs(pontos[i][1] - pontos[i - 1][1]) > 200:
+            k = i
+            while k + 1 < len(pontos) and pontos[k + 1][1] == pontos[i][1]: k += 1
+            if k - i + 1 >= 6:
+                ruins.update(p[0] for p in pontos[i:k + 1]); i = k
+        i += 1
+    # o mesmo valor travado reaparecendo em trechos curtos também sai
+    travados = {p[1] for p in pontos if p[0] in ruins}
+    for i in range(1, len(pontos)):
+        if pontos[i][1] in travados and (pontos[i - 1][0] in ruins or abs(pontos[i][1] - pontos[i - 1][1]) > 200):
+            ruins.add(pontos[i][0])
+
     for i in range(1, len(pontos) - 1):
         # só vale para leituras próximas; em estações com 2 leituras/dia uma subida grande pode ser real
         if (hora(pontos[i + 1]) - hora(pontos[i - 1])).total_seconds() > 4 * 3600:

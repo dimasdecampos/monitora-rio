@@ -124,3 +124,26 @@ caíram de 44% para 35%. A linha de previsão do gráfico erra em média 15 cm e
 
 `public/manifest.webmanifest` e `public/sw.js` deixam o painel instalável no celular
 ("Adicionar à tela inicial"); sem internet, ele mostra a última leitura guardada.
+
+## Definição das cotas (auditoria de 26/10/2026)
+
+Segundo o *Manual de Operação das Salas de Situação do Estado de São Paulo*
+(ANA/ProGestão), as cotas da SP Águas significam:
+
+| Cota | Significado oficial |
+|---|---|
+| abaixo da atenção | normal |
+| Atenção | risco significativo de evento adverso, mas ainda incerto |
+| Alerta | perigo iminente ou previsível a curto prazo; Defesa Civil de prontidão |
+| Emergência | situação crítica que demanda ação imediata |
+| Extravasamento | rio acima das margens, transbordando (no painel: "Transbordamento") |
+
+Cotas usadas: Passarela e demais réguas da SP Águas = cadastradas no SIBH. Régua da
+ANA na cidade = atenção 2,73 m e alerta 3,16 m cadastradas no SIBH para ela;
+emergência e transbordamento convertidos da Passarela (ANA ≈ 123 + 1,017 × Passarela,
+conferido de novo em 26/10/2026: diferença de 2–5 cm). As duas tabelas oficiais não
+batem entre si: a atenção da régua da ANA equivale a ~1,48 m na Passarela (lá é 1,92 m).
+
+Filtros de qualidade: saltos impossíveis, sensor travado (mesmo valor por horas depois
+de um salto > 2 m, ex. 10,31 m no Ribeirão do Chapéu em jul/2024) e chuvas impossíveis
+(contador acumulado da Passarela de dez/2021 a out/2023) são descartados.
