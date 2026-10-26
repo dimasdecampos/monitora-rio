@@ -1,0 +1,81 @@
+{
+ "versao": "2026-10-26",
+ "estacao_referencia": "58041000",
+ "descricao": "Probabilidade de o Rio Paraitinga em São Luiz subir pelo menos G cm nas próximas 48 h (regressão logística).",
+ "pontos": [
+  {
+   "nome": "São Luiz do Paraitinga",
+   "lat": -23.22,
+   "lon": -45.31
+  },
+  {
+   "nome": "Lagoinha",
+   "lat": -23.09,
+   "lon": -45.19
+  },
+  {
+   "nome": "Cunha",
+   "lat": -23.07,
+   "lon": -44.96
+  },
+  {
+   "nome": "Cabeceiras (Serra da Bocaina)",
+   "lat": -22.85,
+   "lon": -44.85
+  },
+  {
+   "nome": "Norte da bacia",
+   "lat": -22.95,
+   "lon": -45.1
+  }
+ ],
+ "fator_previsao": 1.061,
+ "pesos": [
+  -3.32695,
+  -3.1789,
+  0.81226,
+  0.79192,
+  -0.0925,
+  0.67249,
+  -0.51854,
+  0.16719,
+  0.19995,
+  -0.24436,
+  0.1076
+ ],
+ "variaveis": [
+  "1",
+  "G/100",
+  "ln(1+chuva prevista 48h)",
+  "ln(1+chuva 24h)",
+  "ln(1+chuva 72h)",
+  "chuva 30 dias antes das últimas 72h / 100",
+  "nível atual (m)",
+  "chuva prevista × solo",
+  "chuva prevista × G",
+  "chuva 24h × G",
+  "G²"
+ ],
+ "cotas_cm": {
+  "atencao": 345,
+  "alerta": 460,
+  "inundacao": 510
+ },
+ "solo_mm": {
+  "p33": 47,
+  "p66": 130,
+  "p90": 220
+ },
+ "teste": {
+  "periodo": "2024-02 a 2026-10",
+  "cheias": 15,
+  "avisadas": {
+   "6": 9,
+   "12": 4,
+   "24": 2
+  },
+  "dias_com_aviso": 30,
+  "dias_sem_cheia": 12,
+  "limiar_aviso": 0.3
+ }
+}

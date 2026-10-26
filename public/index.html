@@ -201,6 +201,38 @@
   .sobre ul { margin: 8px 0 0; padding-left: 18px; }
   #erro { display: none; border-color: var(--inundacao); color: var(--inundacao); }
 
+  /* ---------- previsão de cheia ---------- */
+  .previsao { position: relative; overflow: hidden; }
+  .previsao .cab { margin-bottom: 14px; }
+  .exp { font-size: 10.5px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; color: var(--tinta-3); border: 1px solid var(--eixo);
+         border-radius: 4px; padding: 0 5px; margin-left: 6px; vertical-align: 2px; }
+  .prev-corpo { display: grid; gap: 16px; }
+  .probs { display: grid; gap: 10px; }
+  .prob { display: grid; grid-template-columns: 92px minmax(0, 1fr) 48px; gap: 10px; align-items: center; font-size: 14px; }
+  .prob .nome { display: inline-flex; align-items: center; gap: 6px; color: var(--tinta-2); }
+  .prob .nome i { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+  .prob .trilho { height: 10px; border-radius: 5px; background: var(--superficie-2); overflow: hidden; }
+  .prob .enche { height: 100%; border-radius: 5px; transition: width .6s; }
+  .prob b { text-align: right; font-variant-numeric: tabular-nums; }
+  .prev-frase { margin: 0; font-size: 14px; color: var(--tinta-2); }
+  .prev-frase strong { color: var(--tinta); }
+  .dias-chuva { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; align-items: end; height: 118px; }
+  .dia-ch { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; height: 100%; font-size: 11.5px; color: var(--tinta-2); min-width: 0; }
+  .dia-ch .col { width: 100%; max-width: 30px; border-radius: 4px 4px 2px 2px; background: var(--chuva); min-height: 2px; position: relative; }
+  .dia-ch .col.passado { background: color-mix(in srgb, var(--chuva) 45%, transparent); }
+  .dia-ch .faixa-ens { position: absolute; left: 50%; width: 2px; transform: translateX(-50%); background: var(--tinta-3); bottom: 0; }
+  .dia-ch b { font-size: 12px; color: var(--tinta); font-variant-numeric: tabular-nums; }
+  .dia-ch span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .prev-info { display: flex; flex-wrap: wrap; gap: 6px; }
+  .prev-info span { font-size: 12.5px; background: var(--superficie-2); border-radius: 8px; padding: 5px 9px; color: var(--tinta-2); }
+  .prev-info b { color: var(--tinta); }
+  details.confianca { font-size: 13px; color: var(--tinta-2); border-top: 1px solid var(--grade); padding-top: 10px; }
+  details.confianca summary { cursor: pointer; font-weight: 600; color: var(--acento); list-style: none; }
+  details.confianca summary::-webkit-details-marker { display: none; }
+  details.confianca p, details.confianca ul { margin: 8px 0 0; line-height: 1.55; }
+  details.confianca ul { padding-left: 18px; }
+  .prev-carregando { color: var(--tinta-3); font-size: 14px; }
+
   /* ---------- folha de estações ---------- */
   dialog.folha { border: 0; padding: 0; margin: auto auto 0; width: 100%; max-width: 560px; max-height: 85vh; border-radius: 22px 22px 0 0;
                  background: var(--superficie); color: var(--tinta); box-shadow: 0 -10px 40px rgba(0,0,0,.25); }
@@ -226,7 +258,8 @@
     .coluna { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 84px; }
     .stats { grid-auto-flow: row; grid-template-columns: 1fr 1fr; overflow: visible; margin: 0; padding: 0; }
     .stats .stat:last-child:nth-child(odd) { grid-column: span 2; }
-    .grafico { grid-column: 2; }
+    .grafico, .previsao { grid-column: 2; }
+    .coluna { grid-row: span 2; }
     .largo { grid-column: 1 / -1; }
     .duas { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 20px; align-items: start; }
     .area-g { height: 380px; }
@@ -275,6 +308,15 @@
     </section>
     <section class="stats" id="stats" aria-label="Números rápidos"></section>
   </div>
+
+  <section class="card previsao" id="cardPrev" aria-labelledby="tituloPrev">
+    <div class="cab">
+      <div><h2 id="tituloPrev">Previsão · 48 h<span class="exp">experimental</span></h2>
+        <p class="sub" id="pSub">Rio Paraitinga em São Luiz · nível atual + chuva prevista na bacia</p></div>
+      <span class="pill" id="pRisco"><i></i>…</span>
+    </div>
+    <div class="prev-corpo" id="pCorpo"><span class="prev-carregando">Calculando com a previsão do tempo…</span></div>
+  </section>
 
   <section class="card grafico">
     <div class="seg grande" id="modo" role="tablist">
@@ -1036,6 +1078,167 @@ function desenharPermanencia() {
   $("#permSub").textContent = `Em ${fmt(pct(vRef), 1)}% dos dias dos anos completos o nível médio passou da cota de atenção` + (vAt.length ? `; em ${rotulo(atual.s)}, ${fmt(pct(vAt), 1)}%.` : ".");
 }
 
+// ================= previsão de cheia (experimental) =================
+// Modelo treinado em scripts/modelo_cheias (régua da CESP, 58041000). Mesmas variáveis de logistico.py.
+const prev = { modelo: null, dados: null, sazonal: null };
+const pad = n => String(n).padStart(2, "0");
+const horaLocal = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:00`;
+const sigmoide = z => 1 / (1 + Math.exp(-Math.max(-30, Math.min(30, z))));
+function chanceDeSubir(H0, x, f48, G) {
+  if (G <= 0) return 1;
+  const f = Math.log1p(f48), a = Math.log1p(x.p24), b = Math.log1p(x.p72), solo = x.api / 100, g = G / 100;
+  const v = [1, g, f, a, b, solo, H0 / 100, f * solo, f * g, a * g, g * g];
+  return sigmoide(prev.modelo.pesos.reduce((s, w, i) => s + w * v[i], 0));
+}
+
+async function buscarPrevisao() {
+  prev.modelo ??= await (await fetch("modelo_cheias.json")).json();
+  const m = prev.modelo, lat = m.pontos.map(p => p.lat).join(","), lon = m.pontos.map(p => p.lon).join(",");
+  const base = `latitude=${lat}&longitude=${lon}&hourly=precipitation&timezone=America%2FSao_Paulo`;
+  const [det, ens] = await Promise.all([
+    fetch(`https://api.open-meteo.com/v1/forecast?${base}&past_days=31&forecast_days=7`).then(r => { if (!r.ok) throw new Error(`Open-Meteo ${r.status}`); return r.json(); }),
+    fetch(`https://ensemble-api.open-meteo.com/v1/ensemble?${base}&models=gfs025&forecast_days=3`).then(r => r.ok ? r.json() : null).catch(() => null),
+  ]);
+  const pts = [].concat(det), tempo = pts[0].hourly.time;
+  const media = tempo.map((_, i) => pts.reduce((s, p) => s + (p.hourly.precipitation[i] ?? 0), 0) / pts.length);
+  let membros = [];
+  if (ens) {
+    const ep = [].concat(ens), tt = ep[0].hourly.time;
+    membros = Object.keys(ep[0].hourly).filter(k => k.startsWith("precipitation")).map(k => ({
+      tempo: tt, serie: tt.map((_, i) => ep.reduce((s, p) => s + (p.hourly[k][i] ?? 0), 0) / ep.length),
+    }));
+  }
+  prev.dados = { tempo, media, membros };
+  // frequência histórica de cheias por mês (régua da CESP)
+  if (!prev.sazonal) {
+    const dias = cache["58041000"]?.diario || await buscarDiario("58041000");
+    const porAnoMes = new Map();
+    for (const r of dias) if (r.nmax != null) { const k = r.d.slice(0, 7); porAnoMes.set(k, Math.max(porAnoMes.get(k) || 0, r.nmax)); }
+    prev.sazonal = porAnoMes;
+  }
+}
+
+async function nivelDeReferencia() {
+  // usa a régua da CESP (a do treino); se estiver parada, usa a mais recente entre as duas da cidade
+  const ler = async cod => comNivel(cache[cod] && Date.now() - cache[cod].quando < 10 * 60e3 ? cache[cod].leituras : await buscarAna(cod, 2).catch(() => [])).at(-1);
+  const [cesp, cidade] = await Promise.all([ler("58041000"), ler("58040000")]);
+  const offset = cesp && cidade && Math.abs(ms(cesp) - ms(cidade)) < 2 * 36e5 ? cidade.nivel - cesp.nivel : 0;
+  if (cesp && (!cidade || ms(cesp) >= ms(cidade) - 36e5)) return { H0: cesp.nivel, t: ms(cesp), offset, fonte: "CESP" };
+  if (cidade) return { H0: cidade.nivel, t: ms(cidade), offset: 0, fonte: "cidade" };
+  return null;
+}
+
+async function desenharPrevisao() {
+  const card = $("#cardPrev");
+  if (estacoes[estado.estacao].rio !== "Rio Paraitinga") { card.hidden = true; return; }
+  card.hidden = false;
+  try {
+    if (!prev.dados || Date.now() - prev.quando > 30 * 60e3) { await buscarPrevisao(); prev.quando = Date.now(); }
+    const ref = await nivelDeReferencia();
+    if (!ref) throw new Error("sem leitura recente do rio");
+    renderizarPrevisao(ref);
+  } catch (e) {
+    $("#pRisco").innerHTML = `<i style="background:${tok("--neutro")}"></i>indisponível`;
+    $("#pCorpo").innerHTML = `<span class="prev-carregando">Não foi possível calcular agora (${e.message}). Tentaremos de novo em instantes.</span>`;
+  }
+}
+
+function renderizarPrevisao(ref) {
+  const m = prev.modelo, { tempo, media, membros } = prev.dados, fator = m.fator_previsao, H0 = ref.H0;
+  let i = tempo.indexOf(horaLocal(new Date()));
+  if (i < 0) i = tempo.findLastIndex(t => t <= horaLocal(new Date()));
+  const soma = (a, b) => media.slice(Math.max(0, a), Math.max(0, b)).reduce((s, v) => s + v, 0);
+  const x = { p24: soma(i - 24, i + 1), p72: soma(i - 72, i + 1), api: soma(i - 720, i - 72) };
+  const fDet = soma(i + 1, i + 49) * fator;
+  const cenarios = membros.map(mb => { const j = mb.tempo.indexOf(tempo[i]); return j < 0 || j + 49 > mb.serie.length ? null : mb.serie.slice(j + 1, j + 49).reduce((s, v) => s + v, 0) * fator; }).filter(v => v != null);
+  const fs = cenarios.length >= 5 ? cenarios : [fDet];
+  const P = G => fs.reduce((s, f) => s + chanceDeSubir(H0, x, f, G), 0) / fs.length;
+
+  const cot = m.cotas_cm, linhas = [["atencao", "Atenção", "--atencao"], ["alerta", "Alerta", "--alerta"], ["inundacao", "Inundação", "--inundacao"]];
+  const probs = Object.fromEntries(linhas.map(([k]) => [k, P(cot[k] - H0)]));
+  // pico provável (50%) e cenário pessimista (10%) — em cm acima do nível atual
+  const subida = alvo => { for (let G = 5; G <= 700; G += 5) if (P(G) < alvo) return G - 5; return 700; };
+  const g50 = subida(.5), g10 = subida(.1), regua = estado.estacao === "58040000" ? ref.offset : 0;
+  const naRegua = cm => fmt((cm + regua) / 100, 2);
+
+  // nível de risco: olha a próxima cota que ainda não foi passada
+  const proxima = linhas.find(([k]) => H0 < cot[k]);
+  const pr = proxima ? probs[proxima[0]] : 1;
+  const jaAcima = H0 >= cot.atencao;   // já em atenção: o risco é de piorar
+  const risco = !proxima ? ["Acima da inundação", "--inundacao"]
+    : pr < .1 ? [jaAcima ? "Sem sinal de piora" : "Risco baixo", "--bom"]
+    : pr < .3 ? [jaAcima ? "Pode piorar" : "Risco moderado", "--atencao"]
+    : pr < .6 ? [jaAcima ? "Risco alto de piorar" : "Risco alto", "--alerta"]
+    : ["Risco muito alto", "--inundacao"];
+  $("#pRisco").innerHTML = `<i style="background:${tok(risco[1])}"></i>${risco[0]}`;
+
+  // chuva por dia: ontem + hoje + 5 dias, com a faixa dos cenários (10%–90%) quando houver
+  const hoje = horaLocal(new Date()).slice(0, 10), diasLista = [...new Set(tempo.map(t => t.slice(0, 10)))];
+  const k0 = Math.max(0, diasLista.indexOf(hoje) - 1), dias = diasLista.slice(k0, k0 + 7);
+  const porDia = d => tempo.reduce((s, t, j) => t.startsWith(d) ? s + media[j] : s, 0) * (d >= hoje ? fator : 1);
+  const faixaDia = d => {
+    if (cenarios.length < 5 || d < hoje) return null;
+    const v = membros.map(mb => mb.tempo.reduce((s, t, j) => t.startsWith(d) ? s + mb.serie[j] : s, 0) * fator).sort((a, b) => a - b);
+    if (!membros[0].tempo.some(t => t.startsWith(d))) return null;
+    return [v[Math.floor(.1 * (v.length - 1))], v[Math.ceil(.9 * (v.length - 1))]];
+  };
+  const colunas = dias.map(d => ({ d, mm: porDia(d), faixa: faixaDia(d) }));
+  const escala = Math.max(10, ...colunas.map(c => Math.max(c.mm, c.faixa?.[1] || 0)));
+  const nomeDia = d => d === hoje ? "hoje" : d < hoje ? "ontem" : new Date(d + "T12:00").toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
+  const hBarra = 78;
+  const limite48 = tempo[Math.min(tempo.length - 1, i + 48)]?.slice(0, 10) || hoje;
+  const depois = colunas.filter(c => c.d > limite48 && c.mm >= 25);
+
+  const solo = x.api + x.p72, sm = m.solo_mm;
+  const estadoSolo = solo < sm.p33 ? "seco" : solo < sm.p66 ? "úmido" : solo < sm.p90 ? "encharcado" : "muito encharcado";
+  const ord = fs.slice().sort((a, b) => a - b), f10 = ord[Math.floor(.1 * (ord.length - 1))], f90 = ord[Math.ceil(.9 * (ord.length - 1))];
+  const mes = new Date().getMonth() + 1, anoAtual = new Date().getFullYear();
+  const anosMes = [...prev.sazonal].filter(([k]) => +k.slice(5) === mes && +k.slice(0, 4) < anoAtual);
+  const comCheia = anosMes.filter(([, v]) => v >= cot.atencao).length;
+  const idade = (Date.now() - ref.t) / 36e5;
+  const t = m.teste;
+
+  $("#pSub").textContent = `Rio Paraitinga em São Luiz · ${cenarios.length >= 5 ? `${cenarios.length} cenários de chuva (GFS)` : "previsão de chuva Open-Meteo"} · atualizado ${new Date(prev.quando).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  $("#pCorpo").innerHTML = `
+    <div class="probs" role="list" aria-label="Chance de passar de cada cota em 48 horas">
+      ${linhas.map(([k, nome, cor]) => {
+        const p = probs[k], ja = H0 >= cot[k];
+        return `<div class="prob" role="listitem"><span class="nome"><i style="background:${tok(cor)}"></i>${nome}</span>
+          <span class="trilho"><span class="enche" style="width:${Math.max(1.5, p * 100)}%;background:${tok(cor)}"></span></span>
+          <b>${ja ? "já" : p < .01 ? "<1%" : fmt(p * 100, 0) + "%"}</b></div>`;
+      }).join("")}
+    </div>
+    <p class="prev-frase">${g50 < 10
+      ? `O rio deve <strong>ficar perto do nível atual</strong> (${naRegua(H0)} m)`
+      : `Pico mais provável: <strong>${naRegua(H0 + g50)} m</strong>`}${g10 > g50 + 5 ? `; num cenário de mais chuva, pode chegar a <strong>${naRegua(H0 + g10)} m</strong>` : ""}.
+      ${idade > 3 ? `<span class="aviso-atraso">Atenção: a última leitura do rio é de ${ha(idade)}.</span>` : ""}</p>
+    <div>
+      <div class="rot" style="margin-bottom:8px">Chuva na bacia por dia (mm)</div>
+      <div class="dias-chuva">${colunas.map(c => `<div class="dia-ch" title="${c.faixa ? `cenários: ${fmt(c.faixa[0], 0)}–${fmt(c.faixa[1], 0)} mm` : ""}">
+          <b>${fmt(c.mm, 0)}</b>
+          <span class="col${c.d < hoje ? " passado" : ""}" style="height:${c.mm / escala * hBarra}px">${c.faixa ? `<span class="faixa-ens" style="bottom:${c.faixa[0] / escala * hBarra}px;height:${Math.max(2, (c.faixa[1] - c.faixa[0]) / escala * hBarra)}px"></span>` : ""}</span>
+          <span>${nomeDia(c.d)}</span></div>`).join("")}</div>
+    </div>
+    <div class="prev-info">
+      <span>Últimas 24 h: <b>${fmt(x.p24, 0)} mm</b> · 72 h: <b>${fmt(x.p72, 0)} mm</b></span>
+      <span>Prevista 48 h: <b>${fmt(fDet, 0)} mm</b>${cenarios.length >= 5 ? ` (cenários ${fmt(f10, 0)}–${fmt(f90, 0)})` : ""}</span>
+      <span>Solo: <b>${estadoSolo}</b> (${fmt(solo, 0)} mm em 30 dias)</span>
+      ${anosMes.length ? `<span>Em ${MESES[mes - 1]}, passou da atenção em <b>${comCheia} de ${anosMes.length} anos</b></span>` : ""}
+    </div>
+    ${depois.length ? `<p class="prev-frase">⚠ Chuva forte prevista depois das 48 h: ${depois.map(c => `<strong>${fmt(c.mm, 0)} mm ${["sábado", "domingo"].includes(new Date(c.d + "T12:00").toLocaleDateString("pt-BR", { weekday: "long" })) ? "no" : "na"} ${new Date(c.d + "T12:00").toLocaleDateString("pt-BR", { weekday: "long" })}</strong>`).join(", ")}. Ainda fora do alcance do modelo — acompanhe a atualização.</p>` : ""}
+    <details class="confianca">
+      <summary>Como funciona e quão confiável é</summary>
+      <p>Um modelo estatístico treinado com o nível do rio de 2015 a 2021 e a chuva na bacia (São Luiz, Lagoinha, Cunha e cabeceiras). Ele combina o nível atual, a chuva dos últimos dias, o quanto o solo está encharcado e a chuva prevista, e calcula a chance do rio subir até cada cota em 48 h.</p>
+      <ul>
+        <li>Testado de ${t.periodo.replace(" a ", " até ")} com a previsão do tempo real da época: das <b>${t.cheias}</b> vezes em que o rio passou da atenção, avisou (chance ≥ ${t.limiar_aviso * 100}%) <b>${t.avisadas["6"]}</b> com 6 h de antecedência, ${t.avisadas["12"]} com 12 h e ${t.avisadas["24"]} com 24 h.</li>
+        <li>Em ${t.dias_sem_cheia} dos ${t.dias_com_aviso} dias com aviso, a cheia não veio.</li>
+        <li>Tempestades muito localizadas na serra podem escapar da previsão. O aviso costuma vir poucas horas antes.</li>
+        <li>Cálculo na régua da CESP${regua ? `, convertido para a régua da cidade (${regua > 0 ? "+" : ""}${fmt(regua / 100, 2)} m)` : ""}. Nível usado: ${fmt(H0 / 100, 2)} m (${ref.fonte}, ${ha(idade)}).</li>
+        <li><b>Não substitui os alertas da Defesa Civil (199).</b></li>
+      </ul>
+    </details>`;
+}
+
 // ================= folha de estações =================
 async function abrirFolha() {
   const lista = $("#listaEstacoes");
@@ -1083,6 +1286,7 @@ function desenharTudo() {
   desenharHero(); desenharStats();
   trocarModo(estado.modo);
   desenharLinhas(); desenharCheias(); desenharCalor(); desenharPermanencia();
+  desenharPrevisao();
 }
 async function trocarEstacao(cod) {
   estado.estacao = cod; estado.destaques = new Map(); estado.janela = null;
@@ -1140,7 +1344,8 @@ async function iniciar() {
 
   await trocarEstacao(estado.estacao);
   setInterval(atualizarAoVivo, 5 * 60e3);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) atualizarAoVivo(); });
+  setInterval(desenharPrevisao, 15 * 60e3);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { atualizarAoVivo(); desenharPrevisao(); } });
 }
 iniciar();
 </script>
