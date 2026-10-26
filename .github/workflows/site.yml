@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Baixar mês atual e anterior da ANA
+      - name: Baixar mês atual e anterior (ANA e SP Águas)
         if: github.event_name != 'push'
         run: python scripts/coletar.py
 
@@ -43,7 +43,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "Nada novo."
           else
-            git commit -m "Histórico ANA $(date -u +%Y-%m-%d)"
+            git commit -m "Histórico $(date -u +%Y-%m-%d)"
             git push
           fi
 
