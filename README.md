@@ -54,6 +54,12 @@ Uma única página, pensada primeiro para o celular:
 | Visões extras (fechadas) | Chuva × subida do rio, quando o rio enche, tempo para baixar, permanência, memória das cheias |
 | Situação das fontes | Se cada fonte está transmitindo |
 
+**Modo TV** (`tv.html`): tela cheia para televisão ou monitor (Defesa Civil, prefeitura,
+comércio). Mostra o nível em letras grandes com a cor da situação, a régua com as cotas,
+as últimas 48 h, as réguas rio acima e a chuva medida e prevista. Atualiza sozinho a cada
+5 min, mantém a tela acesa e esconde o cursor. Tecla **F** liga a tela cheia;
+`tv.html?tema=light` usa o tema claro.
+
 Cartões menos usados começam fechados para economizar espaço; o navegador lembra o que
 cada visitante abriu.
 
