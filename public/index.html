@@ -228,6 +228,9 @@
   .area-perm { position: relative; height: 260px; margin-top: 12px; }
   .sobre { font-size: 13px; color: var(--tinta-2); line-height: 1.6; }
   .sobre ul { margin: 8px 0 0; padding-left: 18px; }
+  .creditos { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--grade); }
+  .creditos p { margin: 0 0 6px; }
+  .aviso-legal { color: var(--tinta); }
   #erro { display: none; border-color: var(--inundacao); color: var(--inundacao); }
 
   /* ---------- previsão de cheia ---------- */
@@ -602,13 +605,17 @@
     <strong>Sobre os dados</strong>
     <ul>
       <li>Réguas da <a href="https://cth.daee.sp.gov.br/sibh/" target="_blank" rel="noopener">SP Águas (SIBH)</a>, a cada 10 min, e da <a href="https://www.snirh.gov.br/hidrotelemetria/" target="_blank" rel="noopener">ANA</a>, a cada 15 min, buscadas direto no seu navegador. Chuva prevista: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>. O histórico (Passarela desde 2018) é atualizado todo dia.</li>
-      <li>Cotas de atenção, alerta, emergência e transbordamento: <strong>oficiais da SP Águas</strong> nas réguas dela; nas réguas da ANA e da CESP são as da Passarela convertidas.</li>
+      <li>Cotas de atenção, alerta, emergência e transbordamento: <strong>oficiais da SP Águas</strong> nas réguas dela e, na régua da ANA, atenção e alerta oficiais; as demais são convertidas da Passarela.</li>
       <li>Leituras com erro de sensor são descartadas do histórico. Anos <em>parciais</em> têm falhas e podem subestimar picos.</li>
       <li>Em emergência ligue <strong>199</strong> (Defesa Civil) ou <strong>193</strong> (Bombeiros).</li>
       <li id="avisosRodape" hidden>Avisos ligados neste aparelho · <button class="link" id="btnDesligarAvisos">desligar</button></li>
       <li>Quando uma régua da cidade fica sem transmitir (ex.: Passarela de 10 a 15/09/2026), os dias que faltam no histórico são completados com a outra régua convertida (ANA ≈ 1,23 m acima da Passarela).</li>
       <li>Definição das cotas (Manual das Salas de Situação de SP): <strong>atenção</strong> = risco significativo, mas incerto; <strong>alerta</strong> = perigo iminente, Defesa Civil de prontidão; <strong>emergência</strong> = situação crítica, ação imediata; <strong>transbordamento</strong> (extravasamento) = rio acima das margens.</li>
     </ul>
+    <div class="creditos">
+      <p class="aviso-legal"><strong>Aviso:</strong> projeto independente. Os dados, cotas, impactos e previsões <strong>não foram validados pela Defesa Civil</strong> e podem conter erros ou atrasos. <strong>Qualquer uso é de responsabilidade própria.</strong></p>
+      <p>Idealização e criação: <strong>Dimas de Campos</strong> · desenvolvido em parceria com IA (<strong>Claude</strong>, da Anthropic) · <a href="https://github.com/dimasdecampos/monitora-rio-slp" target="_blank" rel="noopener">código no GitHub</a></p>
+    </div>
   </section>
 </main>
 
