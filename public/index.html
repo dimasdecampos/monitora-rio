@@ -159,7 +159,12 @@
 
   .area-chuva.bacia { height: 130px; }
   @media (min-width: 900px) { .area-chuva.bacia { height: 160px; } }
-  .leg-chuva { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .leg-chuva { margin-top: 6px; }
+  .leg-chuva summary { cursor: pointer; font-size: 13px; color: var(--tinta-2); padding: 6px 0; list-style: none; display: flex; align-items: center; gap: 8px; }
+  .leg-chuva summary::-webkit-details-marker { display: none; }
+  .leg-chuva summary::after { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--tinta-3); border-bottom: 2px solid var(--tinta-3); transform: rotate(45deg); transition: transform .2s; }
+  .leg-chuva details[open] summary::after { transform: rotate(-135deg); }
+  .leg-chuva .chips { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 4px; }
   .leg-chuva:empty { display: none; }
   .leg-chuva button { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--borda); background: var(--superficie); border-radius: 10px;
                       padding: 6px 10px; font-size: 13px; cursor: pointer; color: var(--tinta); text-align: left; }
@@ -1070,10 +1075,14 @@ function desenharLegChuva(a, b) {
     return { r, med: soma("med"), prv: soma("prv") };
   }).sort((x, y) => (y.med + y.prv) - (x.med + x.prv));
   const total = linhas.filter(l => !ocultas.has(l.r.curto)).reduce((s, l) => s + l.med + l.prv, 0);
-  $("#legChuva").innerHTML = linhas.map(l => `<button data-reg="${l.r.curto}" aria-pressed="${!ocultas.has(l.r.curto)}">
+  const topo = linhas.find(l => !ocultas.has(l.r.curto));
+  $("#legChuva").innerHTML = `<details id="legChuvaDet"${ler("legChuvaAberta", false) ? " open" : ""}>
+    <summary><span>Chuva por região · soma <b>${fmt(total, 0)} mm</b>${topo ? ` · mais chuva: <b>${topo.r.curto}</b>` : ""}</span></summary>
+    <div class="chips">` + linhas.map(l => `<button data-reg="${l.r.curto}" aria-pressed="${!ocultas.has(l.r.curto)}">
       <i style="background:${tok(l.r.cor)}"></i><span>${l.r.nome} · <b>${fmt(l.med + l.prv, 0)} mm</b>
       <small>${l.prv >= .5 ? `${fmt(l.med, 0)} medidos + ${fmt(l.prv, 0)} previstos · ` : ""}${l.r.chegada}</small></span></button>`).join("") +
-    `<button disabled aria-hidden="true" style="cursor:default"><span>Soma no período · <b>${fmt(total, 0)} mm</b><small>regiões ligadas</small></span></button>`;
+    `</div></details>`;
+  $("#legChuvaDet").addEventListener("toggle", ev => guardar("legChuvaAberta", ev.target.open));
 }
 function aplicarRegioesOcultas() {
   const ch = graficos.chuva; if (!ch || !ch.data.datasets[0]?.regiao) return;
@@ -1925,7 +1934,7 @@ async function abrirFolha() {
 function trocarModo(modo) {
   estado.modo = modo; estado.cursor = null; estado.janelaManual = false;
   document.querySelectorAll("#modo button").forEach(b => b.setAttribute("aria-pressed", b.dataset.modo === modo));
-  $("#ctrlAgora").hidden = modo !== "agora"; $("#ctrlComp").hidden = modo !== "comparar"; $("#anos").hidden = modo !== "comparar"; $("#legAgora").hidden = modo !== "agora";
+  $("#ctrlAgora").hidden = modo !== "agora"; $("#ctrlComp").hidden = modo !== "comparar"; $("#anos").hidden = modo !== "comparar"; $("#legAgora").hidden = modo !== "agora"; $("#legChuva").hidden = modo !== "agora";
   estado.janela = null;
   if (modo === "agora") { $("#boxChuva").hidden = false; desenharAgora(); } else { $("#boxChuva").hidden = true; desenharComparar(); }
   salvarURL();
