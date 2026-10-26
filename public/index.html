@@ -264,6 +264,7 @@
   .botao { border: 0; border-radius: 10px; padding: 9px 14px; font-weight: 650; font-size: 14px; background: var(--acento); color: #fff; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
   .botao.sec { background: var(--superficie-2); color: var(--tinta); }
   .botao[disabled] { opacity: .6; cursor: default; }
+  button.link { border: 0; background: none; padding: 0; color: var(--acento); font: inherit; text-decoration: underline; cursor: pointer; }
   .trocar { margin-top: 8px; border: 0; background: var(--superficie-2); color: var(--acento); font-weight: 650; border-radius: 8px; padding: 6px 10px; cursor: pointer; font-size: 13px; }
 
   /* ---------- o que alaga ---------- */
@@ -554,6 +555,7 @@
       <li>As cotas de atenção, alerta e inundação <strong>não são oficiais</strong>; no Paraitinga foram estimadas com cheias reais registradas na régua da cidade.</li>
       <li>Leituras com erro de sensor são descartadas do histórico. Anos <em>parciais</em> têm falhas e podem subestimar picos.</li>
       <li>Em emergência ligue <strong>199</strong> (Defesa Civil) ou <strong>193</strong> (Bombeiros).</li>
+      <li id="avisosRodape" hidden>Avisos ligados neste aparelho · <button class="link" id="btnDesligarAvisos">desligar</button></li>
       <li>Réguas da ANA e da <a href="https://cth.daee.sp.gov.br/sibh/" target="_blank" rel="noopener">SP Águas (SIBH)</a>. Cotas oficiais da SP Águas onde existem. Versões anteriores (só réguas da ANA): <a href="classico.html">tempo real</a> · <a href="analise.html">histórico</a>.</li>
     </ul>
   </section>
@@ -1876,9 +1878,12 @@ function configurarAvisos() {
   const btn = $("#btnNotif");
   const atualizar = () => {
     const ativo = ler("avisos", false) && typeof Notification !== "undefined" && Notification.permission === "granted";
-    btn.textContent = ativo ? "Avisos ligados neste aparelho ✓" : "Avisar neste aparelho";
-    btn.classList.toggle("sec", ativo);
+    // depois de ligado, o cartão some; dá para desligar pelo rodapé
+    $("#cardAvisos").hidden = ativo && $("#btnInstalar").hidden && $("#lnkTelegram").hidden;
+    btn.hidden = ativo;
+    $("#avisosRodape").hidden = !ativo;
   };
+  $("#btnDesligarAvisos").onclick = () => { guardar("avisos", false); atualizar(); };
   if (typeof Notification === "undefined") { btn.disabled = true; btn.textContent = "Este navegador não mostra avisos"; }
   else btn.onclick = async () => {
     if (ler("avisos", false) && Notification.permission === "granted") { guardar("avisos", false); atualizar(); return; }
@@ -1889,8 +1894,8 @@ function configurarAvisos() {
   atualizar();
   if (config.telegram) { $("#lnkTelegram").href = config.telegram; $("#lnkTelegram").hidden = false; }
   let pedido = null;
-  addEventListener("beforeinstallprompt", ev => { ev.preventDefault(); pedido = ev; $("#btnInstalar").hidden = false; });
-  $("#btnInstalar").onclick = async () => { if (!pedido) return; pedido.prompt(); await pedido.userChoice; pedido = null; $("#btnInstalar").hidden = true; };
+  addEventListener("beforeinstallprompt", ev => { ev.preventDefault(); pedido = ev; $("#btnInstalar").hidden = false; atualizar(); });
+  $("#btnInstalar").onclick = async () => { if (!pedido) return; pedido.prompt(); await pedido.userChoice; pedido = null; $("#btnInstalar").hidden = true; atualizar(); };
 }
 
 // ================= folha de estações =================
