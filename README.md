@@ -11,7 +11,9 @@ na ANA, pelo navegador, e lê o histórico salvo neste repositório.
 
 | Parte | O que faz |
 |---|---|
-| `public/index.html` | A página |
+| `public/index.html` | Página de tempo real |
+| `public/analise.html` | Histórico e comparação entre anos (estação, período do ano, medida) |
+| `public/historico/<estação>/diario.json` | Resumo diário usado na página de análise (gerado pelo coletor) |
 | `public/config.json` | Estações e cotas de atenção/alerta/inundação |
 | `public/historico/` | Histórico salvo, um arquivo por estação e mês |
 | `scripts/coletar.py` | Baixa o histórico da ANA |

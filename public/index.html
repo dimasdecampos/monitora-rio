@@ -26,6 +26,7 @@
   button { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line);
            border-radius: 8px; padding: 6px 10px; cursor: pointer; }
   button.ativo { background: var(--rio); border-color: var(--rio); color: #fff; }
+  .link-analise { font-size: 14px; font-weight: 600; color: #fff; background: var(--rio); text-decoration: none; padding: 7px 14px; border-radius: 8px; }
   .ao-vivo { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
   .ponto { width: 9px; height: 9px; border-radius: 50%; background: var(--normal); flex: none; }
   .ponto.vivo { animation: pulsa 2s infinite; }
@@ -84,7 +85,10 @@
     <h1 id="titulo">Rios Paraitinga e Paraibuna</h1>
     <div class="sub">Monitoramento em tempo real · telemetria ANA</div>
   </div>
-  <span class="ao-vivo"><span id="ponto" class="ponto"></span><span id="situacao">Carregando…</span></span>
+  <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap">
+    <span class="ao-vivo"><span id="ponto" class="ponto"></span><span id="situacao">Carregando…</span></span>
+    <a class="link-analise" href="analise.html">Histórico e comparação entre anos →</a>
+  </div>
 </header>
 
 <main>

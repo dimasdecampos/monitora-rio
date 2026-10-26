@@ -1,0 +1,883 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Histórico dos Rios</title>
+<meta name="description" content="Comparação ano a ano do nível dos rios Paraitinga e Paraibuna com dados da ANA">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --plano: #f9f9f7; --superficie: #fcfcfb; --superficie-2: #f2f1ed;
+    --tinta: #0b0b0b; --tinta-2: #52514e; --tinta-3: #898781;
+    --grade: #e1e0d9; --eixo: #c3c2b7; --borda: rgba(11,11,11,.10);
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --neutro: #b9b7ae; --faixa: rgba(137,135,129,.16); --mediana: #6f6d68;
+    --bom: #0ca30c; --atencao: #fab219; --alerta: #ec835a; --inundacao: #d03b3b;
+    --acento: #2a78d6; --sobe: #b42318; --desce: #006300;
+    --r100:#cde2fb; --r150:#b7d3f6; --r200:#9ec5f4; --r250:#86b6ef; --r300:#6da7ec; --r350:#5598e7; --r400:#3987e5;
+    --r450:#2a78d6; --r500:#256abf; --r550:#1c5cab; --r600:#184f95; --r650:#104281; --r700:#0d366b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --plano: #0d0d0d; --superficie: #1a1a19; --superficie-2: #232321;
+      --tinta: #f0efec; --tinta-2: #c3c2b7; --tinta-3: #898781;
+      --grade: #2c2c2a; --eixo: #383835; --borda: rgba(255,255,255,.10);
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --neutro: #55544f; --faixa: rgba(195,194,183,.10); --mediana: #a3a197;
+      --acento: #5598e7; --sobe: #f97066; --desce: #0ca30c;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --plano: #0d0d0d; --superficie: #1a1a19; --superficie-2: #232321;
+    --tinta: #f0efec; --tinta-2: #c3c2b7; --tinta-3: #898781;
+    --grade: #2c2c2a; --eixo: #383835; --borda: rgba(255,255,255,.10);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --neutro: #55544f; --faixa: rgba(195,194,183,.10); --mediana: #a3a197;
+    --acento: #5598e7; --sobe: #f97066; --desce: #0ca30c;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--plano); color: var(--tinta);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  button, select { font: inherit; color: inherit; }
+  a { color: var(--acento); }
+
+  /* topo */
+  .topo { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+          max-width: 1240px; margin: 0 auto; padding: 18px 24px 8px; }
+  .marca { display: flex; align-items: center; gap: 12px; }
+  .marca svg { flex: none; }
+  .marca h1 { font-size: 18px; margin: 0; letter-spacing: -.01em; }
+  .marca p { margin: 0; font-size: 13px; color: var(--tinta-2); }
+  nav.abas { display: flex; gap: 4px; background: var(--superficie-2); padding: 4px; border-radius: 10px; }
+  nav.abas a { text-decoration: none; color: var(--tinta-2); padding: 6px 14px; border-radius: 7px; font-size: 14px; font-weight: 500; }
+  nav.abas a[aria-current] { background: var(--superficie); color: var(--tinta); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+
+  /* filtros */
+  .filtros { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--plano) 88%, transparent);
+             backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--borda); }
+  .filtros-in { max-width: 1240px; margin: 0 auto; padding: 10px 24px; display: flex; gap: 12px 24px; flex-wrap: wrap; align-items: flex-end; }
+  .grupo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .grupo > span { font-size: 12px; color: var(--tinta-3); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+  .estacoes { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+  .estacoes::-webkit-scrollbar { display: none; }
+  .chip-est { display: grid; grid-template-columns: auto 1fr; gap: 0 10px; align-items: center; text-align: left; cursor: pointer;
+              background: var(--superficie); border: 1px solid var(--borda); border-radius: 12px; padding: 8px 14px 8px 10px; flex: none;
+              transition: border-color .15s, box-shadow .15s; }
+  .chip-est:hover { border-color: var(--eixo); }
+  .chip-est[aria-pressed="true"] { border-color: var(--acento); box-shadow: 0 0 0 1px var(--acento) inset; }
+  .chip-est .gota { grid-row: span 2; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center;
+                    background: var(--superficie-2); color: var(--tinta-3); }
+  .chip-est[aria-pressed="true"] .gota { background: var(--acento); color: #fff; }
+  .chip-est strong { font-size: 14px; font-weight: 600; white-space: nowrap; }
+  .chip-est small { font-size: 12px; color: var(--tinta-2); white-space: nowrap; }
+  .selo { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--acento);
+          border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; margin-left: 6px; vertical-align: 2px; }
+  .segmentado { display: flex; background: var(--superficie-2); border-radius: 10px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+  .segmentado button { border: 0; background: none; padding: 6px 12px; border-radius: 7px; cursor: pointer; font-size: 14px; color: var(--tinta-2); white-space: nowrap; }
+  .segmentado button[aria-pressed="true"] { background: var(--superficie); color: var(--tinta); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .segmentado button:disabled { opacity: .4; cursor: not-allowed; }
+  .meses { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--tinta-2); }
+  .meses select { background: var(--superficie); border: 1px solid var(--borda); border-radius: 8px; padding: 6px 8px; }
+
+  main { max-width: 1240px; margin: 0 auto; padding: 20px 24px 48px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; transition: opacity .2s; }
+  .grupo-estacoes { flex: 1 1 auto; min-width: min(100%, 640px); }
+  .duas > .card { display: flex; flex-direction: column; }
+  .duas .area.media { flex: 1; min-height: 300px; }
+  .hero-texto, .kpi { min-width: 0; }
+  table.lista td.num { white-space: nowrap; }
+  main.carregando { opacity: .45; pointer-events: none; }
+
+  /* destaque */
+  .hero { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 2fr); gap: 20px; align-items: stretch; }
+  .hero-texto { background: var(--superficie); border: 1px solid var(--borda); border-radius: 16px; padding: 22px 24px; display: flex; flex-direction: column; justify-content: space-between; gap: 16px; position: relative; overflow: hidden; }
+  .hero-texto::after { content: ""; position: absolute; inset: auto -40px -60px auto; width: 220px; height: 220px; border-radius: 50%;
+                       background: radial-gradient(circle, color-mix(in srgb, var(--acento) 18%, transparent), transparent 70%); pointer-events: none; }
+  .rotulo { font-size: 12px; color: var(--tinta-3); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+  .hero-num { font-size: clamp(44px, 6vw, 64px); font-weight: 700; letter-spacing: -.03em; line-height: 1; margin-top: 6px; }
+  .hero-num small { font-size: .4em; font-weight: 500; color: var(--tinta-2); letter-spacing: 0; }
+  .hero-frase { font-size: 15px; color: var(--tinta-2); margin: 0; max-width: 46ch; }
+  .hero-frase strong { color: var(--tinta); }
+  .status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; padding: 3px 10px 3px 8px;
+            border-radius: 999px; background: var(--superficie-2); color: var(--tinta); }
+  .status i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+  .kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .kpi { background: var(--superficie); border: 1px solid var(--borda); border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px; }
+  .kpi .valor { font-size: 30px; font-weight: 650; letter-spacing: -.02em; line-height: 1.15; }
+  .kpi .valor small { font-size: 15px; font-weight: 500; color: var(--tinta-2); letter-spacing: 0; }
+  .kpi .nota { font-size: 13px; color: var(--tinta-2); }
+  .delta-sobe { color: var(--sobe); font-weight: 600; }
+  .delta-desce { color: var(--desce); font-weight: 600; }
+
+  /* cartões */
+  .card { background: var(--superficie); border: 1px solid var(--borda); border-radius: 16px; padding: 20px 22px; min-width: 0; }
+  .card-topo { display: flex; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 12px; }
+  .card h2 { font-size: 17px; margin: 0; letter-spacing: -.01em; }
+  .card .sub { font-size: 13px; color: var(--tinta-2); margin: 2px 0 0; max-width: 70ch; }
+  .duas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+  .area { position: relative; height: 420px; }
+  .area.media { height: 300px; }
+  .opcoes { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .alternar { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--tinta-2); cursor: pointer; user-select: none; }
+  .alternar input { accent-color: var(--acento); }
+
+  /* legenda de anos */
+  .anos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; align-items: center; }
+  .anos .dica { font-size: 12px; color: var(--tinta-3); margin-right: 4px; }
+  .ano { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--borda); background: var(--superficie);
+         border-radius: 999px; padding: 3px 10px 3px 8px; font-size: 13px; cursor: pointer; color: var(--tinta-2); font-variant-numeric: tabular-nums; }
+  .ano i { width: 14px; height: 3px; border-radius: 2px; background: var(--neutro); display: inline-block; }
+  .ano[aria-pressed="true"] { color: var(--tinta); font-weight: 600; border-color: var(--eixo); }
+  .ano:disabled { cursor: default; }
+  .ano em { font-style: normal; font-size: 11px; color: var(--tinta-3); font-weight: 400; }
+  .ano.fixo i { height: 4px; }
+  .leg-extra { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--tinta-2); margin-left: 6px; }
+  .leg-extra i { display: inline-block; width: 18px; height: 10px; border-radius: 2px; background: var(--faixa); }
+  .leg-extra i.linha { height: 2px; background: var(--mediana); }
+
+  .legenda-status { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--tinta-2); margin-top: 10px; }
+  .legenda-status span { display: inline-flex; align-items: center; gap: 6px; }
+  .legenda-status i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+  /* mapa de calor */
+  .tabela-rolagem { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
+  table.calor { border-collapse: separate; border-spacing: 2px; width: 100%; min-width: 640px; font-variant-numeric: tabular-nums; }
+  table.calor th { font-size: 12px; font-weight: 600; color: var(--tinta-3); padding: 4px; text-align: center; }
+  table.calor th[scope="row"] { text-align: right; padding-right: 10px; color: var(--tinta-2); white-space: nowrap; }
+  table.calor td { height: 34px; text-align: center; font-size: 12.5px; border-radius: 4px; background: var(--superficie-2); color: var(--tinta-3); }
+  table.calor td.fora { opacity: .35; }
+  table.calor td.max { box-shadow: inset 0 0 0 2px var(--tinta); font-weight: 700; }
+  .escala { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--tinta-2); margin-top: 10px; flex-wrap: wrap; }
+  .escala .barra { display: flex; height: 10px; width: 180px; border-radius: 3px; overflow: hidden; }
+  .escala .barra i { flex: 1; }
+
+  /* tabela de cheias */
+  table.lista { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.lista th { text-align: left; font-size: 12px; color: var(--tinta-3); font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+                   padding: 8px 8px; border-bottom: 1px solid var(--grade); }
+  table.lista td { padding: 9px 8px; border-bottom: 1px solid var(--grade); font-variant-numeric: tabular-nums; }
+  table.lista td.num, table.lista th.num { text-align: right; }
+  table.lista tr.atual td { background: color-mix(in srgb, var(--acento) 7%, transparent); }
+  .pos { color: var(--tinta-3); width: 28px; }
+
+  .rodape { font-size: 13px; color: var(--tinta-2); line-height: 1.6; }
+  .rodape h3 { font-size: 14px; margin: 0 0 6px; color: var(--tinta); }
+  .rodape ul { margin: 0; padding-left: 18px; }
+  #erro { display: none; border-color: var(--inundacao); color: var(--inundacao); }
+
+  @media (max-width: 1000px) {
+    .hero { grid-template-columns: minmax(0, 1fr); }
+    .duas { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .topo, .filtros-in, main { padding-left: 16px; padding-right: 16px; }
+    .kpis { gap: 10px; }
+    .kpi .rotulo { font-size: 11px; }
+    .kpi { padding: 12px 14px; }
+    .kpi .valor { font-size: 24px; }
+    .area { height: 330px; }
+    .area.media { height: 260px; }
+    .card { padding: 16px; }
+    .grupo-estacoes { flex-basis: 100%; }
+    table.lista .opcional { display: none; }
+  }
+</style>
+</head>
+<body>
+<header class="topo">
+  <div class="marca">
+    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="var(--acento)"/>
+      <path d="M5 21c3-3 6-3 9 0s6 3 9 0 5-3 6-2" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+      <path d="M5 14c3-3 6-3 9 0s6 3 9 0 5-3 6-2" stroke="#fff" stroke-opacity=".55" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>
+    <div>
+      <h1>Rios Paraitinga e Paraibuna</h1>
+      <p>Histórico e comparação entre anos · telemetria ANA</p>
+    </div>
+  </div>
+  <nav class="abas" aria-label="Páginas">
+    <a href="./">Tempo real</a>
+    <a href="analise.html" aria-current="page">Histórico e comparação</a>
+  </nav>
+</header>
+
+<div class="filtros">
+  <div class="filtros-in">
+    <div class="grupo grupo-estacoes">
+      <span>Sistema de monitoramento</span>
+      <div class="estacoes" id="estacoes" role="group" aria-label="Estação"></div>
+    </div>
+    <div class="grupo">
+      <span>Período do ano</span>
+      <div class="opcoes">
+        <div class="segmentado" id="presets" role="group" aria-label="Período">
+          <button data-de="1" data-ate="12">Ano todo</button>
+          <button data-de="10" data-ate="3">Chuvoso (out–mar)</button>
+          <button data-de="12" data-ate="3">Verão (dez–mar)</button>
+          <button data-de="10" data-ate="9">Ano hidrológico</button>
+        </div>
+        <label class="meses">de <select id="de" aria-label="Mês inicial"></select> até <select id="ate" aria-label="Mês final"></select></label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main id="principal" class="carregando">
+  <div id="erro" class="card"></div>
+
+  <section class="hero">
+    <div class="hero-texto">
+      <div>
+        <div class="rotulo" id="heroRotulo">Agora</div>
+        <div class="hero-num" id="heroNum">—</div>
+      </div>
+      <p class="hero-frase" id="heroFrase">Carregando dados…</p>
+      <div><span class="status" id="heroStatus"><i></i>—</span></div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><span class="rotulo">Em relação ao normal</span><span class="valor" id="kNormal">—</span><span class="nota" id="kNormalNota"></span></div>
+      <div class="kpi"><span class="rotulo" id="kPicoRot">Pico da temporada</span><span class="valor" id="kPico">—</span><span class="nota" id="kPicoNota"></span></div>
+      <div class="kpi"><span class="rotulo">Dias acima da atenção</span><span class="valor" id="kDias">—</span><span class="nota" id="kDiasNota"></span></div>
+      <div class="kpi"><span class="rotulo">Chuva acumulada</span><span class="valor" id="kChuva">—</span><span class="nota" id="kChuvaNota"></span></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-topo">
+      <div>
+        <h2>Comparação ano a ano</h2>
+        <p class="sub" id="compSub">Cada linha é um ano; o eixo mostra os meses do período escolhido.</p>
+      </div>
+      <div class="opcoes">
+        <div class="segmentado" id="metricas" role="group" aria-label="Medida">
+          <button data-m="nmax">Nível máximo</button>
+          <button data-m="nmed">Nível médio</button>
+          <button data-m="vmed">Vazão</button>
+          <button data-m="chuva">Chuva acumulada</button>
+        </div>
+        <label class="alternar"><input type="checkbox" id="suavizar" checked> suavizar (7 dias)</label>
+      </div>
+    </div>
+    <div class="area"><canvas id="gComparacao" aria-label="Gráfico de comparação entre anos"></canvas></div>
+    <div class="anos" id="anos"></div>
+  </section>
+
+  <div class="duas">
+    <section class="card">
+      <div class="card-topo"><div><h2>Maior nível de cada ano</h2><p class="sub" id="picosSub">Pico no período escolhido, com as cotas de referência.</p></div></div>
+      <div class="area media"><canvas id="gPicos" aria-label="Pico anual"></canvas></div>
+    </section>
+    <section class="card">
+      <div class="card-topo"><div><h2>Dias acima das cotas</h2><p class="sub" id="diasSub">Quantos dias o nível máximo passou de cada cota.</p></div></div>
+      <div class="area media"><canvas id="gDias" aria-label="Dias acima das cotas por ano"></canvas></div>
+      <div class="legenda-status" id="legStatus"></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="card-topo"><div><h2>Nível máximo de cada mês</h2>
+      <p class="sub">Quanto mais escuro, mais alto o rio chegou no mês. Meses fora do período escolhido ficam apagados; o contorno marca o maior valor.</p></div></div>
+    <div class="tabela-rolagem"><table class="calor" id="calor"></table></div>
+    <div class="escala" id="escala"></div>
+  </section>
+
+  <div class="duas">
+    <section class="card">
+      <div class="card-topo"><div><h2>Com que frequência o rio fica alto</h2><p class="sub" id="permSub">Curva de permanência: porcentagem dos dias em que o nível médio ficou acima de cada valor.</p></div></div>
+      <div class="area media"><canvas id="gPerm" aria-label="Curva de permanência"></canvas></div>
+      <div class="anos" id="permLeg"></div>
+    </section>
+    <section class="card">
+      <div class="card-topo"><div><h2>Maiores cheias registradas</h2><p class="sub" id="cheiasSub">Os 10 maiores picos no período (com pelo menos 7 dias entre eles).</p></div></div>
+      <div class="tabela-rolagem"><table class="lista" id="cheias"></table></div>
+    </section>
+  </div>
+
+  <section class="card rodape">
+    <h3>Sobre os dados</h3>
+    <ul>
+      <li>Leituras da rede telemétrica da <a href="https://www.snirh.gov.br/hidrotelemetria/" target="_blank" rel="noopener">ANA</a>, resumidas por dia. O dia de hoje vem direto da ANA.</li>
+      <li>Anos marcados como <em>parcial</em> têm falhas na transmissão ou poucas leituras por dia e podem subestimar os picos.</li>
+      <li>As cotas de atenção, alerta e inundação não são oficiais (veja a página <a href="./">Tempo real</a>).</li>
+      <li>Leituras isoladas absurdas (erro do sensor) são descartadas do resumo diário.</li>
+    </ul>
+  </section>
+</main>
+
+<script>
+const ESTACAO_PADRAO = "58040000";
+const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const COTAS = [
+  { chave: "inundacao", nome: "Inundação", cor: "--inundacao" },
+  { chave: "alerta", nome: "Alerta", cor: "--alerta" },
+  { chave: "atencao", nome: "Atenção", cor: "--atencao" },
+];
+const METRICAS = {
+  nmax: { nome: "Nível máximo do dia", un: "m", casas: 2 },
+  nmed: { nome: "Nível médio do dia", un: "m", casas: 2 },
+  vmed: { nome: "Vazão média do dia", un: "m³/s", casas: 1 },
+  chuva: { nome: "Chuva acumulada no período", un: "mm", casas: 0 },
+};
+
+const $ = s => document.querySelector(s);
+const tok = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt = (v, c = 2) => v == null || !isFinite(v) ? "—" : v.toLocaleString("pt-BR", { minimumFractionDigits: c, maximumFractionDigits: c });
+const media = a => a.reduce((s, x) => s + x, 0) / a.length;
+const mediana = a => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const dataCurta = d => `${+d.slice(8, 10)} ${MESES[+d.slice(5, 7) - 1]} ${d.slice(0, 4)}`;
+const hojeISO = () => { const h = new Date(); return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, "0")}-${String(h.getDate()).padStart(2, "0")}`; };
+
+const estado = { estacao: ESTACAO_PADRAO, de: 1, ate: 12, metrica: "nmax", suavizar: true, destaques: new Map() };
+let config, estacoes = {}, diario = [], ultima = null, graficos = {};
+
+// ---------------- dados ----------------
+const URL_ANA = "https://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos";
+const dataBR = d => d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+async function buscarAna(cod, dias) {
+  const agora = new Date();
+  const r = await fetch(`${URL_ANA}?codEstacao=${cod}&dataInicio=${dataBR(new Date(agora - dias * 864e5))}&dataFim=${dataBR(new Date(+agora + 864e5))}`);
+  if (!r.ok) throw new Error(`ANA ${r.status}`);
+  const xml = new DOMParser().parseFromString(await r.text(), "text/xml");
+  const campo = (n, k) => { const v = n.getElementsByTagName(k)[0]?.textContent.trim(); return v ? +v : null; };
+  const out = new Map();
+  for (const n of xml.getElementsByTagName("DadosHidrometereologicos")) {
+    const t = n.getElementsByTagName("DataHora")[0]?.textContent.trim();
+    if (t) out.set(t, { t: t.replace(" ", "T"), nivel: campo(n, "Nivel"), vazao: campo(n, "Vazao"), chuva: campo(n, "Chuva") });
+  }
+  return [...out.values()].sort((a, b) => a.t < b.t ? -1 : 1);
+}
+
+async function carregar(cod) {
+  const [hist, recentes] = await Promise.all([
+    fetch(`historico/${cod}/diario.json`).then(r => r.ok ? r.json() : { dados: [] }),
+    buscarAna(cod, 12).catch(() => []),
+  ]);
+  const dias = new Map(hist.dados.map(([d, nmin, nmed, nmax, vmed, vmax, chuva, n]) => [d, { d, nmin, nmed, nmax, vmed, vmax, chuva, n }]));
+  const porDia = {};
+  for (const l of recentes) (porDia[l.t.slice(0, 10)] ??= []).push(l);
+  for (const [d, ls] of Object.entries(porDia)) {
+    const nv = ls.map(l => l.nivel).filter(v => v != null), vz = ls.map(l => l.vazao).filter(v => v != null), ch = ls.map(l => l.chuva).filter(v => v != null);
+    if (!nv.length || (dias.get(d)?.n || 0) > nv.length) continue;
+    dias.set(d, { d, nmin: Math.min(...nv), nmed: media(nv), nmax: Math.max(...nv), vmed: vz.length ? media(vz) : null,
+                  vmax: vz.length ? Math.max(...vz) : null, chuva: ch.length ? ch.reduce((s, x) => s + x, 0) : null, n: nv.length });
+  }
+  diario = [...dias.values()].sort((a, b) => a.d < b.d ? -1 : 1);
+  ultima = recentes.filter(l => l.nivel != null).at(-1) || null;
+  if (!ultima && diario.length) { const u = diario.at(-1); ultima = { t: u.d + "T00:00", nivel: u.nmax, vazao: u.vmax, antiga: true }; }
+}
+
+// ---------------- período (eixo dinâmico) ----------------
+const vira = () => estado.de > estado.ate;  // período atravessa a virada do ano (ex.: out–mar)
+const noPeriodo = m => vira() ? (m >= estado.de || m <= estado.ate) : (m >= estado.de && m <= estado.ate);
+const temporada = d => { const y = +d.slice(0, 4), m = +d.slice(5, 7); return vira() && m <= estado.ate ? y - 1 : y; };
+const rotulo = s => vira() ? `${s}/${String(s + 1).slice(2)}` : String(s);
+// Ano de referência bissexto para posicionar dia/mês no eixo
+const refIni = () => Date.UTC(vira() ? 2023 : 2024, estado.de - 1, 1);
+const refAno = m => vira() ? (m >= estado.de ? 2023 : 2024) : 2024;
+const posicao = d => { const m = +d.slice(5, 7); return Math.round((Date.UTC(refAno(m), m - 1, +d.slice(8, 10)) - refIni()) / 864e5); };
+const duracao = () => Math.round((Date.UTC(2024, estado.ate, 1) - refIni()) / 864e5);
+const nomeDoDia = x => { const d = new Date(refIni() + x * 864e5); return `${d.getUTCDate()} ${MESES[d.getUTCMonth()]}`; };
+function inicioDosMeses() {
+  const n = vira() ? 12 - estado.de + 1 + estado.ate : estado.ate - estado.de + 1, out = [];
+  for (let k = 0; k < n; k++) { const m = (estado.de - 1 + k) % 12 + 1; out.push({ x: Math.round((Date.UTC(refAno(m), m - 1, 1) - refIni()) / 864e5), m }); }
+  return out;
+}
+const nomePeriodo = () => estado.de === 1 && estado.ate === 12 ? "no ano" : `de ${MESES[estado.de - 1]} a ${MESES[estado.ate - 1]}`;
+
+// agrupa o diário por temporada, cada uma com um vetor alinhado ao eixo
+function temporadas() {
+  const len = duracao(), mapa = new Map();
+  for (const r of diario) {
+    if (!noPeriodo(+r.d.slice(5, 7))) continue;
+    const s = temporada(r.d);
+    if (!mapa.has(s)) mapa.set(s, { s, dias: new Array(len).fill(null) });
+    const p = posicao(r.d);
+    if (p >= 0 && p < len) mapa.get(s).dias[p] = r;
+  }
+  const hoje = hojeISO(), sHoje = noPeriodo(+hoje.slice(5, 7)) ? temporada(hoje) : null, pHoje = sHoje != null ? posicao(hoje) : null;
+  for (const t of mapa.values()) {
+    const validos = t.dias.filter(r => r && r.nmax != null);
+    t.atual = t.s === sHoje;
+    const primeiro = t.dias.findIndex(r => r), esperado = t.atual ? pHoje + 1 : len;
+    t.cobertura = validos.length / Math.max(1, esperado - (t === [...mapa.values()][0] ? Math.max(0, primeiro) : 0));
+    t.leiturasDia = validos.length ? media(validos.map(r => r.n)) : 0;
+    t.parcial = !t.atual && (t.cobertura < 0.8 || t.leiturasDia < 6);
+    const p = validos.reduce((m, r) => (!m || r.nmax > m.nmax ? r : m), null);
+    t.pico = p;
+  }
+  return { lista: [...mapa.values()].sort((a, b) => a.s - b.s), sHoje, pHoje, len };
+}
+
+function suavizar(arr, janela = 7) {
+  const h = janela >> 1;
+  return arr.map((v, i) => {
+    if (v == null) return null;
+    let s = 0, c = 0;
+    for (let k = i - h; k <= i + h; k++) if (arr[k] != null) { s += arr[k]; c++; }
+    return s / c;
+  });
+}
+
+function valores(t) {
+  const m = estado.metrica;
+  if (m === "chuva") {
+    const ult = t.dias.findLastIndex(r => r && r.chuva != null);
+    let acc = 0, comecou = false;
+    return t.dias.map((r, i) => {
+      if (i > ult) return null;
+      if (r && r.chuva != null) { acc += r.chuva; comecou = true; }
+      return comecou ? acc : null;
+    });
+  }
+  const arr = t.dias.map(r => r && r[m] != null ? (m === "vmed" ? r[m] : r[m] / 100) : null);
+  return estado.suavizar ? suavizar(arr) : arr;
+}
+
+// ---------------- cores e destaques ----------------
+const CORES = ["--s1", "--s2", "--s3"];
+function destaquesPadrao(lista) {
+  estado.destaques = new Map();
+  const atual = lista.find(t => t.atual) || lista.at(-1);
+  if (!atual) return;
+  estado.destaques.set(atual.s, "--s1");
+  const outros = lista.filter(t => t !== atual && t.pico);
+  const anterior = outros.filter(t => t.s < atual.s).at(-1);
+  const recorde = [...outros].sort((a, b) => b.pico.nmax - a.pico.nmax).find(t => t !== anterior);
+  if (anterior) estado.destaques.set(anterior.s, "--s2");
+  if (recorde) estado.destaques.set(recorde.s, anterior ? "--s3" : "--s2");
+}
+function alternarDestaque(s) {
+  const d = estado.destaques;
+  if (d.get(s) === "--s1") return;                       // a temporada atual fica sempre
+  if (d.has(s)) d.delete(s);
+  else {
+    const livres = ["--s2", "--s3"].filter(c => ![...d.values()].includes(c));
+    if (!livres.length) { const maisAntigo = [...d.keys()].find(k => d.get(k) !== "--s1"); livres.push(d.get(maisAntigo)); d.delete(maisAntigo); }
+    d.set(s, livres[0]);
+  }
+  desenharComparacao(); desenharPicos();
+}
+
+// ---------------- plugins de desenho ----------------
+const pluginCotas = {
+  id: "cotas",
+  afterDatasetsDraw(c, _, op) {
+    if (!op?.ativo) return;
+    const { ctx, chartArea: a, scales } = c, y = scales.y, est = estacoes[estado.estacao];
+    ctx.save();
+    for (const n of COTAS) {
+      const v = est.cotas_cm[n.chave] / 100;
+      if (v > y.max || v < y.min) continue;
+      const py = Math.round(y.getPixelForValue(v)) + .5;
+      ctx.strokeStyle = tok(n.cor); ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
+      ctx.beginPath(); ctx.moveTo(a.left, py); ctx.lineTo(a.right, py); ctx.stroke();
+      ctx.setLineDash([]); ctx.font = "600 11px system-ui"; ctx.textAlign = "left"; ctx.textBaseline = "bottom";
+      const txt = `${n.nome} ${fmt(v, 2)} m`, w = ctx.measureText(txt).width;
+      ctx.fillStyle = tok("--superficie"); ctx.fillRect(a.left + 4, py - 15, w + 8, 14);
+      ctx.fillStyle = tok("--tinta-2"); ctx.fillText(txt, a.left + 8, py - 2);
+    }
+    ctx.restore();
+  },
+};
+const pluginHoje = {
+  id: "hoje",
+  beforeDatasetsDraw(c, _, op) {
+    if (op?.x == null) return;
+    const { ctx, chartArea: a, scales: { x } } = c, px = Math.round(x.getPixelForValue(op.x)) + .5;
+    ctx.save();
+    ctx.strokeStyle = tok("--eixo"); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(px, a.top); ctx.lineTo(px, a.bottom); ctx.stroke();
+    ctx.fillStyle = tok("--tinta-3"); ctx.font = "600 11px system-ui"; ctx.textAlign = "center"; ctx.fillText("hoje", px, a.top - 4);
+    ctx.restore();
+  },
+};
+const pluginRotuloFinal = {
+  id: "rotuloFinal",
+  afterDatasetsDraw(c) {
+    const { ctx, chartArea: a } = c;
+    ctx.save(); ctx.font = "600 12px system-ui"; ctx.textBaseline = "middle";
+    const usados = [];
+    c.data.datasets.forEach((ds, i) => {
+      if (!ds.rotuloFinal || !c.isDatasetVisible(i)) return;
+      const pts = c.getDatasetMeta(i).data, idx = ds.data.findLastIndex(p => p.y != null);
+      if (idx < 0) return;
+      let { x, y } = pts[idx];
+      while (usados.some(u => Math.abs(u - y) < 14)) y -= 14;   // evita sobreposição
+      usados.push(y);
+      const w = ctx.measureText(ds.rotuloFinal).width, lx = Math.min(x + 8, a.right - w - 2);
+      ctx.fillStyle = tok("--superficie"); ctx.globalAlpha = .85; ctx.fillRect(lx - 3, y - 9, w + 6, 18); ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.arc(pts[idx].x, pts[idx].y, 4, 0, 7); ctx.fillStyle = ds.borderColor; ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = tok("--superficie"); ctx.stroke();
+      ctx.fillStyle = tok("--tinta"); ctx.textAlign = "left"; ctx.fillText(ds.rotuloFinal, lx, y);
+    });
+    ctx.restore();
+  },
+};
+Chart.register(pluginCotas, pluginHoje, pluginRotuloFinal);
+
+function baseOpcoes() {
+  const t3 = tok("--tinta-3"), grade = tok("--grade");
+  return {
+    responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
+    layout: { padding: { top: 18, right: 8 } },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: tok("--superficie"), titleColor: tok("--tinta"), bodyColor: tok("--tinta-2"), footerColor: tok("--tinta-3"),
+        borderColor: tok("--eixo"), borderWidth: 1, padding: 10, cornerRadius: 8, boxPadding: 4, usePointStyle: true,
+        titleFont: { weight: "600" }, bodyFont: { size: 12.5 }, footerFont: { size: 12, weight: "400" },
+      },
+    },
+    scales: {
+      x: { grid: { color: grade, drawTicks: false }, border: { color: tok("--eixo") }, ticks: { color: t3, padding: 8, font: { size: 12 } } },
+      y: { grid: { color: grade, drawTicks: false }, border: { display: false }, ticks: { color: t3, padding: 8, font: { size: 12 } } },
+    },
+  };
+}
+function novoGrafico(id, cfg) { graficos[id]?.destroy(); graficos[id] = new Chart(document.getElementById(id), cfg); }
+
+// ---------------- comparação ano a ano ----------------
+function desenharComparacao() {
+  const { lista, pHoje, len } = temporadas(), met = METRICAS[estado.metrica], ehNivel = estado.metrica.startsWith("n");
+  const series = new Map(lista.map(t => [t.s, valores(t)]));
+  const referencia = lista.filter(t => !t.atual && !t.parcial);
+  const datasets = [];
+  const pontos = arr => arr.map((y, x) => ({ x, y }));
+
+  if (referencia.length >= 2) {
+    const minimo = [], maximo = [], med = [];
+    for (let x = 0; x < len; x++) {
+      const vs = referencia.map(t => series.get(t.s)[x]).filter(v => v != null);
+      minimo.push(vs.length >= 2 ? Math.min(...vs) : null);
+      maximo.push(vs.length >= 2 ? Math.max(...vs) : null);
+      med.push(vs.length >= 2 ? mediana(vs) : null);
+    }
+    const anos = `${rotulo(referencia[0].s)}–${rotulo(referencia.at(-1).s)}`;
+    datasets.push({ label: `Mínimo ${anos}`, data: pontos(minimo), borderWidth: 0, pointRadius: 0, fill: false, order: 9, tipo: "faixa" });
+    datasets.push({ label: `Faixa ${anos}`, data: pontos(maximo), borderWidth: 0, pointRadius: 0, fill: "-1", backgroundColor: tok("--faixa"), order: 9, tipo: "faixa" });
+    datasets.push({ label: `Mediana ${anos}`, data: pontos(med), borderColor: tok("--mediana"), borderWidth: 1.5, pointRadius: 0, order: 5, tipo: "mediana" });
+  }
+  for (const t of lista) {
+    const cor = estado.destaques.get(t.s);
+    if (!cor) continue;
+    datasets.push({
+      label: rotulo(t.s) + (t.parcial ? " (parcial)" : ""), data: pontos(series.get(t.s)), borderColor: tok(cor), backgroundColor: tok(cor),
+      borderWidth: cor === "--s1" ? 2.5 : 2, pointRadius: 0, pointHoverRadius: 4, order: cor === "--s1" ? 0 : 1,
+      rotuloFinal: rotulo(t.s), spanGaps: 3, tension: .25,
+    });
+  }
+
+  const op = baseOpcoes(), marcos = inicioDosMeses();
+  op.interaction = { mode: "index", intersect: false };
+  op.scales.x = { ...op.scales.x, type: "linear", min: 0, max: len - 1,
+    afterBuildTicks: ax => { ax.ticks = marcos.map(m => ({ value: m.x })); },
+    ticks: { ...op.scales.x.ticks, callback: v => { const m = marcos.find(k => k.x === v); return m ? MESES[m.m - 1] : ""; }, autoSkip: false, maxRotation: 0 } };
+  op.scales.y = { ...op.scales.y, beginAtZero: !ehNivel, title: { display: true, text: `${met.nome} (${met.un})`, color: tok("--tinta-3"), font: { size: 12 } },
+    ticks: { ...op.scales.y.ticks, callback: v => fmt(v, met.casas === 2 ? 1 : 0) } };
+  if (ehNivel) {
+    const ys = datasets.flatMap(d => d.data.map(p => p.y)).filter(v => v != null);
+    const est = estacoes[estado.estacao];
+    op.scales.y.min = Math.max(0, Math.floor(Math.min(...ys) * 2) / 2 - .5);
+    op.scales.y.max = Math.ceil(Math.max(...ys, est.cotas_cm.atencao / 100 + .2) * 2) / 2;
+  }
+  op.plugins.cotas = { ativo: ehNivel };
+  op.plugins.hoje = { x: pHoje };
+  op.plugins.tooltip = { ...op.plugins.tooltip,
+    filter: i => i.dataset.tipo !== "faixa" && i.parsed.y != null,
+    itemSort: (a, b) => b.parsed.y - a.parsed.y,
+    callbacks: {
+      title: i => nomeDoDia(i[0].parsed.x),
+      label: i => ` ${i.dataset.label}: ${fmt(i.parsed.y, met.casas)} ${met.un}`,
+      labelColor: i => ({ borderColor: i.dataset.borderColor, backgroundColor: i.dataset.borderColor, borderRadius: 2 }),
+      footer: i => {
+        const x = i[0]?.parsed.x, f = datasets.filter(d => d.tipo === "faixa");
+        if (!f.length || x == null || f[0].data[x].y == null) return "";
+        return `${f[1].label}: ${fmt(f[0].data[x].y, met.casas)} a ${fmt(f[1].data[x].y, met.casas)} ${met.un}`;
+      },
+    } };
+  novoGrafico("gComparacao", { type: "line", data: { datasets }, options: op });
+
+  // legenda interativa de anos
+  $("#anos").innerHTML = `<span class="dica">Toque nos anos para comparar:</span>` + lista.slice().reverse().map(t => {
+    const cor = estado.destaques.get(t.s);
+    return `<button class="ano${cor === "--s1" ? " fixo" : ""}" data-s="${t.s}" aria-pressed="${!!cor}" ${cor === "--s1" ? "disabled" : ""}
+      title="${t.pico ? `Pico: ${fmt(t.pico.nmax / 100, 2)} m em ${dataCurta(t.pico.d)}` : ""}">
+      <i style="${cor ? `background:${tok(cor)}` : ""}"></i>${rotulo(t.s)}${t.atual ? " <em>atual</em>" : ""}${t.parcial ? " <em>parcial</em>" : ""}</button>`;
+  }).join("") + (referencia.length >= 2 ? `<span class="leg-extra"><i></i>faixa dos anos completos</span><span class="leg-extra"><i class="linha"></i>mediana</span>` : "");
+  $("#compSub").textContent = `${met.nome} ${nomePeriodo()}, um ano por linha. ${estado.metrica === "chuva" ? "Soma desde o início do período." : estado.suavizar ? "Média móvel de 7 dias." : ""}`;
+}
+
+// ---------------- picos anuais ----------------
+function desenharPicos() {
+  const { lista } = temporadas(), comPico = lista.filter(t => t.pico);
+  const est = estacoes[estado.estacao];
+  const cores = comPico.map(t => tok(estado.destaques.get(t.s) || "--neutro"));
+  const op = baseOpcoes();
+  op.scales.x.grid = { display: false };
+  op.scales.y = { ...op.scales.y, beginAtZero: true, suggestedMax: est.cotas_cm.inundacao / 100 + .3,
+    ticks: { ...op.scales.y.ticks, callback: v => fmt(v, 0) + " m" } };
+  op.plugins.cotas = { ativo: true };
+  op.plugins.tooltip.callbacks = {
+    title: i => `${comPico[i[0].dataIndex].parcial ? "Ano parcial · " : ""}${rotulo(comPico[i[0].dataIndex].s)}`,
+    label: i => { const p = comPico[i.dataIndex].pico; return ` ${fmt(p.nmax / 100, 2)} m em ${dataCurta(p.d)}${p.vmax != null ? ` · vazão ${fmt(p.vmax, 0)} m³/s` : ""}`; },
+  };
+  novoGrafico("gPicos", { type: "bar", data: { labels: comPico.map(t => rotulo(t.s) + (t.parcial ? "*" : "")),
+    datasets: [{ data: comPico.map(t => t.pico.nmax / 100), backgroundColor: cores, borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: "bottom",
+                 maxBarThickness: 34, categoryPercentage: .8, barPercentage: .9 }] }, options: op });
+  const rec = [...comPico].sort((a, b) => b.pico.nmax - a.pico.nmax)[0];
+  $("#picosSub").textContent = rec ? `Maior pico ${nomePeriodo()}: ${fmt(rec.pico.nmax / 100, 2)} m em ${dataCurta(rec.pico.d)}. * ano parcial.` : "Sem dados.";
+}
+
+// ---------------- dias acima das cotas ----------------
+function contarDias(t) {
+  const c = estacoes[estado.estacao].cotas_cm, out = { atencao: 0, alerta: 0, inundacao: 0 };
+  for (const r of t.dias) {
+    if (!r || r.nmax == null) continue;
+    if (r.nmax >= c.inundacao) out.inundacao++;
+    else if (r.nmax >= c.alerta) out.alerta++;
+    else if (r.nmax >= c.atencao) out.atencao++;
+  }
+  return out;
+}
+function desenharDias() {
+  const { lista } = temporadas(), contagem = lista.map(contarDias);
+  const op = baseOpcoes();
+  op.scales.x = { ...op.scales.x, stacked: true, grid: { display: false } };
+  op.scales.y = { ...op.scales.y, stacked: true, beginAtZero: true, ticks: { ...op.scales.y.ticks, precision: 0 } };
+  op.interaction = { mode: "index", intersect: false };
+  op.plugins.tooltip.callbacks = {
+    title: i => rotulo(lista[i[0].dataIndex].s),
+    label: i => ` ${i.dataset.label}: ${i.parsed.y} dia${i.parsed.y === 1 ? "" : "s"}`,
+    footer: i => `Total acima da atenção: ${i.reduce((s, x) => s + x.parsed.y, 0)} dias`,
+  };
+  const ds = COTAS.slice().reverse().map((n, k) => ({
+    label: n.nome, data: contagem.map(c => c[n.chave]), backgroundColor: tok(n.cor),
+    borderColor: tok("--superficie"), borderWidth: { top: k < 2 ? 2 : 0 }, borderSkipped: "bottom",
+    borderRadius: k === 2 ? { topLeft: 4, topRight: 4 } : 0, maxBarThickness: 34, categoryPercentage: .8, barPercentage: .9,
+  }));
+  novoGrafico("gDias", { type: "bar", data: { labels: lista.map(t => rotulo(t.s)), datasets: ds }, options: op });
+  const c = estacoes[estado.estacao].cotas_cm;
+  $("#legStatus").innerHTML = COTAS.slice().reverse().map(n => `<span><i style="background:${tok(n.cor)}"></i>${n.nome} (≥ ${fmt(c[n.chave] / 100, 2)} m)</span>`).join("");
+}
+
+// ---------------- mapa de calor (máximo mensal) ----------------
+function desenharCalor() {
+  const porMes = new Map();
+  for (const r of diario) {
+    if (r.nmax == null) continue;
+    const k = r.d.slice(0, 7), atual = porMes.get(k);
+    if (!atual || r.nmax > atual.nmax) porMes.set(k, r);
+  }
+  const anos = [...new Set([...porMes.keys()].map(k => +k.slice(0, 4)))].sort((a, b) => b - a);
+  const vals = [...porMes.values()].map(r => r.nmax);
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  const passos = ["--r100", "--r150", "--r200", "--r250", "--r300", "--r350", "--r400", "--r450", "--r500", "--r550", "--r600", "--r650", "--r700"];
+  const cor = v => { const i = Math.min(passos.length - 1, Math.floor((v - lo) / (hi - lo || 1) * passos.length)); return { bg: tok(passos[i]), fg: i >= 7 ? "#fff" : "#0b0b0b" }; };
+  const recordes = new Map();
+  for (const [k, r] of porMes) { const m = k.slice(5); if (!recordes.has(m) || r.nmax > recordes.get(m)) recordes.set(m, r.nmax); }
+  let html = `<thead><tr><th></th>${MESES.map(m => `<th scope="col">${m}</th>`).join("")}</tr></thead><tbody>`;
+  for (const a of anos) {
+    html += `<tr><th scope="row">${a}</th>`;
+    for (let m = 1; m <= 12; m++) {
+      const k = `${a}-${String(m).padStart(2, "0")}`, r = porMes.get(k), fora = !noPeriodo(m) ? " fora" : "";
+      if (!r) { html += `<td class="${fora.trim()}">·</td>`; continue; }
+      const c = cor(r.nmax), max = recordes.get(k.slice(5)) === r.nmax ? " max" : "";
+      html += `<td class="${(fora + max).trim()}" style="background:${c.bg};color:${c.fg}" title="Máximo de ${MESES[m - 1]}/${a}: ${fmt(r.nmax / 100, 2)} m em ${dataCurta(r.d)}">${fmt(r.nmax / 100, 1)}</td>`;
+    }
+    html += "</tr>";
+  }
+  $("#calor").innerHTML = html + "</tbody>";
+  $("#escala").innerHTML = `<span>${fmt(lo / 100, 1)} m</span><span class="barra">${passos.map(p => `<i style="background:${tok(p)}"></i>`).join("")}</span><span>${fmt(hi / 100, 1)} m</span><span style="margin-left:8px">· valores em metros · contorno = recorde do mês</span>`;
+}
+
+// ---------------- curva de permanência ----------------
+function quantis(valores, n = 101) {
+  const s = [...valores].sort((a, b) => b - a);
+  return Array.from({ length: n }, (_, i) => ({ x: i * 100 / (n - 1), y: s[Math.min(s.length - 1, Math.round(i / (n - 1) * (s.length - 1)))] / 100 }));
+}
+function desenharPermanencia() {
+  const { lista } = temporadas(), atual = lista.find(t => t.atual);
+  const ref = lista.filter(t => !t.atual && !t.parcial);
+  const vRef = ref.flatMap(t => t.dias.filter(r => r && r.nmed != null).map(r => r.nmed));
+  const vAtual = atual ? atual.dias.filter(r => r && r.nmed != null).map(r => r.nmed) : [];
+  const ds = [];
+  if (vRef.length) ds.push({ label: `Anos completos (${rotulo(ref[0].s)}–${rotulo(ref.at(-1).s)})`, data: quantis(vRef), borderColor: tok("--mediana"), borderWidth: 2, pointRadius: 0, tension: .2 });
+  if (vAtual.length) ds.push({ label: `${rotulo(atual.s)} até agora`, data: quantis(vAtual), borderColor: tok("--s1"), borderWidth: 2.5, pointRadius: 0, tension: .2 });
+  const op = baseOpcoes();
+  op.interaction = { mode: "nearest", axis: "x", intersect: false };
+  op.scales.x = { ...op.scales.x, type: "linear", min: 0, max: 100, ticks: { ...op.scales.x.ticks, stepSize: 25, callback: v => v + "%" },
+                  title: { display: true, text: "% dos dias em que o nível foi igual ou maior", color: tok("--tinta-3"), font: { size: 12 } } };
+  op.scales.y = { ...op.scales.y, ticks: { ...op.scales.y.ticks, callback: v => fmt(v, 1) + " m" } };
+  op.plugins.cotas = { ativo: true };
+  op.plugins.tooltip.callbacks = {
+    title: i => `Em ${fmt(i[0].parsed.x, 0)}% dos dias`,
+    label: i => ` ${i.dataset.label}: acima de ${fmt(i.parsed.y, 2)} m`,
+    labelColor: i => ({ borderColor: i.dataset.borderColor, backgroundColor: i.dataset.borderColor }),
+  };
+  novoGrafico("gPerm", { type: "line", data: { datasets: ds }, options: op });
+  $("#permLeg").innerHTML = ds.map(d => `<span class="leg-extra" style="margin:0 10px 0 0"><i class="linha" style="background:${d.borderColor};height:3px"></i>${d.label}</span>`).join("");
+  const c = estacoes[estado.estacao].cotas_cm.atencao;
+  const pct = vs => vs.length ? vs.filter(v => v >= c).length / vs.length * 100 : null;
+  const pr = pct(vRef), pa = pct(vAtual);
+  $("#permSub").textContent = `Nível médio diário ${nomePeriodo()}. Acima da cota de atenção: ${fmt(pr, 1)}% dos dias nos anos completos` + (pa != null ? `, ${fmt(pa, 1)}% em ${rotulo(atual.s)}.` : ".");
+}
+
+// ---------------- maiores cheias ----------------
+function statusDe(cm) {
+  const c = estacoes[estado.estacao].cotas_cm;
+  return COTAS.find(n => cm >= c[n.chave]) || { nome: "Normal", cor: "--bom" };
+}
+function desenharCheias() {
+  const dias = diario.filter(r => r.nmax != null && noPeriodo(+r.d.slice(5, 7)));
+  const ord = [...dias].sort((a, b) => b.nmax - a.nmax), escolhidos = [];
+  const ms = d => Date.parse(d + "T12:00");
+  for (const r of ord) {
+    if (escolhidos.length >= 10) break;
+    if (escolhidos.every(e => Math.abs(ms(e.d) - ms(r.d)) > 7 * 864e5)) escolhidos.push(r);
+  }
+  const porData = new Map(diario.map(r => [r.d, r]));
+  const sHoje = noPeriodo(new Date().getMonth() + 1) ? temporada(hojeISO()) : null;
+  $("#cheias").innerHTML = `<thead><tr><th class="pos">#</th><th>Data</th><th class="num">Pico</th><th class="num opcional">Subida 24 h</th><th class="num opcional">Vazão máx.</th><th>Situação</th></tr></thead><tbody>` +
+    escolhidos.map((r, i) => {
+      const ontem = porData.get(new Date(ms(r.d) - 864e5).toISOString().slice(0, 10));
+      const subida = ontem?.nmin != null ? r.nmax - Math.min(ontem.nmin, r.nmin ?? Infinity) : null;
+      const st = statusDe(r.nmax), atual = temporada(r.d) === sHoje;
+      return `<tr class="${atual ? "atual" : ""}"><td class="pos">${i + 1}</td><td>${dataCurta(r.d)}${atual ? " · <strong>este período</strong>" : ""}</td>
+        <td class="num"><strong>${fmt(r.nmax / 100, 2)} m</strong></td><td class="num opcional">${subida != null ? "+" + fmt(subida / 100, 2) + " m" : "—"}</td>
+        <td class="num opcional">${r.vmax != null ? fmt(r.vmax, 0) + " m³/s" : "—"}</td>
+        <td><span class="status"><i style="background:${tok(st.cor)}"></i>${st.nome}</span></td></tr>`;
+    }).join("") + "</tbody>";
+  $("#cheiasSub").textContent = `Os 10 maiores picos ${nomePeriodo()}, com pelo menos 7 dias entre eles.`;
+}
+
+// ---------------- destaque do topo ----------------
+function desenharHero() {
+  const est = estacoes[estado.estacao], c = est.cotas_cm;
+  const { lista } = temporadas(), atual = lista.find(t => t.atual) || lista.at(-1);
+  if (!ultima) { $("#heroFrase").textContent = "Sem leituras para esta estação."; return; }
+  const nivel = ultima.nivel, st = statusDe(nivel), quando = new Date(ultima.t);
+  $("#heroRotulo").textContent = ultima.antiga ? "Último registro" : `Agora · ${quando.toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}`;
+  $("#heroNum").innerHTML = `${fmt(nivel / 100, 2)}<small> m</small>`;
+  $("#heroStatus").innerHTML = `<i style="background:${tok(st.cor)}"></i>${st.nome}`;
+
+  // normal para esta época: dias de ±7 dias em torno de hoje, nos anos anteriores
+  const hoje = hojeISO(), ano = +hoje.slice(0, 4), alvo = Date.UTC(2024, +hoje.slice(5, 7) - 1, +hoje.slice(8, 10));
+  const janela = diario.filter(r => {
+    if (+r.d.slice(0, 4) >= ano || r.nmed == null) return false;
+    const x = Date.UTC(2024, +r.d.slice(5, 7) - 1, +r.d.slice(8, 10));
+    const dif = Math.min(Math.abs(x - alvo), 366 * 864e5 - Math.abs(x - alvo));
+    return dif <= 7 * 864e5;
+  });
+  const normal = mediana(janela.map(r => r.nmed));
+  if (normal != null) {
+    const dif = (nivel - normal) / 100, pct = janela.filter(r => r.nmax < nivel).length / janela.length * 100;
+    const anosJ = [...new Set(janela.map(r => r.d.slice(0, 4)))];
+    $("#kNormal").innerHTML = `<span class="${dif > 0 ? "delta-sobe" : "delta-desce"}">${dif > 0 ? "▲ +" : "▼ "}${fmt(dif, 2)}</span><small> m</small>`;
+    $("#kNormalNota").textContent = `Normal para ${+hoje.slice(8, 10)} ${MESES[+hoje.slice(5, 7) - 1]}: ${fmt(normal / 100, 2)} m (mediana ${anosJ[0]}–${anosJ.at(-1)})`;
+    $("#heroFrase").innerHTML = `O ${est.rio} em <strong>${est.nome}</strong> está <strong>${fmt(Math.abs(dif), 2)} m ${dif >= 0 ? "acima" : "abaixo"} do normal</strong> para esta época — mais alto que ${fmt(pct, 0)}% dos registros nesta mesma quinzena desde ${anosJ[0]}.`;
+  } else {
+    $("#kNormal").textContent = "—"; $("#kNormalNota").textContent = "Histórico insuficiente para esta época.";
+    $("#heroFrase").innerHTML = `${est.rio} em <strong>${est.nome}</strong>.`;
+  }
+
+  if (atual?.pico) {
+    const rank = [...lista].filter(t => t.pico).sort((a, b) => b.pico.nmax - a.pico.nmax).findIndex(t => t === atual) + 1;
+    $("#kPicoRot").textContent = `Pico ${vira() ? "da temporada" : "do ano"} ${rotulo(atual.s)}`;
+    $("#kPico").innerHTML = `${fmt(atual.pico.nmax / 100, 2)}<small> m</small>`;
+    $("#kPicoNota").textContent = `${dataCurta(atual.pico.d)} · ${rank}º maior de ${lista.filter(t => t.pico).length} ${vira() ? "temporadas" : "anos"} ${nomePeriodo()}`;
+  }
+  const ref = lista.filter(t => !t.atual && !t.parcial);
+  if (atual) {
+    const dAt = Object.values(contarDias(atual)).reduce((s, x) => s + x, 0);
+    const mediaRef = ref.length ? media(ref.map(t => Object.values(contarDias(t)).reduce((s, x) => s + x, 0))) : null;
+    $("#kDias").innerHTML = `${dAt}<small> dia${dAt === 1 ? "" : "s"}</small>`;
+    $("#kDiasNota").textContent = `${rotulo(atual.s)} ${nomePeriodo()} · média dos anos completos: ${fmt(mediaRef, 0)}`;
+  }
+  // chuva: acumulado até hoje vs. mesmo trecho dos anos anteriores
+  const temChuva = diario.some(r => r.chuva > 0);
+  if (temChuva && atual) {
+    const ate = atual.dias.findLastIndex(r => r);
+    const soma = t => t.dias.slice(0, ate + 1).reduce((s, r) => s + (r?.chuva || 0), 0);
+    const sAt = soma(atual), mRef = ref.length ? mediana(ref.map(soma)) : null;
+    $("#kChuva").innerHTML = `${fmt(sAt, 0)}<small> mm</small>`;
+    $("#kChuvaNota").textContent = mRef ? `${rotulo(atual.s)} até agora · ${sAt >= mRef ? "+" : ""}${fmt((sAt / mRef - 1) * 100, 0)}% vs. mediana (${fmt(mRef, 0)} mm)` : `${rotulo(atual.s)} até agora`;
+  } else {
+    $("#kChuva").textContent = "—"; $("#kChuvaNota").textContent = "Esta estação não mede chuva.";
+  }
+}
+
+// ---------------- controles ----------------
+function montarFiltros() {
+  $("#estacoes").innerHTML = config.rios.flatMap(rio => rio.estacoes.map(e => `
+    <button class="chip-est" data-cod="${e.codigo}" aria-pressed="${e.codigo === estado.estacao}">
+      <span class="gota"><svg width="14" height="16" viewBox="0 0 14 16" aria-hidden="true"><path d="M7 1C7 1 1.5 7.2 1.5 10.4a5.5 5.5 0 0 0 11 0C12.5 7.2 7 1 7 1Z" fill="currentColor"/></svg></span>
+      <strong>${e.nome}${e.codigo === ESTACAO_PADRAO ? '<span class="selo">referência</span>' : ""}</strong>
+      <small>${rio.nome} · ${e.operadora.split(" ")[0]}</small>
+    </button>`)).join("");
+  $("#estacoes").onclick = ev => { const b = ev.target.closest(".chip-est"); if (b && b.dataset.cod !== estado.estacao) trocarEstacao(b.dataset.cod); };
+
+  const opts = MESES.map((m, i) => `<option value="${i + 1}">${m}</option>`).join("");
+  $("#de").innerHTML = opts; $("#ate").innerHTML = opts;
+  $("#de").onchange = $("#ate").onchange = () => mudarPeriodo(+$("#de").value, +$("#ate").value);
+  $("#presets").onclick = ev => { const b = ev.target.closest("button"); if (b) mudarPeriodo(+b.dataset.de, +b.dataset.ate); };
+  $("#metricas").onclick = ev => {
+    const b = ev.target.closest("button"); if (!b || b.disabled) return;
+    estado.metrica = b.dataset.m; marcarControles(); desenharComparacao(); salvarURL();
+  };
+  $("#suavizar").onchange = e => { estado.suavizar = e.target.checked; desenharComparacao(); };
+  $("#anos").onclick = ev => { const b = ev.target.closest(".ano"); if (b && !b.disabled) alternarDestaque(+b.dataset.s); };
+}
+function marcarControles() {
+  document.querySelectorAll(".chip-est").forEach(b => b.setAttribute("aria-pressed", b.dataset.cod === estado.estacao));
+  document.querySelectorAll("#presets button").forEach(b => b.setAttribute("aria-pressed", +b.dataset.de === estado.de && +b.dataset.ate === estado.ate));
+  $("#de").value = estado.de; $("#ate").value = estado.ate;
+  const temChuva = diario.some(r => r.chuva > 0), temVazao = diario.some(r => r.vmed != null);
+  if ((estado.metrica === "chuva" && !temChuva) || (estado.metrica === "vmed" && !temVazao)) estado.metrica = "nmax";
+  document.querySelectorAll("#metricas button").forEach(b => {
+    b.disabled = (b.dataset.m === "chuva" && !temChuva) || (b.dataset.m === "vmed" && !temVazao);
+    b.setAttribute("aria-pressed", b.dataset.m === estado.metrica);
+  });
+  $("#suavizar").closest("label").style.visibility = estado.metrica === "chuva" ? "hidden" : "visible";
+}
+function salvarURL() {
+  const p = new URLSearchParams({ estacao: estado.estacao, de: estado.de, ate: estado.ate, medida: estado.metrica });
+  history.replaceState(null, "", "?" + p);
+}
+function desenharTudo() {
+  marcarControles();
+  destaquesPadrao(temporadas().lista);
+  desenharHero(); desenharComparacao(); desenharPicos(); desenharDias(); desenharCalor(); desenharPermanencia(); desenharCheias();
+  salvarURL();
+}
+function mudarPeriodo(de, ate) { estado.de = de; estado.ate = ate; desenharTudo(); }
+async function trocarEstacao(cod) {
+  estado.estacao = cod; marcarControles();
+  $("#principal").classList.add("carregando");
+  try {
+    await carregar(cod);
+    if (!diario.length) throw new Error("Não há histórico salvo para esta estação.");
+    $("#erro").style.display = "none";
+    desenharTudo();
+  } catch (e) {
+    $("#erro").style.display = "block"; $("#erro").textContent = "Não foi possível carregar: " + e.message;
+  }
+  $("#principal").classList.remove("carregando");
+}
+
+async function iniciar() {
+  config = await (await fetch("config.json")).json();
+  config.rios.forEach(r => r.estacoes.forEach(e => estacoes[e.codigo] = { ...e, rio: r.nome }));
+  const p = new URLSearchParams(location.search);
+  if (estacoes[p.get("estacao")]) estado.estacao = p.get("estacao");
+  if (+p.get("de") >= 1 && +p.get("de") <= 12 && +p.get("ate") >= 1 && +p.get("ate") <= 12) { estado.de = +p.get("de"); estado.ate = +p.get("ate"); }
+  if (METRICAS[p.get("medida")]) estado.metrica = p.get("medida");
+  montarFiltros();
+  await trocarEstacao(estado.estacao);
+  // redesenha ao trocar tema claro/escuro (as cores vêm do CSS)
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => desenharTudo());
+}
+iniciar();
+</script>
+</body>
+</html>
