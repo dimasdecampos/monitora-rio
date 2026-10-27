@@ -8,6 +8,17 @@
 <title>Monitor dos Rios</title>
 <meta name="description" content="Nível, chuva e avisos de cheia dos rios do Alto Paraíba do Sul em tempo real, com dados da SP Águas e da ANA.">
 <link rel="manifest" href="manifest.webmanifest">
+<script data-abertura="1">
+// Aberto como app (instalado ou da Play Store)? Marca o <html> para o visual de app e, uma vez por sessão, a abertura animada.
+(() => { try {
+  const app = matchMedia("(display-mode: standalone)").matches || document.referrer.startsWith("android-app://") || /[?&]app=1/.test(location.search);
+  if (app) document.documentElement.classList.add("app");
+  if (document.currentScript.dataset.abertura && (/[?&]abertura=1/.test(location.search) ||
+      (app && !sessionStorage.getItem("abertura") && !matchMedia("(prefers-reduced-motion: reduce)").matches))) {
+    document.documentElement.classList.add("abertura"); sessionStorage.setItem("abertura", "1");
+  }
+} catch {} })();
+</script>
 <link rel="icon" type="image/png" href="icones/icone-192.png">
 <link rel="apple-touch-icon" href="icones/apple-touch-icon.png">
 <style>
@@ -61,10 +72,61 @@
   .rodape { margin-top: 36px; font-size: 13px; color: var(--tinta-3); }
   .rodape strong { color: var(--tinta-2); }
   .rodape a { color: var(--acento); }
+  /* transição suave entre as páginas (início ↔ painel), onde o navegador suporta */
+  @view-transition { navigation: auto; }
+  ::view-transition-old(root) { animation: vt-sai .16s ease-in both; }
+  ::view-transition-new(root) { animation: vt-entra .28s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes vt-sai { to { opacity: 0; } }
+  @keyframes vt-entra { from { opacity: 0; transform: translateY(14px); } }
+  @media (prefers-reduced-motion: reduce) { ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; } }
+  /* como app: sem destaque azul ao tocar e sem selecionar texto de botões por engano */
+  html.app { -webkit-tap-highlight-color: transparent; }
+  html.app button, html.app .seg, html.app .barra, html.app .rodacard, html.app .bacia h2 { -webkit-user-select: none; user-select: none; }
+  .bacia { transition: transform .15s ease, border-color .15s ease; }
+  .bacia:active { transform: scale(.985); }
+
+  /* abertura animada (só no app, uma vez por sessão; toque pula) */
+  #abertura { display: none; }
+  html.abertura body { overflow: hidden; }
+  html.abertura #abertura { display: flex; position: fixed; inset: 0; z-index: 1000; align-items: center; justify-content: center;
+    background: var(--plano); overflow: hidden; animation: ab-sai .42s cubic-bezier(.4,0,.2,1) 1.35s forwards; }
+  #abertura.pular { animation: ab-sai .2s ease forwards !important; }
+  .ab-centro { position: relative; display: flex; flex-direction: column; align-items: center; margin-top: -40px; }
+  .ab-icone { position: relative; width: 104px; height: 104px; }
+  .ab-quadro { position: absolute; inset: 0; border-radius: 28px; background: #2a78d6; box-shadow: 0 14px 34px rgba(42,120,214,.32);
+    display: grid; place-items: center; animation: ab-pop .55s cubic-bezier(.2,.9,.3,1.25) both; }
+  .ab-gota { width: 36px; height: 42px; animation: ab-cai .5s cubic-bezier(.55,0,.6,1.35) .18s both; }
+  .ab-anel { position: absolute; left: 50%; top: 50%; width: 104px; height: 104px; margin: -52px; border-radius: 30px;
+    border: 2px solid #2a78d6; opacity: 0; animation: ab-anel 1s cubic-bezier(.2,.7,.3,1) .62s; }
+  .ab-anel.a2 { animation-delay: .82s; }
+  .ab-nome { margin-top: 22px; font-size: 25px; font-weight: 750; letter-spacing: -.02em; animation: ab-sobe .5s ease .5s both; }
+  .ab-sub { margin-top: 2px; font-size: 14px; color: var(--tinta-2); animation: ab-sobe .5s ease .64s both; }
+  .ab-mare { position: absolute; left: 0; right: 0; bottom: 0; height: 26vh; animation: ab-mare 1.5s cubic-bezier(.2,.8,.2,1) .1s both; }
+  .ab-mare svg { position: absolute; left: 0; bottom: 0; width: 200%; height: 100%; animation: ab-ondula 2.6s linear infinite; }
+  .ab-mare .m1 { fill: color-mix(in srgb, #2a78d6 13%, transparent); }
+  .ab-mare .m2 { fill: color-mix(in srgb, #2a78d6 9%, transparent); animation-duration: 3.8s; animation-direction: reverse; }
+  @keyframes ab-pop { from { transform: scale(.55); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes ab-cai { from { transform: translateY(-80px) scale(.7); opacity: 0; } 55% { opacity: 1; } to { transform: none; } }
+  @keyframes ab-anel { from { transform: scale(.9); opacity: .55; } to { transform: scale(2.1); opacity: 0; } }
+  @keyframes ab-sobe { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes ab-mare { from { transform: translateY(100%); } to { transform: none; } }
+  @keyframes ab-ondula { to { transform: translateX(-50%); } }
+  @keyframes ab-sai { to { opacity: 0; transform: scale(1.06); visibility: hidden; } }
   @media (max-width: 520px) { main { padding: 28px 12px 40px; } h1 { font-size: 25px; } .nivel b { font-size: 23px; } .bacia { padding: 14px 14px 12px 18px; } .topo { flex-direction: column; gap: 6px; } .nivel { text-align: left; } .nivel b { display: inline; margin-right: 8px; } }
 </style>
 </head>
 <body>
+<div id="abertura" aria-hidden="true">
+  <div class="ab-mare"><svg class="m2" viewBox="0 0 1200 200" preserveAspectRatio="none"><path d="M0,40 C100,10 200,70 300,40 C400,10 500,70 600,40 C700,10 800,70 900,40 C1000,10 1100,70 1200,40 L1200,200 L0,200 Z"/></svg><svg class="m1" viewBox="0 0 1200 200" preserveAspectRatio="none" style="top:18px"><path d="M0,40 C100,10 200,70 300,40 C400,10 500,70 600,40 C700,10 800,70 900,40 C1000,10 1100,70 1200,40 L1200,200 L0,200 Z"/></svg></div>
+  <div class="ab-centro">
+    <div class="ab-icone">
+      <i class="ab-anel"></i><i class="ab-anel a2"></i>
+      <div class="ab-quadro"><svg class="ab-gota" viewBox="0 0 14 16"><path d="M7 1C7 1 1.5 7.2 1.5 10.4a5.5 5.5 0 0 0 11 0C12.5 7.2 7 1 7 1Z" fill="#fff"/></svg></div>
+    </div>
+    <div class="ab-nome">Monitor dos Rios</div>
+    <div class="ab-sub">Nível e chuva em tempo real</div>
+  </div>
+</div>
 <main>
   <h1>Monitor dos Rios</h1>
   <p class="sub">Nível, chuva e avisos de cheia em tempo real, com dados públicos da SP Águas e da ANA. Escolha o rio.</p>
@@ -154,6 +216,15 @@ function grafico(pts, e) {
       desenhar(await serie(e, pts => { if (pts.length) desenhar(pts); }));
     } catch { nv.innerHTML = `<b>—</b><span class="pill"><i></i>sem leitura agora</span>`; }
   })();
+})();
+// abertura: some sozinha (CSS); um toque pula; depois sai da página
+(() => {
+  const ab = document.getElementById("abertura");
+  if (!document.documentElement.classList.contains("abertura")) { ab.remove(); return; }
+  const fim = () => { document.documentElement.classList.remove("abertura"); ab.remove(); };
+  ab.addEventListener("click", () => { ab.classList.add("pular"); setTimeout(fim, 220); });
+  ab.addEventListener("animationend", ev => { if (ev.target === ab) fim(); });
+  setTimeout(fim, 2200);   // garantia
 })();
 // app instalável (e o app da Play Store): funciona sem internet com a última leitura
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});

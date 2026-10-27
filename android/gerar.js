@@ -26,6 +26,7 @@ const { TwaManifest, TwaGenerator, ConsoleLog } = require("@bubblewrap/core");
     enableNotifications: true,
     fallbackType: "customtabs",
     splashScreenFadeOutDuration: 300,
+    themeColor: app.themeColor || base.themeColor,   // barra de status da cor do painel
     navigationColor: app.navigationColor,
     navigationColorDark: app.navigationColorDark,
     themeColorDark: app.themeColorDark,

@@ -8,6 +8,17 @@
 <title>Monitor do Rio</title>
 <meta name="description" content="Nível, chuva, previsão e avisos de cheia em tempo real, com dados da SP Águas e da ANA">
 <link rel="manifest" href="manifest.webmanifest">
+<script>
+// Aberto como app (instalado ou da Play Store)? Marca o <html> para o visual de app e, uma vez por sessão, a abertura animada.
+(() => { try {
+  const app = matchMedia("(display-mode: standalone)").matches || document.referrer.startsWith("android-app://") || /[?&]app=1/.test(location.search);
+  if (app) document.documentElement.classList.add("app");
+  if (document.currentScript.dataset.abertura && (/[?&]abertura=1/.test(location.search) ||
+      (app && !sessionStorage.getItem("abertura") && !matchMedia("(prefers-reduced-motion: reduce)").matches))) {
+    document.documentElement.classList.add("abertura"); sessionStorage.setItem("abertura", "1");
+  }
+} catch {} })();
+</script>
 <link rel="icon" type="image/png" href="../icones/icone-192.png">
 <link rel="apple-touch-icon" href="../icones/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -430,6 +441,16 @@
     .painel, .direita, .coluna { display: contents; }
     .duas { display: contents; }
   }
+  /* transição suave entre as páginas (início ↔ painel), onde o navegador suporta */
+  @view-transition { navigation: auto; }
+  ::view-transition-old(root) { animation: vt-sai .16s ease-in both; }
+  ::view-transition-new(root) { animation: vt-entra .28s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes vt-sai { to { opacity: 0; } }
+  @keyframes vt-entra { from { opacity: 0; transform: translateY(14px); } }
+  @media (prefers-reduced-motion: reduce) { ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; } }
+  /* como app: sem destaque azul ao tocar e sem selecionar texto de botões por engano */
+  html.app { -webkit-tap-highlight-color: transparent; }
+  html.app button, html.app .seg, html.app .barra, html.app .rodacard { -webkit-user-select: none; user-select: none; }
 </style>
 </head>
 <body>
