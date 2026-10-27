@@ -1393,8 +1393,9 @@ function faixaTipica(dias, inicio, fim) {
   return out;
 }
 function janelaPadrao() {
+  // os dias escolhidos para trás e, para frente, toda a previsão (até o fim do gráfico)
   const agora = Date.now(), d = estado.dias;
-  return [agora - d * 864e5, agora + Math.min(7, Math.max(1, d / 2)) * 864e5];
+  return [agora - d * 864e5, nav.max > agora ? nav.max : agora + Math.min(7, Math.max(1, d / 2)) * 864e5];
 }
 
 function desenharAgora(manterJanela) {
