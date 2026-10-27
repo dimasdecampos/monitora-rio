@@ -33,10 +33,10 @@
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--plano); color: var(--tinta); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  main { max-width: 860px; margin: 0 auto; padding: 40px 16px 48px; }
+  main { max-width: 1000px; margin: 0 auto; padding: 40px 16px 48px; }
   h1 { font-size: 30px; line-height: 1.15; letter-spacing: -.02em; margin: 0 0 6px; }
   .sub { color: var(--tinta-2); margin: 0 0 28px; max-width: 60ch; }
-  .lista { display: grid; gap: 14px; }
+  .lista { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; }
   .bacia { background: var(--superficie); border: 1px solid var(--borda); border-radius: 16px; padding: 16px 18px 14px 22px; box-shadow: var(--sombra);
            color: inherit; position: relative; overflow: hidden; }
   .bacia::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--cor, var(--neutro)); }
