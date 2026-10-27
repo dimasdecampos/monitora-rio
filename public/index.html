@@ -37,38 +37,30 @@
   h1 { font-size: 30px; line-height: 1.15; letter-spacing: -.02em; margin: 0 0 6px; }
   .sub { color: var(--tinta-2); margin: 0 0 28px; max-width: 60ch; }
   .lista { display: grid; gap: 14px; }
-  .bacia { background: var(--superficie); border: 1px solid var(--borda); border-radius: 16px; padding: 18px 20px 14px; box-shadow: var(--sombra);
+  .bacia { background: var(--superficie); border: 1px solid var(--borda); border-radius: 16px; padding: 16px 18px 14px 22px; box-shadow: var(--sombra);
            color: inherit; position: relative; overflow: hidden; }
   .bacia::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--cor, var(--neutro)); }
   .bacia:hover { border-color: color-mix(in srgb, var(--acento) 45%, transparent); }
   .bacia .abrir { color: inherit; text-decoration: none; }
   .bacia .abrir::after { content: ""; position: absolute; inset: 0; }   /* o cartão inteiro abre o painel */
-  .bacia .ir { color: var(--acento); font-weight: 600; }
   .topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-  .bacia h2 { margin: 0; font-size: 19px; letter-spacing: -.01em; line-height: 1.25; }
+  .bacia h2 { min-width: 0; margin: 0; font-size: 18px; letter-spacing: -.01em; line-height: 1.25; }
   .bacia h2 small { display: block; font-weight: 500; color: var(--tinta-2); font-size: 14px; margin-top: 1px; }
-  .resumo { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 650; padding: 4px 10px; border-radius: 99px;
-            background: color-mix(in srgb, var(--cor, var(--neutro)) 16%, transparent); white-space: nowrap; }
-  .resumo i, .est i { width: 9px; height: 9px; border-radius: 50%; background: var(--cor, var(--neutro)); flex: none; }
-  .bacia p { margin: 8px 0 4px; color: var(--tinta-2); font-size: 14px; }
-  .rio { margin: 12px 0 0; font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--tinta-3); }
-  .estacoes { margin: 2px 0 0; padding: 0; list-style: none; }
-  .est { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--borda); }
-  .est:first-child { border-top: 0; }
-  .est .nome { font-size: 14px; font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .est.principal .nome { font-weight: 750; }
-  .est .val { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
-  .est .det { grid-column: 2 / -1; display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--tinta-2); min-width: 0; }
-  .est .det span { white-space: nowrap; }
-  .est .det span:last-child { margin-left: auto; color: var(--tinta-3); }
-  .barra { flex: 1; min-width: 40px; height: 5px; border-radius: 3px; background: var(--superficie-2); overflow: hidden; }
-  .barra b { display: block; height: 100%; border-radius: 3px; background: var(--cor, var(--neutro)); }
-  .links { display: flex; gap: 16px; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--borda); font-size: 14px; }
-  .links a { color: var(--acento); text-decoration: none; font-weight: 600; position: relative; z-index: 1; }
+  .nivel { text-align: right; flex: none; }
+  .nivel b { display: block; font-size: 26px; font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 650; }
+  .pill i { width: 9px; height: 9px; border-radius: 50%; background: var(--cor, var(--neutro)); }
+  .grafico { display: block; width: 100%; height: 64px; margin-top: 10px; }
+  .grafico path.linha { fill: none; stroke: var(--cor, var(--neutro)); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  .grafico path.area { fill: var(--cor, var(--neutro)); opacity: .14; }
+  .grafico line { stroke: var(--tinta-3); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; opacity: .6; }
+  .rodacard { display: flex; justify-content: space-between; gap: 12px; margin-top: 4px; font-size: 12.5px; color: var(--tinta-3); }
+  .rodacard .ir { color: var(--acento); font-weight: 600; font-size: 13.5px; }
+  .rodacard a { color: var(--acento); text-decoration: none; font-weight: 600; font-size: 13.5px; position: relative; z-index: 1; }
   .rodape { margin-top: 36px; font-size: 13px; color: var(--tinta-3); }
   .rodape strong { color: var(--tinta-2); }
   .rodape a { color: var(--acento); }
-  @media (max-width: 520px) { main { padding: 28px 12px 40px; } h1 { font-size: 25px; } .bacia { padding: 16px 14px 12px 18px; } .topo { flex-direction: column; gap: 8px; } .est .det span:last-child { display: none; } }
+  @media (max-width: 520px) { main { padding: 28px 12px 40px; } h1 { font-size: 25px; } .nivel b { font-size: 23px; } .bacia { padding: 14px 14px 12px 18px; } .topo { flex-direction: column; gap: 6px; } .nivel { text-align: left; } .nivel b { display: inline; margin-right: 8px; } }
 </style>
 </head>
 <body>
@@ -88,43 +80,36 @@ const p2 = n => String(n).padStart(2, "0");
 const isoUTC = d => `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}T${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}`;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
-// última leitura da régua principal (SP Águas ou ANA)
-async function ultima(e) {
+// últimas 24 h da régua principal (SP Águas ou ANA): [{v, t}] em ordem de tempo
+async function serie(e) {
   if (e.fonte === "spaguas") {
-    const ini = new Date(Date.now() - 6 * 36e5), fim = new Date(Date.now() + 36e5);
+    const ini = new Date(Date.now() - 24 * 36e5), fim = new Date(Date.now() + 36e5);
     const r = await fetch(`https://cth.daee.sp.gov.br/sibh/api/v2/measurements?station_prefix_ids[]=${e.id_nivel}&start_date=${isoUTC(ini)}&end_date=${isoUTC(fim)}`);
-    const ms = ((await r.json()).measurements || []).filter(m => m.value != null && +m.value >= 0).sort((a, b) => a.date < b.date ? -1 : 1);
-    const u = ms.at(-1); if (!u) return null;
-    const [d, h] = u.date.split(" "); return { v: +u.value, t: Date.parse(`${d.replaceAll("/", "-")}T${h}:00Z`) };
+    return ((await r.json()).measurements || []).filter(m => m.value != null && +m.value >= 0).map(m => {
+      const [d, h] = m.date.split(" "); return { v: +m.value, t: Date.parse(`${d.replaceAll("/", "-")}T${h}:00Z`) };
+    }).sort((a, b) => a.t - b.t);
   }
   const br = d => d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
   const r = await fetch(`https://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos?codEstacao=${e.codigo}&dataInicio=${br(new Date(Date.now() - 864e5))}&dataFim=${br(new Date(Date.now() + 864e5))}`);
-  const xml = new DOMParser().parseFromString(await r.text(), "text/xml");
-  let u = null;
+  const xml = new DOMParser().parseFromString(await r.text(), "text/xml"), out = [];
   for (const n of xml.getElementsByTagName("DadosHidrometereologicos")) {
     const t = n.getElementsByTagName("DataHora")[0]?.textContent.trim(), v = n.getElementsByTagName("Nivel")[0]?.textContent.trim();
-    if (t && v && +v >= 0) { const ts = Date.parse(t.replace(" ", "T") + "-03:00"); if (!u || ts > u.t) u = { v: +v, t: ts }; }
+    if (t && v && +v >= 0) out.push({ v: +v, t: Date.parse(t.replace(" ", "T") + "-03:00") });
   }
-  return u;
+  return out.sort((a, b) => a.t - b.t).filter(p => p.t >= Date.now() - 24 * 36e5);
 }
 
-const ordem = ["extravasamento", "emergencia", "alerta", "atencao"];
-function situacao(e, v) {
-  const c = COTAS.find(([k]) => e.cotas_cm?.[k] != null && v >= e.cotas_cm[k]);
-  if (c) return { nome: c[1], cor: c[2], grau: 4 - ordem.indexOf(c[0]) };
-  return COTAS.some(([k]) => e.cotas_cm?.[k] != null) ? { nome: "Normal", cor: "--bom", grau: 0 } : { nome: "Sem cotas", cor: "--neutro", grau: -1 };
-}
-function atras(t) {
-  const m = Math.round((Date.now() - t) / 6e4);
-  return m < 60 ? `há ${Math.max(m, 1)} min` : m < 1440 ? `há ${Math.round(m / 60)} h` : `há ${Math.round(m / 1440)} d`;
-}
-function linha(e, u, principal) {
-  if (!u) return `<li class="est${principal ? " principal" : ""}"><i></i><span class="nome">${esc(e.curto || e.nome)}</span><span class="val">—</span><div class="det"><span>sem leitura agora</span></div></li>`;
-  const velho = Date.now() - u.t > 3 * 36e5, s = situacao(e, u.v);
-  const topo = Math.max(0, ...Object.values(e.cotas_cm || {}));
-  const barra = topo ? `<div class="barra"><b style="width:${Math.min(100, u.v / topo * 100).toFixed(0)}%"></b></div>` : `<div class="barra"></div>`;
-  return `<li class="est${principal ? " principal" : ""}" style="--cor:var(${velho ? "--neutro" : s.cor})"><i></i><span class="nome">${esc(e.curto || e.nome)}</span>
-    <span class="val">${fmt(u.v / 100)} m</span><div class="det"><span>${velho ? "leitura atrasada" : s.nome}</span>${barra}<span>${atras(u.t)}</span></div></li>`;
+function grafico(pts, e) {
+  if (pts.length < 2) return "";
+  const t0 = pts[0].t, t1 = pts.at(-1).t || t0 + 1, cota = e.cotas_cm?.atencao;
+  let lo = Math.min(...pts.map(p => p.v)), hi = Math.max(...pts.map(p => p.v));
+  if (cota != null) { hi = Math.max(hi, cota); }
+  const marg = Math.max((hi - lo) * .12, 3); lo -= marg; hi += marg;
+  const X = t => ((t - t0) / (t1 - t0 || 1) * 300).toFixed(1), Y = v => (56 - (v - lo) / (hi - lo) * 52 + 2).toFixed(1);
+  const d = pts.map((p, i) => `${i ? "L" : "M"}${X(p.t)},${Y(p.v)}`).join("");
+  return `<svg class="grafico" viewBox="0 0 300 60" preserveAspectRatio="none" aria-hidden="true">
+    ${cota != null ? `<line x1="0" x2="300" y1="${Y(cota)}" y2="${Y(cota)}"/>` : ""}
+    <path class="area" d="${d}L300,60L0,60Z"/><path class="linha" d="${d}"/></svg>`;
 }
 
 (async () => {
@@ -134,27 +119,26 @@ function linha(e, u, principal) {
     <div class="bacia" id="b-${b.id}">
       <div class="topo">
         <h2><a class="abrir" href="${b.id}/">${esc(b.rio)}</a><small>${esc(b.cidade)}</small></h2>
-        <span class="resumo"><i></i><span>carregando</span></span>
+        <div class="nivel"><b>…</b><span class="pill"><i></i>carregando</span></div>
       </div>
-      <p>${esc(b.descricao || "")}</p>
-      <div class="rios"></div>
-      <div class="links"><span class="ir">Abrir painel →</span><a href="${b.id}/tv.html">Modo TV</a></div>
+      <div class="mini"></div>
+      <div class="rodacard"><span class="ir">Abrir painel →</span><a href="${b.id}/tv.html">Modo TV</a></div>
     </div>`).join("");
   for (const b of bacias) (async () => {
-    const card = document.getElementById("b-" + b.id), resumo = card.querySelector(".resumo"), rios = card.querySelector(".rios");
+    const card = document.getElementById("b-" + b.id), nv = card.querySelector(".nivel");
     try {
       const cfg = await fetch(`${b.id}/config.json`).then(r => r.json());
-      const grupos = cfg.rios.map(r => ({ nome: r.nome, est: r.estacoes }));
-      const todas = grupos.flatMap(g => g.est);
-      const leituras = new Map(await Promise.all(todas.map(async e => [e.codigo, await ultima(e).catch(() => null)])));
-      rios.innerHTML = grupos.map(g => `${grupos.length > 1 ? `<div class="rio">${esc(g.nome)}</div>` : ""}<ul class="estacoes">${g.est.map(e => linha(e, leituras.get(e.codigo), e.codigo === cfg.principal)).join("")}</ul>`).join("");
-      const ep = todas.find(x => x.codigo === cfg.principal), up = leituras.get(cfg.principal);
-      if (!up) throw new Error();
-      const s = situacao(ep, up.v), velho = Date.now() - up.t > 3 * 36e5;
-      card.style.setProperty("--cor", `var(${velho ? "--neutro" : s.cor})`);
-      resumo.style.setProperty("--cor", `var(${velho ? "--neutro" : s.cor})`);
-      resumo.lastChild.textContent = velho ? "leitura atrasada" : `${s.nome} · ${fmt(up.v / 100)} m`;
-    } catch { resumo.lastChild.textContent = "sem leitura agora"; }
+      const e = cfg.rios.flatMap(r => r.estacoes).find(x => x.codigo === cfg.principal);
+      const pts = await serie(e), u = pts.at(-1);
+      if (!u) throw new Error();
+      const c = COTAS.find(([k]) => e.cotas_cm?.[k] != null && u.v >= e.cotas_cm[k]);
+      const temCotas = COTAS.some(([k]) => e.cotas_cm?.[k] != null);
+      const [nome, cor] = c ? [c[1], c[2]] : temCotas ? ["Normal", "--bom"] : ["Sem cotas", "--neutro"];
+      const velho = Date.now() - u.t > 3 * 36e5;
+      card.style.setProperty("--cor", `var(${velho ? "--neutro" : cor})`);
+      nv.innerHTML = `<b>${fmt(u.v / 100)} m</b><span class="pill"><i></i>${velho ? "leitura atrasada" : nome} · ${esc(e.curto || e.nome)}</span>`;
+      card.querySelector(".mini").innerHTML = grafico(pts, e);
+    } catch { nv.innerHTML = `<b>—</b><span class="pill"><i></i>sem leitura agora</span>`; }
   })();
 })();
 </script>
