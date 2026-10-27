@@ -344,6 +344,7 @@
   .recolhivel > .cab { cursor: pointer; margin-bottom: 0; border-radius: 10px; user-select: none; }
   .recolhivel > .cab:focus-visible { outline: 2px solid var(--acento); outline-offset: 4px; }
   .recolhivel > .corpo { margin-top: 14px; }
+  .recolhivel > .cab > div:first-child { flex: 1 1 240px; min-width: 0; }
   .recolhivel .lado { display: inline-flex; align-items: center; gap: 10px; }
   .seta-exp { width: 30px; height: 30px; border-radius: 50%; background: var(--superficie-2); display: inline-grid; place-items: center; flex: none; }
   .seta-exp::before { content: ""; width: 8px; height: 8px; border-right: 2px solid var(--tinta-2); border-bottom: 2px solid var(--tinta-2); transform: translateY(-2px) rotate(45deg); transition: transform .2s; }
@@ -389,8 +390,25 @@
   .op-est .nv small { display: block; font-size: 11px; font-weight: 500; color: var(--tinta-3); }
   .selo { font-size: 10px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; color: var(--acento); border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; margin-left: 6px; vertical-align: 2px; }
 
+  /* ---------- menu e vistas ---------- */
+  body[data-vista="inicio"] [data-vista="graficos"], body[data-vista="graficos"] [data-vista="inicio"] { display: none !important; }
+  .barra-in .dir { display: flex; align-items: center; gap: 8px; flex: none; }
+  .menu { display: none; }
+  .menu a { text-decoration: none; color: var(--tinta-2); font-weight: 600; font-size: 14.5px; padding: 8px 12px; border-radius: 10px; white-space: nowrap; }
+  .menu a:hover { background: var(--superficie-2); color: var(--tinta); }
+  .menu a[aria-current="page"] { color: var(--tinta); background: var(--superficie-2); }
+  .hamb { display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 10px; background: var(--superficie-2); color: var(--tinta); cursor: pointer; }
+  .menu.aberto { display: flex; flex-direction: column; gap: 2px; position: absolute; top: 100%; left: 0; right: 0; padding: 8px 12px 12px;
+                 background: var(--plano); border-bottom: 1px solid var(--borda); box-shadow: 0 12px 24px rgba(0,0,0,.12); }
+  .menu.aberto a { padding: 12px; font-size: 16px; }
+  .titulo-vista h1 { margin: 4px 0 2px; font-size: 24px; letter-spacing: -.02em; }
+  .titulo-vista p { margin: 0; color: var(--tinta-2); font-size: 14px; }
+  @media (max-width: 520px) { .vivo #vivoTxt { display: none; } }   /* no celular fica só a bolinha de status, para caber o nome da régua */
+
   /* ---------- telas maiores ---------- */
   @media (min-width: 900px) {
+    .hamb { display: none; }
+    .menu { display: flex; gap: 4px; flex: 1; margin-left: 12px; }
     .barra-in { padding: 12px 28px; }
     main { padding: 22px 28px 48px; gap: 20px; }
     /* topo em duas colunas; a da esquerda acompanha a rolagem só até o fim deste bloco */
@@ -423,7 +441,16 @@
       <svg class="seta" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
     </button>
     </div>
-    <span class="vivo" id="vivo"><i></i><span id="vivoTxt">Carregando…</span></span>
+    <nav class="menu" id="menu" aria-label="Seções do painel">
+      <a href="#inicio" data-v="inicio">Início</a>
+      <a href="#graficos" data-v="graficos">Mais gráficos</a>
+      <a href="tv.html">Modo TV</a>
+      <a href="../">Outros rios</a>
+    </nav>
+    <div class="dir">
+      <span class="vivo" id="vivo"><i></i><span id="vivoTxt">Carregando…</span></span>
+      <button class="hamb" id="btnMenu" aria-label="Abrir menu" aria-expanded="false" aria-controls="menu"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5.5h14M3 10h14M3 14.5h14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg></button>
+    </div>
   </div>
 </header>
 
@@ -437,7 +464,7 @@
 <main id="principal" class="carregando">
   <div id="erro" class="card largo"></div>
 
-  <div class="painel">
+  <div class="painel" data-vista="inicio">
   <div class="coluna">
     <section class="card hero" id="hero">
       <div class="hero-top"><span class="rot" id="hRot">Agora</span><span class="pill" id="hStatus"><i></i>—</span></div>
@@ -461,7 +488,9 @@
   </div>
 
   <div class="direita">
-  <section class="card grafico">
+  <section class="card grafico recolhivel" id="cardGrafico">
+    <div class="cab" role="button" tabindex="0" aria-expanded="true"><div><h2>Nível e chuva</h2><p class="sub">Últimos dias ou comparação entre anos</p></div><span class="lado"><span class="seta-exp" aria-hidden="true"></span></span></div>
+    <div class="corpo">
     <div class="seg grande" id="modo" role="tablist">
       <button data-modo="agora" role="tab">Últimos dias</button>
       <button data-modo="comparar" role="tab">Comparar anos</button>
@@ -494,19 +523,6 @@
     <div class="nav-dica"><span id="dicaNav">Arraste a janela para navegar · puxe as bordas para zoom</span><button id="verTudo">Ver tudo</button></div>
     <div class="leg-agora" id="legAgora"></div>
     <div class="anos" id="anos" hidden></div>
-  </section>
-
-  <section class="card rio-acima recolhivel" id="cardRio" aria-labelledby="tituloRio">
-    <div class="cab" role="button" tabindex="0" aria-expanded="false" aria-controls="corpoRio">
-      <div><h2 id="tituloRio">Rio acima</h2>
-        <p class="sub" id="rSub"></p></div>
-      <span class="lado"><span class="pill" id="rResumo"><i></i>…</span><span class="seta-exp" aria-hidden="true"></span></span>
-    </div>
-    <div class="corpo" id="corpoRio" hidden>
-      <ol class="trecho" id="rTrecho"><li class="prev-carregando">Carregando réguas…</li></ol>
-      <div class="represa" id="rChapeu"></div>
-      <div class="rot" style="margin:14px 0 6px">Afluentes</div>
-      <ol class="trecho afl" id="rAfl"></ol>
     </div>
   </section>
 
@@ -524,44 +540,69 @@
   </div><!-- .direita -->
   </div><!-- .painel -->
 
-  <section class="card largo" id="cardImpacto" aria-labelledby="tituloImpacto">
-    <div class="cab">
+  <section class="card largo recolhivel" id="cardImpacto" data-vista="inicio" aria-labelledby="tituloImpacto">
+    <div class="cab" role="button" tabindex="0" aria-expanded="true">
       <div><h2 id="tituloImpacto">O que alaga com cada nível</h2>
         <p class="sub" id="iSub"></p></div>
-      <span class="pill" id="iResumo"><i></i>…</span>
+      <span class="lado"><span class="pill" id="iResumo"><i></i>…</span><span class="seta-exp" aria-hidden="true"></span></span>
     </div>
+    <div class="corpo">
     <div class="impacto">
       <ol class="escada" id="iEscada"></ol>
       <div class="mapa-box"><div class="mapa" id="iMapa" role="img" aria-label="Mapa do centro com os pontos atingidos em cheias passadas"></div>
         <div class="leg-mapa"><span><i style="background:var(--inundacao)"></i>atingido no nível de agora</span><span><i style="background:var(--alerta)"></i>pode ser atingido (previsão 48 h)</span><span><i style="background:var(--mediana)"></i>não atingido</span><span><i style="background:var(--acento)"></i><span id="iLegRegua">régua de referência</span></span></div></div>
     </div>
     <p class="nota" id="iNota"></p>
+    </div>
   </section>
 
-  <div class="duas">
-    <section class="card">
-      <div class="cab"><div><h2>Ano a ano</h2><p class="sub" id="anoSub">Maior nível de cada ano e dias acima das cotas. Toque num ano para comparar no gráfico.</p></div></div>
+  <div class="titulo-vista" data-vista="graficos"><h1>Mais gráficos</h1><p>Histórico, comparações e estatísticas do rio. Cada cartão pode ser fechado para reduzir a tela.</p></div>
+  <section class="card largo rio-acima recolhivel" id="cardRio" data-vista="graficos" aria-labelledby="tituloRio">
+    <div class="cab" role="button" tabindex="0" aria-expanded="false" aria-controls="corpoRio">
+      <div><h2 id="tituloRio">Rio acima</h2>
+        <p class="sub" id="rSub"></p></div>
+      <span class="lado"><span class="pill" id="rResumo"><i></i>…</span><span class="seta-exp" aria-hidden="true"></span></span>
+    </div>
+    <div class="corpo" id="corpoRio" hidden>
+      <ol class="trecho" id="rTrecho"><li class="prev-carregando">Carregando réguas…</li></ol>
+      <div class="represa" id="rChapeu"></div>
+      <div class="rot" style="margin:14px 0 6px">Afluentes</div>
+      <ol class="trecho afl" id="rAfl"></ol>
+    </div>
+  </section>
+
+  <div class="duas" data-vista="graficos">
+    <section class="card recolhivel" id="cardAno">
+      <div class="cab" role="button" tabindex="0" aria-expanded="true"><div><h2>Ano a ano</h2><p class="sub" id="anoSub">Maior nível de cada ano e dias acima das cotas. Toque num ano para comparar no gráfico.</p></div><span class="lado"><span class="seta-exp" aria-hidden="true"></span></span></div>
+      <div class="corpo">
       <div class="linhas" id="linhas"></div>
       <div class="legenda-cotas" id="legCotas"></div>
+      </div>
     </section>
-    <section class="card">
-      <div class="cab"><div><h2>Maiores cheias</h2><p class="sub" id="cheiasSub">Os 10 maiores picos registrados nesta estação.</p></div></div>
+    <section class="card recolhivel" id="cardCheias">
+      <div class="cab" role="button" tabindex="0" aria-expanded="true"><div><h2>Maiores cheias</h2><p class="sub" id="cheiasSub">Os 10 maiores picos registrados nesta estação.</p></div><span class="lado"><span class="seta-exp" aria-hidden="true"></span></span></div>
+      <div class="corpo">
       <ol class="cheias" id="cheias"></ol>
+      </div>
     </section>
   </div>
 
-  <section class="card largo">
-    <div class="cab"><div><h2>Nível máximo de cada mês</h2><p class="sub">Mais escuro = rio mais alto. O contorno marca o recorde do mês.</p></div></div>
+  <section class="card largo recolhivel" id="cardCalor" data-vista="graficos">
+    <div class="cab" role="button" tabindex="0" aria-expanded="true"><div><h2>Nível máximo de cada mês</h2><p class="sub">Mais escuro = rio mais alto. O contorno marca o recorde do mês.</p></div><span class="lado"><span class="seta-exp" aria-hidden="true"></span></span></div>
+    <div class="corpo">
     <div class="rolagem"><table class="calor" id="calor"></table></div>
     <div class="escala-calor" id="escalaCalor"></div>
+    </div>
   </section>
 
-  <details class="card largo" id="detPerm">
-    <summary><div><h2>Com que frequência o rio fica alto</h2><p class="sub" id="permSub">Curva de permanência do nível médio diário.</p></div></summary>
+  <section class="card largo recolhivel" id="cardPerm" data-vista="graficos">
+    <div class="cab" role="button" tabindex="0" aria-expanded="true"><div><h2>Com que frequência o rio fica alto</h2><p class="sub" id="permSub">Curva de permanência do nível médio diário.</p></div><span class="lado"><span class="seta-exp" aria-hidden="true"></span></span></div>
+    <div class="corpo" id="ccardPerm">
     <div class="area-perm"><canvas id="gPerm"></canvas></div>
-  </details>
+    </div>
+  </section>
 
-  <section class="card largo recolhivel" id="cardResposta" aria-labelledby="tcardResposta">
+  <section class="card largo recolhivel" id="cardResposta" data-vista="graficos" aria-labelledby="tcardResposta">
     <div class="cab" role="button" tabindex="0" aria-expanded="false" aria-controls="ccardResposta">
       <div><h2 id="tcardResposta">Quanto o rio sobe com essa chuva</h2><p class="sub" id="scardResposta"></p></div>
       <span class="lado"><span class="pill" id="pcardResposta"><i></i>…</span><span class="seta-exp" aria-hidden="true"></span></span>
@@ -573,7 +614,7 @@
       <p class="nota" id="respNota"></p>
     </div>
   </section>
-  <section class="card largo recolhivel" id="cardSazonal" aria-labelledby="tcardSazonal">
+  <section class="card largo recolhivel" id="cardSazonal" data-vista="graficos" aria-labelledby="tcardSazonal">
     <div class="cab" role="button" tabindex="0" aria-expanded="false" aria-controls="ccardSazonal">
       <div><h2 id="tcardSazonal">Quando o rio enche</h2><p class="sub" id="scardSazonal"></p></div>
       <span class="lado"><span class="pill" id="pcardSazonal"><i></i>…</span><span class="seta-exp" aria-hidden="true"></span></span>
@@ -583,7 +624,7 @@
       <div class="leg-mapa" id="sazLeg"></div>
     </div>
   </section>
-  <section class="card largo recolhivel" id="cardRecessao" aria-labelledby="tcardRecessao">
+  <section class="card largo recolhivel" id="cardRecessao" data-vista="graficos" aria-labelledby="tcardRecessao">
     <div class="cab" role="button" tabindex="0" aria-expanded="false" aria-controls="ccardRecessao">
       <div><h2 id="tcardRecessao">Depois do pico, quanto tempo para baixar</h2><p class="sub" id="scardRecessao"></p></div>
       <span class="lado"><span class="pill" id="pcardRecessao"><i></i>…</span><span class="seta-exp" aria-hidden="true"></span></span>
@@ -593,7 +634,7 @@
       <ol class="rec-lista" id="recLista"></ol>
     </div>
   </section>
-  <section class="card largo recolhivel" id="cardHist" aria-labelledby="tituloHist">
+  <section class="card largo recolhivel" id="cardHist" data-vista="graficos" aria-labelledby="tituloHist">
     <div class="cab" role="button" tabindex="0" aria-expanded="false" aria-controls="corpoHist">
       <div><h2 id="tituloHist">Memória das cheias</h2><p class="sub" id="hSub"></p></div>
       <span class="lado"><span class="pill" id="hResumo"><i style="background:var(--inundacao)"></i>…</span><span class="seta-exp" aria-hidden="true"></span></span>
@@ -603,12 +644,14 @@
     </div>
   </section>
 
-  <section class="card largo" id="cardFontes" aria-labelledby="tituloFontes">
-    <div class="cab"><div><h2 id="tituloFontes">Situação das fontes de dados</h2><p class="sub">Se uma rede parar, o painel avisa e sugere outra régua.</p></div></div>
+  <section class="card largo recolhivel" id="cardFontes" data-vista="inicio" aria-labelledby="tituloFontes">
+    <div class="cab" role="button" tabindex="0" aria-expanded="true"><div><h2 id="tituloFontes">Situação das fontes de dados</h2><p class="sub">Se uma rede parar, o painel avisa e sugere outra régua.</p></div><span class="lado"><span class="seta-exp" aria-hidden="true"></span></span></div>
+    <div class="corpo">
     <ul class="fontes" id="fontes"><li class="prev-carregando">Verificando…</li></ul>
+    </div>
   </section>
 
-  <section class="card largo sobre">
+  <section class="card largo sobre" data-vista="inicio">
     <strong>Sobre os dados</strong>
     <ul>
       <li>Réguas da <a href="https://cth.daee.sp.gov.br/sibh/" target="_blank" rel="noopener">SP Águas (SIBH)</a>, a cada 10 min, e da <a href="https://www.snirh.gov.br/hidrotelemetria/" target="_blank" rel="noopener">ANA</a>, a cada 15 min, buscadas direto no seu navegador. Chuva prevista: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>. O histórico é atualizado todo dia.</li>
@@ -666,7 +709,7 @@ const ha = horas => horas < 1 ? `há ${Math.max(1, Math.round(horas * 60))} min`
 // preferências do visitante (só neste navegador)
 const ler = (k, padrao) => { try { const v = localStorage.getItem(`monitor-${BACIA}-${k}`); return v == null ? padrao : JSON.parse(v); } catch { return padrao; } };
 const guardar = (k, v) => { try { localStorage.setItem(`monitor-${BACIA}-${k}`, JSON.stringify(v)); } catch {} };
-const estado = { chuvaBacia: ler("chuvaBacia", false), mostrarMediana: ler("mostrarMediana", true), mostrarFaixa: ler("mostrarFaixa", true), estacao: null, modo: "agora", dias: 3, de: 1, ate: 12, metrica: "nmax", destaques: new Map(), janela: null, cursor: null };
+const estado = { chuvaBacia: ler("chuvaBacia", false), mostrarMediana: ler("mostrarMediana", true), mostrarFaixa: ler("mostrarFaixa", true), estacao: null, vista: "inicio", modo: "agora", dias: 3, de: 1, ate: 12, metrica: "nmax", destaques: new Map(), janela: null, cursor: null };
 let config, estacoes = {};
 window.monitor = estado;   // facilita testes e depuração pelo console
 window.monitorGraficos = () => graficos;
@@ -1589,7 +1632,7 @@ function desenharCalor() {
 }
 
 function desenharPermanencia() {
-  if (!$("#detPerm").open) return;
+  if (!cardAberto("cardPerm")) return;
   const { lista } = temporadas(), atual = lista.find(t => t.atual), ref = lista.filter(t => !t.atual && !t.parcial);
   const q = vs => { const s = [...vs].sort((a, b) => b - a); return Array.from({ length: 101 }, (_, i) => ({ x: i, y: s[Math.round(i / 100 * (s.length - 1))] / 100 })); };
   const vRef = ref.flatMap(t => t.dias.filter(r => r?.nmed != null).map(r => r.nmed)), vAt = atual ? atual.dias.filter(r => r?.nmed != null).map(r => r.nmed) : [];
@@ -1689,7 +1732,7 @@ async function desenharPrevisao() {
     if (!ref) throw new Error("sem leitura recente do rio");
     prev.ref = ref;
     renderizarPrevisao(ref);
-    desenharImpactos(); verificarAvisos(); desenharFontes(); desenharVisoes();
+    desenharImpactos(); verificarAvisos(); desenharFontes(); if (estado.vista === "graficos") desenharVisoes();
     if (estado.modo === "agora" && cache[estado.estacao]) desenharAgora(true);   // acrescenta a linha de previsão ao gráfico
   } catch (e) {
     $("#pRisco").innerHTML = `<i style="background:${tok("--neutro")}"></i>indisponível`;
@@ -1930,7 +1973,7 @@ async function desenharImpactos() {
 // ================= visões: resposta à chuva, sazonalidade, recessão =================
 let estat = null;
 const carregarEstat = async () => estat ??= config.estatisticas ? await fetch(config.estatisticas).then(r => r.ok ? r.json() : null).catch(() => null) : null;
-const cardAberto = id => !$("#c" + id).hidden;
+const cardAberto = id => !$("#c" + id).hidden && estado.vista === "graficos";   // só desenha gráfico com a vista à mostra
 const NOMES_SOLO = ["solo seco", "solo úmido", "solo encharcado"], CORES_SOLO = ["--r250", "--r450", "--r650"];
 
 // bacias sem modelo de previsão: chuva dos últimos 31 dias + 3 dias previstos nos pontos da bacia (config.pontos_chuva)
@@ -2197,7 +2240,7 @@ function marcarControles() {
 function salvarURL() {
   const p = new URLSearchParams({ estacao: estado.estacao, modo: estado.modo });
   if (estado.modo === "comparar") { p.set("de", estado.de); p.set("ate", estado.ate); p.set("medida", estado.metrica); }
-  history.replaceState(null, "", "?" + p);
+  history.replaceState(null, "", "?" + p + location.hash);
 }
 function desenharTudo() {
   marcarControles();
@@ -2205,8 +2248,23 @@ function desenharTudo() {
   if (!estado.destaques.size) destaquesPadrao(lista);
   desenharHero(); desenharStats();
   trocarModo(estado.modo);
-  desenharLinhas(); desenharCheias(); desenharCalor(); desenharPermanencia();
-  desenharPrevisao(); desenharRioAcima(); desenharImpactos(); desenharMemoria(); desenharFontes(); desenharVisoes();
+  desenharPrevisao(); desenharRioAcima(); desenharImpactos(); desenharFontes();
+  graficosSujos = true; if (estado.vista === "graficos") desenharGraficos();
+}
+// a vista "Mais gráficos" só é montada quando aberta: a home carrega menos
+let graficosSujos = false;
+function desenharGraficos() {
+  if (!graficosSujos || !cache[estado.estacao]) return;
+  graficosSujos = false;
+  desenharLinhas(); desenharCheias(); desenharCalor(); desenharPermanencia(); desenharMemoria(); desenharVisoes();
+}
+function redimensionar() { Object.values(graficos).forEach(c => c?.resize?.()); mapa?.invalidateSize(); }
+function mostrarVista(v) {
+  estado.vista = v; document.body.dataset.vista = v;
+  document.querySelectorAll("#menu a[data-v]").forEach(a => a.setAttribute("aria-current", a.dataset.v === v ? "page" : "false"));
+  $("#menu").classList.remove("aberto"); $("#btnMenu").setAttribute("aria-expanded", "false");
+  if (v === "graficos") desenharGraficos(); else setTimeout(redimensionar, 0);
+  scrollTo(0, 0);
 }
 async function trocarEstacao(cod) {
   estado.estacao = cod; estado.destaques = new Map(); estado.janela = null;
@@ -2283,11 +2341,18 @@ async function iniciar() {
     if (b.dataset.extra) { estado[b.dataset.extra] = !estado[b.dataset.extra]; guardar(b.dataset.extra, estado[b.dataset.extra]); desenharComparar(true); }
     else alternarDestaque(+b.dataset.s);
   };
-  // cartões recolhíveis: começam fechados; o navegador lembra a escolha
+  // menu: vistas por âncora (#inicio, #graficos); no celular abre pelo hambúrguer
+  const vistaDaUrl = () => location.hash === "#graficos" ? "graficos" : "inicio";
+  estado.vista = vistaDaUrl(); document.body.dataset.vista = estado.vista;
+  document.querySelectorAll("#menu a[data-v]").forEach(a => a.setAttribute("aria-current", a.dataset.v === estado.vista ? "page" : "false"));
+  addEventListener("hashchange", () => mostrarVista(vistaDaUrl()));
+  $("#btnMenu").onclick = () => { const sim = !$("#menu").classList.contains("aberto"); $("#menu").classList.toggle("aberto", sim); $("#btnMenu").setAttribute("aria-expanded", sim); };
+  $("#menu").onclick = ev => { if (ev.target.closest("a")) { $("#menu").classList.remove("aberto"); $("#btnMenu").setAttribute("aria-expanded", "false"); } };
+  // cartões recolhíveis: todos começam abertos; o navegador lembra a escolha
   document.querySelectorAll(".recolhivel").forEach(card => {
-    const cab = card.querySelector(".cab"), corpo = card.querySelector(".corpo"), chave = "aberto-" + card.id;
+    const cab = card.querySelector(".cab"), corpo = card.querySelector(".corpo"), chave = "aberto2-" + card.id;
     const abrir = sim => { cab.setAttribute("aria-expanded", sim); corpo.hidden = !sim; if (sim) setTimeout(() => card.dispatchEvent(new CustomEvent("abriu")), 0); };
-    abrir(ler(chave, false));
+    abrir(ler(chave, true));
     const alternar = () => { const sim = corpo.hidden; abrir(sim); guardar(chave, sim); };
     cab.addEventListener("click", ev => { if (!ev.target.closest("a, li[data-cod]")) alternar(); });
     cab.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); alternar(); } });
@@ -2295,9 +2360,11 @@ async function iniciar() {
   $("#linhas").onclick = ev => {
     const b = ev.target.closest(".linha"); if (!b) return;
     alternarDestaque(+b.dataset.s);
-    if (innerWidth < 900) document.querySelector(".grafico").scrollIntoView({ behavior: "smooth", block: "start" });
+    if (location.hash !== "#inicio") location.hash = "#inicio";   // o gráfico de comparação fica na tela inicial
   };
-  $("#detPerm").addEventListener("toggle", desenharPermanencia);
+  $("#cardPerm").addEventListener("abriu", desenharPermanencia);
+  $("#cardGrafico").addEventListener("abriu", redimensionar);
+  $("#cardImpacto").addEventListener("abriu", redimensionar);
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => desenharTudo());
 
   await trocarEstacao(estado.estacao);
