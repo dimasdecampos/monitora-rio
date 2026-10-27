@@ -3,3 +3,8 @@ __pycache__/
 .vercel/
 .alertas/
 scripts/modelo_cheias/dados/
+
+# gerados por scripts/montar_site.py a partir de modelos/
+public/*/index.html
+public/*/tv.html
+public/*/manifest.webmanifest

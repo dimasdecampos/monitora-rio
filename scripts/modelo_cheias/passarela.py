@@ -18,7 +18,7 @@ GAPS = [15, 30, 50, 75, 100, 150, 200, 250]
 def serie_sp(cod):
     """Nível horário (cm) de uma régua da SP Águas a partir do histórico salvo."""
     linhas = []
-    for f in sorted(glob.glob(f"{RAIZ}/public/historico/{cod}/????-??.json")):
+    for f in sorted(glob.glob(f"{RAIZ}/public/paraitinga/historico/{cod}/????-??.json")):
         linhas += json.load(open(f))["dados"]
     linhas = coletar.sem_picos_falsos(sorted(linhas))
     return {t[:13]: n for t, n, _, _ in linhas if n is not None}
@@ -33,7 +33,7 @@ for x in bacia: acum.append(acum[-1] + x)
 S = lambda a, b: acum[min(N, max(0, b))] - acum[min(N, max(0, a))]
 
 pv = json.load(open(AQUI / "chuva_prevista7.json")); ipv = {k[:13]: j for j, k in enumerate(pv["t"])}
-FATOR = json.load(open(f"{RAIZ}/public/modelo_cheias.json", encoding="utf-8"))["fator_previsao"]
+FATOR = json.load(open(f"{RAIZ}/public/paraitinga/modelo_cheias.json", encoding="utf-8"))["fator_previsao"]
 
 
 def f48_real(i):

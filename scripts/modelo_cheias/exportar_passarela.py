@@ -1,4 +1,4 @@
-"""Treina os modelos finais na régua da Passarela e grava em public/modelo_cheias.json (chave "passarela").
+"""Treina os modelos finais na régua da Passarela e grava em public/paraitinga/modelo_cheias.json (chave "passarela").
 
 - Probabilidade de subir G cm em 48 h: versão A (Passarela + chuva) e B (+ subida da régua de Cunha).
 - Linha de previsão por prazo (6 h a 7 dias) na Passarela.
@@ -97,7 +97,7 @@ for h in HORAS:
     traj["prazos"].append({"h": h, "pesos": [round(v, 5) for v in wf], "faixas": ff,
                            "teste": {"mae_igual": round(e_ig, 1), "mae_previsao": round(e_md, 1), "cobertura": round(cob, 2)}})
 
-destino = f"{M.RAIZ}/public/modelo_cheias.json"
+destino = f"{M.RAIZ}/public/paraitinga/modelo_cheias.json"
 site = json.load(open(destino, encoding="utf-8"))
 site["passarela"] = {
     "versao": datetime.now().date().isoformat(),

@@ -11,7 +11,7 @@ from dados import AQUI, RAIZ, chuva_horaria, nivel_horario
 
 HORAS = [6, 12, 18, 24, 36, 48, 60, 72, 96, 120, 144, 168]
 QS = [0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95]
-FATOR = json.load(open(f"{RAIZ}/public/modelo_cheias.json", encoding="utf-8"))["fator_previsao"]
+FATOR = json.load(open(f"{RAIZ}/public/paraitinga/modelo_cheias.json", encoding="utf-8"))["fator_previsao"]
 
 t, bacia, *_ = chuva_horaria()
 niv = nivel_horario("58041000"); H = [niv[k][0] if k in niv else None for k in t]
@@ -111,7 +111,7 @@ json.dump(modelo, open(AQUI / "trajetoria.json", "w"), indent=1)
 print("gravado", AQUI / "trajetoria.json")
 
 # junta ao arquivo do site
-site = json.load(open(f"{RAIZ}/public/modelo_cheias.json", encoding="utf-8"))
+site = json.load(open(f"{RAIZ}/public/paraitinga/modelo_cheias.json", encoding="utf-8"))
 site["trajetoria"] = modelo
-json.dump(site, open(f"{RAIZ}/public/modelo_cheias.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-print("trajetória gravada em public/modelo_cheias.json")
+json.dump(site, open(f"{RAIZ}/public/paraitinga/modelo_cheias.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+print("trajetória gravada em public/paraitinga/modelo_cheias.json")

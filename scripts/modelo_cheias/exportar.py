@@ -1,4 +1,4 @@
-"""Gera public/modelo_cheias.json (pesos + desempenho no teste) para o painel.
+"""Gera public/paraitinga/modelo_cheias.json (pesos + desempenho no teste) para o painel.
 
 Ordem para refazer o modelo do zero:
   python baixar_chuva.py   # chuva ERA5 horária da bacia (Open-Meteo), 2015 → hoje
@@ -88,7 +88,7 @@ saida = {
         "limiar_aviso": 0.3,
     },
 }
-destino = f"{RAIZ}/public/modelo_cheias.json"
+destino = f"{RAIZ}/public/paraitinga/modelo_cheias.json"
 try:  # mantém a linha de previsão gerada por trajetoria.py
     saida["trajetoria"] = json.load(open(destino, encoding="utf-8"))["trajetoria"]
 except (OSError, KeyError):

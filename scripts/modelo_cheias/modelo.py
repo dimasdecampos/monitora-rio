@@ -21,7 +21,7 @@ if FONTE == "estacao":
     import glob
     from dados import RAIZ
     ch = {}
-    for f in glob.glob(RAIZ + f"/public/historico/{ESTACAO}/????-??.json"):
+    for f in glob.glob(RAIZ + f"/public/paraitinga/historico/{ESTACAO}/????-??.json"):
         for tt, n, v, c in json.load(open(f))["dados"]:
             if c is not None: ch[tt[:13]] = ch.get(tt[:13], 0) + c
     P = [ch.get(k, 0.0) for k in t]

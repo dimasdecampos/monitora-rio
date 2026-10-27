@@ -1,4 +1,4 @@
-name: Avisos de cheia (Telegram e WhatsApp)
+name: Avisos de cheia (todas as bacias)
 
 on:
   schedule:
@@ -20,14 +20,15 @@ concurrency:
 jobs:
   avisar:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: |
             scripts
-            public/config.json
-            public/modelo_cheias.json
+            public/bacias.json
+            public/*/config.json
+            public/*/modelo_cheias.json
           sparse-checkout-cone-mode: false
       - uses: actions/setup-python@v5
         with:
@@ -41,7 +42,6 @@ jobs:
       - name: Verificar rio e avisar
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT: ${{ secrets.TELEGRAM_CHAT }}
           CALLMEBOT_PHONE: ${{ secrets.CALLMEBOT_PHONE }}
           CALLMEBOT_KEY: ${{ secrets.CALLMEBOT_KEY }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}

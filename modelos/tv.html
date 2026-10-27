@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0d0d">
+<title>Monitor do Rio TV</title>
+<meta name="description" content="Nível do rio em tela cheia, para TV ou monitor, com atualização automática">
+<link rel="icon" type="image/png" href="../icones/icone-192.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    color-scheme: dark;
+    --plano: #0d0d0d; --superficie: #1a1a19; --superficie-2: #252523;
+    --tinta: #f0efec; --tinta-2: #c3c2b7; --tinta-3: #898781;
+    --grade: #2c2c2a; --borda: rgba(255,255,255,.09);
+    --acento: #5598e7; --chuva: #5598e7; --sobe: #f97066; --desce: #0ca30c;
+    --bom: #0ca30c; --atencao: #fab219; --alerta: #ec835a; --inundacao: #d03b3b; --extravasa: #ff6b6b;
+    --cor-status: var(--bom);
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --plano: #f9f9f7; --superficie: #ffffff; --superficie-2: #f0efeb;
+    --tinta: #0b0b0b; --tinta-2: #52514e; --tinta-3: #6f6d68;
+    --grade: #e8e7e1; --borda: rgba(11,11,11,.1);
+    --acento: #2a78d6; --chuva: #2a78d6; --sobe: #b42318; --desce: #006300; --extravasa: #8b1a1a;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--plano); color: var(--tinta); overflow: hidden;
+         font: 1.6vmin/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body.ocioso { cursor: none; }
+  .tela { height: 100vh; display: grid; grid-template-rows: auto 1fr auto; gap: 1.6vmin; padding: 2vmin 2.4vmin; }
+
+  /* topo */
+  .topo { display: flex; align-items: center; gap: 2vmin; }
+  .topo h1 { margin: 0; font-size: 2.6vmin; font-weight: 700; letter-spacing: -.01em; }
+  .topo h1 span:not(.rio) { color: var(--tinta-3); font-weight: 500; }
+  .vivo { display: inline-flex; align-items: center; gap: .8vmin; font-size: 1.8vmin; color: var(--tinta-2); }
+  .vivo i { width: 1.2vmin; height: 1.2vmin; border-radius: 50%; background: var(--bom); animation: pulso 2s infinite; }
+  .vivo.atraso i { background: var(--atencao); } .vivo.erro i { background: var(--inundacao); animation: none; }
+  @keyframes pulso { 50% { opacity: .35; } }
+  .relogio { margin-left: auto; text-align: right; font-variant-numeric: tabular-nums; }
+  .relogio b { display: block; font-size: 4.2vmin; font-weight: 700; line-height: 1; }
+  .relogio span { font-size: 1.7vmin; color: var(--tinta-3); }
+  .botoes { display: flex; gap: 1vmin; transition: opacity .4s; }
+  body.ocioso .botoes { opacity: 0; pointer-events: none; }
+  .botoes button { background: var(--superficie-2); border: 1px solid var(--borda); color: var(--tinta); border-radius: 1vmin;
+                   padding: .8vmin 1.4vmin; font: inherit; font-size: 1.6vmin; cursor: pointer; }
+
+  /* corpo */
+  .corpo { display: grid; grid-template-columns: minmax(0, 38fr) minmax(0, 62fr); gap: 1.6vmin; min-height: 0; }
+  .lado { display: flex; flex-direction: column; gap: 1.6vmin; min-height: 0; }
+  .card { background: var(--superficie); border: 1px solid var(--borda); border-radius: 1.6vmin; padding: 2vmin 2.4vmin; min-height: 0; }
+  .rot { font-size: 1.5vmin; color: var(--tinta-3); text-transform: uppercase; letter-spacing: .08em; font-weight: 650; }
+
+  /* nível agora */
+  .agora { display: grid; grid-template-columns: 1fr auto; gap: 2vmin; position: relative; overflow: hidden;
+           border-color: color-mix(in srgb, var(--cor-status) 60%, transparent); }
+  .agora::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+                   background: linear-gradient(160deg, color-mix(in srgb, var(--cor-status) 22%, transparent), transparent 60%); }
+  .agora.piscar { animation: borda 1.6s infinite; }
+  @keyframes borda { 50% { box-shadow: inset 0 0 0 .6vmin var(--cor-status); } }
+  .agora > * { position: relative; }
+  .info { display: flex; flex-direction: column; min-width: 0; }
+  .status { display: inline-flex; align-items: center; gap: 1.2vmin; font-size: 4.6vmin; font-weight: 800; letter-spacing: -.01em; margin-top: 1vmin; }
+  .status i { width: 3vmin; height: 3vmin; border-radius: 50%; background: var(--cor-status); }
+  .num { font-size: 19vmin; font-weight: 800; line-height: .95; letter-spacing: -.04em; font-variant-numeric: tabular-nums; margin-top: 1.5vmin; }
+  .num small { font-size: 6vmin; font-weight: 600; color: var(--tinta-2); margin-left: 1vmin; letter-spacing: 0; }
+  .tend { font-size: 3.4vmin; font-weight: 700; margin-top: 1.4vmin; }
+  .tend .sobe { color: var(--sobe); } .tend .desce { color: var(--desce); }
+  .tend span { color: var(--tinta-2); font-weight: 500; font-size: 2.6vmin; margin-left: 1vmin; }
+  .hora { font-size: 2vmin; color: var(--tinta-2); margin-top: auto; padding-top: 1.4vmin; }
+  .nota { font-size: 1.8vmin; color: var(--atencao); margin-top: .8vmin; font-weight: 600; }
+  .nota:empty { display: none; }
+
+  /* régua vertical com as cotas */
+  .regua { width: 17vmin; position: relative; margin: 1vmin 0 1vmin; }
+  .fatos { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6vmin 2vmin; margin-top: 3vmin; padding-top: 2vmin; border-top: 1px solid var(--borda); }
+  .fatos b { display: block; font-size: 3.4vmin; font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .fatos span { font-size: 1.6vmin; color: var(--tinta-2); }
+  .regua .tubo { position: absolute; left: 0; width: 3.2vmin; top: 0; bottom: 0; border-radius: 1.6vmin; background: var(--superficie-2); overflow: hidden; }
+  .regua .agua { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(0deg, var(--acento), color-mix(in srgb, var(--acento) 45%, transparent)); transition: height 1s; }
+  .regua .cota { position: absolute; left: 0; right: 0; height: 0; border-top: .35vmin solid; }
+  .regua .cota span { position: absolute; left: 4.2vmin; transform: translateY(-55%); font-size: 1.5vmin; white-space: nowrap; color: var(--tinta-2); line-height: 1.1; }
+  .regua .cota span b { display: block; color: var(--tinta); font-size: 1.8vmin; }
+
+  /* chuva e rio acima */
+  .linha { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2vmin; margin-top: 1.2vmin; }
+  .mini b { display: block; font-size: 4vmin; font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .mini b small { font-size: 2vmin; color: var(--tinta-2); font-weight: 500; }
+  .mini span { font-size: 1.6vmin; color: var(--tinta-2); }
+  .acima { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.2vmin; margin-top: 1.2vmin; }
+  .est { background: var(--superficie-2); border-radius: 1.2vmin; padding: 1.2vmin 1.4vmin; border-left: .6vmin solid var(--cor, var(--tinta-3)); min-width: 0; }
+  .est .n { font-size: 1.6vmin; color: var(--tinta-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .est b { display: block; font-size: 3.4vmin; font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .est .d { font-size: 1.7vmin; font-weight: 650; }
+  .est .d.sobe { color: var(--sobe); } .est .d.desce { color: var(--desce); }
+  .est .t { font-size: 1.5vmin; color: var(--tinta-3); }
+
+  /* gráfico */
+  .grafico { display: flex; flex-direction: column; flex: 1; }
+  [hidden] { display: none !important; }
+  .grafico .cab { display: flex; align-items: baseline; gap: 2vmin; }
+  .grafico .leg { margin-left: auto; display: flex; gap: 1.8vmin; font-size: 1.6vmin; color: var(--tinta-2); }
+  .grafico .leg i { display: inline-block; width: 2vmin; height: .5vmin; vertical-align: middle; margin-right: .6vmin; border-radius: .3vmin; }
+  .grafico .area { position: relative; flex: 1; min-height: 0; margin-top: 1vmin; }
+
+  .rodape { display: flex; gap: 2vmin; font-size: 1.6vmin; color: var(--tinta-3); }
+  .rodape b { color: var(--tinta-2); }
+  .rodape .dir { margin-left: auto; }
+
+  /* tela em pé (celular, tablet ou monitor vertical) */
+  @media (max-aspect-ratio: 1/1) {
+    body { overflow: auto; font-size: 2.2vmin; }
+    .tela { height: auto; min-height: 100vh; padding: 16px; }
+    .topo { flex-wrap: wrap; gap: 8px 16px; }
+    .topo h1 { font-size: 20px; } .vivo { font-size: 14px; } .botoes { display: none; }
+    .relogio b { font-size: 28px; } .relogio span { font-size: 12px; }
+    .corpo { grid-template-columns: minmax(0, 1fr); }
+    .lado { grid-template-rows: auto; }
+    .grafico .cab { flex-wrap: wrap; } .grafico .leg { margin-left: 0; flex-wrap: wrap; gap: 4px 12px; }
+    .grafico .area { height: 45vh; flex: none; }
+    .acima { grid-template-columns: repeat(2, 1fr); }
+    .rodape { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+<div class="tela">
+  <header class="topo">
+    <h1><span id="tRio" class="rio">Carregando…</span> <span id="tCidade"></span></h1>
+    <span class="vivo" id="vivo"><i></i><span id="vivoTxt">Carregando…</span></span>
+    <div class="botoes">
+      <button id="bTela" type="button">⛶ Tela cheia</button>
+      <button id="bTema" type="button">◐ Tema</button>
+      <a href="./"><button type="button">Painel completo</button></a>
+    </div>
+    <div class="relogio"><b id="relHora">--:--</b><span id="relData"></span></div>
+  </header>
+
+  <main class="corpo">
+    <section class="card agora" id="cAgora">
+      <div class="info">
+        <div class="rot" id="tRegua">Nível</div>
+        <div class="status"><i></i><span id="sNome">—</span></div>
+        <div class="num" id="sNum">—</div>
+        <div class="tend" id="sTend"></div>
+        <div class="nota" id="sNota"></div>
+        <div class="fatos">
+          <div><b id="fPico">—</b><span id="fPicoT">pico nas últimas 48 h</span></div>
+          <div><b id="fD3">—</b><span>variação em 3 h</span></div>
+          <div><b id="fAcima">—</b><span id="fAcimaT">acima da atenção (1,92 m)</span></div>
+          <div><b id="fMin">—</b><span>mínimo nas últimas 48 h</span></div>
+        </div>
+        <div class="hora" id="sHora"></div>
+      </div>
+      <div class="regua" id="regua"><div class="tubo"><div class="agua" id="rAgua"></div></div></div>
+    </section>
+
+    <div class="lado">
+      <section class="card grafico">
+        <div class="cab">
+          <span class="rot">Últimas 48 horas</span>
+          <div class="leg" id="leg"></div>
+        </div>
+        <div class="area"><canvas id="graf"></canvas></div>
+      </section>
+      <section class="card" id="cAcima">
+        <span class="rot">Rio acima · a água leva este tempo até a cidade</span>
+        <div class="acima" id="acima"></div>
+      </section>
+      <section class="card">
+        <span class="rot">Chuva</span>
+        <div class="linha">
+          <div class="mini"><b id="cMed">—</b><span id="tMed">medida na cidade, últimas 24 h</span></div>
+          <div class="mini"><b id="cP24">—</b><span>prevista na bacia, próximas 24 h</span></div>
+          <div class="mini"><b id="cP48">—</b><span>prevista na bacia, 24 a 48 h</span></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="rodape">
+    <span>Dados: SP Águas, ANA e Open-Meteo · atualiza sozinho a cada 5 min</span>
+    <span class="dir"><b>Não validado pela Defesa Civil.</b> Em risco, ligue <b>199</b> (Defesa Civil) ou <b>193</b> (Bombeiros).</span>
+  </footer>
+</div>
+
+<script>
+// Modo TV genérico: lê o config.json da pasta da bacia (régua principal, réguas rio acima, pontos de chuva)
+const SIBH = "https://cth.daee.sp.gov.br/sibh/api/v2/measurements";
+const URL_ANA = "https://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos";
+const COTAS = [
+  { chave: "extravasamento", nome: "Transbordamento", cor: "--extravasa" },
+  { chave: "emergencia", nome: "Emergência", cor: "--inundacao" },
+  { chave: "alerta", nome: "Alerta", cor: "--alerta" },
+  { chave: "atencao", nome: "Atenção", cor: "--atencao" },
+];
+const $ = s => document.querySelector(s);
+const tok = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt = (v, c = 2) => v == null || !isFinite(v) ? "—" : v.toLocaleString("pt-BR", { minimumFractionDigits: c, maximumFractionDigits: c });
+const p2 = n => String(n).padStart(2, "0");
+const isoUTC = d => `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}T${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}`;
+const hhmm = t => new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+const ha = h => h < 1 ? `há ${Math.max(1, Math.round(h * 60))} min` : h < 48 ? `há ${fmt(h, h < 10 ? 1 : 0)} h` : `há ${fmt(h / 24, 0)} dias`;
+const ler = (k, p) => { try { const v = localStorage.getItem("tv-" + k); return v == null ? p : v; } catch { return p; } };
+const guardar = (k, v) => { try { localStorage.setItem("tv-" + k, v); } catch {} };
+
+let config, modelo, grafico, P, ACIMA = [], estacoes = {};
+const curto = c => estacoes[c]?.curto || estacoes[c]?.nome || c;
+
+// ---------- dados ----------
+// SP Águas: várias réguas numa chamada (máx. 10 ids); devolve { codigo: [{t, v}] } e a chuva da régua principal
+async function buscarSibh(ests, dias) {
+  const ids = ests.flatMap(e => [e.id_nivel, e.codigo === P ? e.id_chuva : null].filter(Boolean));
+  if (!ids.length) return {};
+  const ini = new Date(Date.now() - dias * 864e5), fim = new Date(Date.now() + 36e5);
+  const lotes = []; for (let k = 0; k < ids.length; k += 10) lotes.push(ids.slice(k, k + 10));
+  const porId = {};
+  for (const lote of lotes) {
+    const r = await fetch(`${SIBH}?${lote.map(i => `station_prefix_ids[]=${i}`).join("&")}&start_date=${isoUTC(ini)}&end_date=${isoUTC(fim)}`);
+    if (!r.ok) throw new Error(`SP Águas ${r.status}`);
+    for (const m of (await r.json()).measurements || []) if (m.value != null) (porId[m.station_prefix_id] ??= []).push(m);
+  }
+  const t = m => { const [d, h] = m.date.split(" "); return Date.parse(`${d.replaceAll("/", "-")}T${h}:00Z`); };
+  const out = {};
+  for (const e of ests) {
+    const ls = (porId[e.id_nivel] || []).map(m => ({ t: t(m), v: +m.value })).filter(l => l.v >= 0).sort((a, b) => a.t - b.t);
+    out[e.codigo] = limpar(ls);
+    if (e.codigo === P) out.chuva = (porId[e.id_chuva] || []).map(m => ({ t: t(m), v: +m.value })).filter(l => l.v >= 0 && l.v <= 50);
+  }
+  return out;
+}
+// ANA: uma régua por chamada; devolve nível e chuva
+async function buscarAna(cod, dias) {
+  const br = d => d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const r = await fetch(`${URL_ANA}?codEstacao=${cod}&dataInicio=${br(new Date(Date.now() - dias * 864e5))}&dataFim=${br(new Date(Date.now() + 864e5))}`);
+  if (!r.ok) throw new Error(`ANA ${r.status}`);
+  const xml = new DOMParser().parseFromString(await r.text(), "text/xml"), nivel = [], chuva = [];
+  for (const n of xml.getElementsByTagName("DadosHidrometereologicos")) {
+    const txt = k => n.getElementsByTagName(k)[0]?.textContent.trim(), dt = txt("DataHora");
+    if (!dt) continue;
+    const t = Date.parse(dt.replace(" ", "T") + "-03:00"), v = txt("Nivel"), c = txt("Chuva");
+    if (v && +v >= 0) nivel.push({ t, v: +v });
+    if (c && +c >= 0 && +c <= 50) chuva.push({ t, v: +c });
+  }
+  return { nivel: limpar(nivel.sort((a, b) => a.t - b.t)), chuva };
+}
+// descarta salto > 3 m em até 6 h (régua voltando de falha com valor travado)
+function limpar(ls) {
+  const out = [];
+  for (const l of ls) { const u = out.at(-1); if (u && Math.abs(l.v - u.v) > 300 && l.t - u.t <= 6 * 36e5) continue; if (u && u.t === l.t) continue; out.push(l); }
+  return out;
+}
+async function buscarTudo() {
+  const princ = estacoes[P], sp = [princ, ...ACIMA.map(c => estacoes[c])].filter(e => e.fonte === "spaguas");
+  const dados = await buscarSibh(sp, 2);
+  if (princ.fonte !== "spaguas") { const a = await buscarAna(P, 2); dados[P] = a.nivel; dados.chuva = a.chuva; }
+  return dados;
+}
+function variacao(ls, horas) {
+  const u = ls.at(-1); if (!u) return null;
+  for (let i = ls.length - 2; i >= 0; i--) { const h = (u.t - ls[i].t) / 36e5; if (h >= horas * .92) return h <= horas * 1.5 ? (u.v - ls[i].v) / h : null; }
+  return null;
+}
+const cotasDe = e => COTAS.filter(n => e.cotas_cm?.[n.chave] != null).map(n => ({ ...n, cm: e.cotas_cm[n.chave] }));
+function classificar(e, cm) {
+  const cl = cotasDe(e);
+  if (!cl.length) return { nome: "Sem cotas", cor: "--tinta-3", chave: "sem" };
+  return cl.find(n => cm >= n.cm) || { nome: "Normal", cor: "--bom", chave: "normal" };
+}
+
+async function chuvaPrevista() {
+  // pontos da previsão: os do modelo de cheias (quando há) ou as réguas das regiões de chuva + a principal
+  let pts;
+  if (config.previsao) { modelo ??= await fetch(config.previsao.modelo).then(r => r.json()); pts = modelo.pontos; }
+  else pts = [...new Set([...(config.regioes_chuva || []).flatMap(r => r.estacoes), P])].map(c => estacoes[c]).filter(e => e?.lat);
+  const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pts.map(x => x.lat).join(",")}&longitude=${pts.map(x => x.lon).join(",")}&hourly=precipitation&forecast_days=3&timezone=America%2FSao_Paulo`);
+  if (!r.ok) throw new Error("Open-Meteo");
+  const d = [].concat(await r.json()), tempo = d[0].hourly.time;
+  const agora = new Date(), chave = `${agora.getFullYear()}-${p2(agora.getMonth() + 1)}-${p2(agora.getDate())}T${p2(agora.getHours())}:00`;
+  const i = tempo.findLastIndex(t => t <= chave);
+  const media = tempo.map((_, k) => d.reduce((s, x) => s + (x.hourly.precipitation[k] ?? 0), 0) / d.length);
+  const soma = (a, b) => media.slice(a, b).reduce((s, v) => s + v, 0);
+  return { p24: soma(i + 1, i + 25), p48: soma(i + 25, i + 49) };
+}
+
+// ---------- desenho ----------
+function desenharAgora(ls, chuva) {
+  const e = estacoes[P], u = ls.at(-1);
+  if (!u) { $("#sNum").textContent = "—"; $("#sNome").textContent = "Sem leitura"; marcarVivo("erro", "A régua não enviou leituras"); return; }
+  const horas = (Date.now() - u.t) / 36e5, atrasada = horas > (e.atraso_max_horas || 1), st = classificar(e, u.v);
+  document.documentElement.style.setProperty("--cor-status", tok(st.cor));
+  $("#cAgora").classList.toggle("piscar", ["alerta", "emergencia", "extravasamento"].includes(st.chave) && !atrasada);
+  $("#sNome").textContent = st.nome;
+  $("#sNum").innerHTML = `${fmt(u.v / 100, 2)}<small>m</small>`;
+  const taxa = variacao(ls, 1);
+  let txt = "Estável", cls = "", seta = "▬";
+  if (taxa != null && taxa >= 10) { txt = "Subindo rápido"; cls = "sobe"; seta = "▲"; }
+  else if (taxa != null && taxa >= 2) { txt = "Subindo"; cls = "sobe"; seta = "▲"; }
+  else if (taxa != null && taxa <= -2) { txt = "Baixando"; cls = "desce"; seta = "▼"; }
+  $("#sTend").innerHTML = taxa == null ? "" : `<b class="${cls}">${seta} ${txt}</b><span>${Math.round(taxa) > 0 ? "+" : ""}${fmt(Math.round(taxa) || 0, 0)} cm/h</span>`;
+  $("#sHora").textContent = `Leitura das ${hhmm(u.t)} · ${e.operadora}`;
+
+  // aviso de leitura atrasada ou de régua parada no mesmo valor por muitas horas (possível sensor travado)
+  let parado = u.t;
+  for (let k = ls.length - 2; k >= 0 && ls[k].v === u.v; k--) parado = ls[k].t;
+  const hParado = (u.t - parado) / 36e5;
+  $("#sNota").textContent = atrasada ? `⚠ Sem leitura nova ${ha(horas)}: o nível real pode ser outro.`
+    : hParado >= 6 && !["normal", "sem"].includes(st.chave) ? `⚠ A régua marca o mesmo valor ${ha(hParado)}: pode estar travada. Confira com a Defesa Civil.` : "";
+  marcarVivo(atrasada ? "atraso" : "ok", atrasada ? `Sem leitura nova ${ha(horas)}` : `Ao vivo · ${ha(horas)}`);
+
+  // números rápidos das últimas 48 h
+  const ult = ls.filter(l => l.t >= Date.now() - 48 * 36e5);
+  const pico = ult.reduce((m, l) => l.v > m.v ? l : m, ult[0] || u), minimo = ult.reduce((m, l) => l.v < m.v ? l : m, ult[0] || u);
+  $("#fPico").textContent = `${fmt(pico.v / 100, 2)} m`;
+  $("#fPicoT").textContent = `pico em 48 h · ${new Date(pico.t).toLocaleString("pt-BR", { weekday: "short", hour: "2-digit", minute: "2-digit" })}`;
+  $("#fMin").textContent = `${fmt(minimo.v / 100, 2)} m`;
+  const d3 = variacao(ls, 3);
+  $("#fD3").textContent = d3 == null ? "—" : `${d3 * 3 > 0 ? "+" : ""}${fmt(d3 * 3, 0)} cm`;
+  const at = e.cotas_cm?.atencao;
+  $("#fAcima").parentElement.hidden = at == null;
+  if (at != null) {
+    $("#fAcimaT").textContent = `acima da atenção (${fmt(at / 100, 2)} m)`;
+    if (u.v < at) $("#fAcima").textContent = "não";
+    else {
+      let desde = u.t; for (let k = ls.length - 1; k >= 0 && ls[k].v >= at; k--) desde = ls[k].t;
+      const h = (u.t - desde) / 36e5;
+      $("#fAcima").textContent = h >= 47 ? "mais de 48 h" : ha(h);
+    }
+  }
+
+  // régua vertical com as cotas
+  const cl = cotasDe(e), topo = Math.max((cl[0]?.cm ?? u.v) * 1.15, u.v * 1.08);
+  $("#regua").hidden = !cl.length;
+  $("#rAgua").style.height = Math.min(100, u.v / topo * 100) + "%";
+  $("#regua").querySelectorAll(".cota").forEach(x => x.remove());
+  for (const n of cl) {
+    const d = document.createElement("div"); d.className = "cota";
+    d.style.bottom = n.cm / topo * 100 + "%"; d.style.borderColor = tok(n.cor);
+    d.innerHTML = `<span><b>${fmt(n.cm / 100, 2)} m</b>${n.nome}</span>`;
+    $("#regua").appendChild(d);
+  }
+
+  // chuva medida nas últimas 24 h
+  const c24 = (chuva || []).filter(l => l.t >= Date.now() - 864e5).reduce((s, l) => s + l.v, 0);
+  $("#cMed").innerHTML = chuva?.length ? `${fmt(c24, c24 < 10 ? 1 : 0)}<small> mm</small>` : "—";
+}
+
+function desenharGrafico(ls) {
+  const e = estacoes[P], cl = cotasDe(e), agora = Date.now(), ini = agora - 48 * 36e5;
+  const pts = ls.filter(l => l.t >= ini).map(l => ({ x: l.t, y: l.v / 100 }));
+  if (!pts.length) return;
+  const ymax = Math.max(...pts.map(p => p.y)), ymin = Math.min(...pts.map(p => p.y));
+  const max = Math.max(cl.length ? cl.at(-1).cm / 100 + .2 : 0, ymax + Math.max(.15, (ymax - ymin) * .15));
+  const min = Math.max(0, ymin - Math.max(.3, (ymax - ymin) * .15));
+  const visiveis = cl.filter(n => n.cm / 100 <= max + .01);
+  const ds = [{ data: pts, borderColor: tok("--acento"), borderWidth: 4, pointRadius: 0, tension: .25, fill: "start",
+                backgroundColor: tok("--acento") + "33" }];
+  for (const n of visiveis) ds.push({ data: [{ x: ini, y: n.cm / 100 }, { x: agora, y: n.cm / 100 }], borderColor: tok(n.cor),
+                                      borderWidth: 2, borderDash: [10, 8], pointRadius: 0, fill: false });
+  $("#leg").innerHTML = `<span><i style="background:${tok("--acento")}"></i>Nível</span>` +
+    visiveis.slice().reverse().map(n => `<span><i style="background:${tok(n.cor)}"></i>${n.nome} ${fmt(n.cm / 100, 2)} m</span>`).join("");
+  const fs = Math.max(11, Math.round(Math.min(innerWidth, innerHeight) * .016));
+  const casas = max - min < 1.5 ? 2 : 1;
+  const cfg = {
+    type: "line", data: { datasets: ds },
+    options: {
+      animation: false, responsive: true, maintainAspectRatio: false, events: [],
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: {
+        x: { type: "linear", min: ini, max: agora, grid: { color: tok("--grade") }, border: { display: false },
+             ticks: { color: tok("--tinta-2"), font: { size: fs }, maxRotation: 0,
+                      callback: v => { const d = new Date(v); return d.getHours() === 0 ? d.toLocaleDateString("pt-BR", { weekday: "short", day: "numeric" }) : `${d.getHours()}h`; } },
+             // marcas de hora cheia a cada 6 h, alinhadas ao relógio local
+             afterBuildTicks: ax => {
+               const d = new Date(ini); d.setMinutes(0, 0, 0); d.setHours(Math.ceil(d.getHours() / 6) * 6);
+               ax.ticks = []; for (let t = +d; t <= agora; t += 6 * 36e5) ax.ticks.push({ value: t });
+             } },
+        y: { min, max, grid: { color: tok("--grade") }, border: { display: false },
+             ticks: { color: tok("--tinta-2"), font: { size: fs }, callback: v => `${fmt(v, casas)} m` } },
+      },
+    },
+  };
+  if (grafico) grafico.destroy();
+  grafico = new Chart($("#graf"), cfg);
+}
+
+function desenharAcima(dados) {
+  $("#cAcima").hidden = !ACIMA.length;
+  $("#acima").style.gridTemplateColumns = `repeat(${Math.min(4, Math.max(1, ACIMA.length))}, 1fr)`;
+  $("#acima").innerHTML = ACIMA.map(c => {
+    const e = estacoes[c], ls = dados[c] || [], u = ls.at(-1), h = e.rio_acima?.horas_ate_cidade;
+    if (!u) return `<div class="est"><div class="n">${curto(c)}</div><b>—</b><div class="t">sem leitura</div></div>`;
+    const atras = (Date.now() - u.t) / 36e5 > 2, st = classificar(e, u.v);
+    const d3 = (() => { const alvo = u.t - 3 * 36e5, l = ls.find(x => x.t >= alvo); return l && Math.abs(l.t - alvo) < 36e5 ? u.v - l.v : null; })();
+    const cls = d3 == null ? "" : d3 >= 5 ? "sobe" : d3 <= -5 ? "desce" : "";
+    const dtxt = atras ? `sem leitura ${ha((Date.now() - u.t) / 36e5)}` : d3 == null ? "" : `${d3 >= 5 ? "▲" : d3 <= -5 ? "▼" : "▬"} ${d3 > 0 ? "+" : ""}${fmt(d3, 0)} cm em 3 h`;
+    const sit = st.chave === "sem" ? "sem cotas" : st.chave === "normal" ? "normal" : st.nome.toLowerCase();
+    return `<div class="est" style="--cor:${st.chave === "normal" ? tok("--bom") : tok(st.cor)}">
+      <div class="n">${curto(c)}</div><b>${fmt(u.v / 100, 2)} m</b>
+      <div class="d ${atras ? "" : cls}">${dtxt}</div><div class="t">${sit}${h ? ` · ~${h} h até a cidade` : ""}</div></div>`;
+  }).join("");
+}
+
+function marcarVivo(tipo, txt) { $("#vivo").className = "vivo " + tipo; $("#vivoTxt").textContent = txt; }
+
+// ---------- ciclo ----------
+let ultimo = null;
+function desenharTudo() { if (!ultimo) return; desenharAgora(ultimo[P] || [], ultimo.chuva); desenharGrafico(ultimo[P] || []); desenharAcima(ultimo); }
+async function atualizar() {
+  try { ultimo = await buscarTudo(); desenharTudo(); }
+  catch (err) { marcarVivo("erro", "Sem conexão com a fonte de dados · tentando de novo"); }
+  try {
+    const c = await chuvaPrevista();
+    $("#cP24").innerHTML = `${fmt(c.p24, c.p24 < 10 ? 1 : 0)}<small> mm</small>`;
+    $("#cP48").innerHTML = `${fmt(c.p48, c.p48 < 10 ? 1 : 0)}<small> mm</small>`;
+  } catch {}
+}
+function relogio() {
+  const d = new Date();
+  $("#relHora").textContent = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  $("#relData").textContent = d.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+}
+
+// tela sempre acesa e cursor escondido quando parado
+async function manterAcesa() { try { await navigator.wakeLock?.request("screen"); } catch {} }
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { manterAcesa(); atualizar(); } });
+let ocioso;
+const acordar = () => { document.body.classList.remove("ocioso"); clearTimeout(ocioso); ocioso = setTimeout(() => document.body.classList.add("ocioso"), 4000); };
+["mousemove", "keydown", "touchstart"].forEach(ev => addEventListener(ev, acordar));
+
+$("#bTela").onclick = () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.().catch(() => {});
+function aplicarTema(t) { document.documentElement.dataset.theme = t; guardar("tema", t); desenharTudo(); }
+$("#bTema").onclick = () => aplicarTema(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+addEventListener("keydown", e => { if (e.key === "f" || e.key === "F") $("#bTela").click(); });
+let redim; addEventListener("resize", () => { clearTimeout(redim); redim = setTimeout(() => ultimo && desenharGrafico(ultimo[P] || []), 200); });
+
+(async function iniciar() {
+  document.documentElement.dataset.theme = new URLSearchParams(location.search).get("tema") || ler("tema", "dark");
+  relogio(); setInterval(relogio, 10e3); acordar(); manterAcesa();
+  config = await fetch("config.json").then(r => r.json());
+  for (const r of config.rios) for (const e of r.estacoes) estacoes[e.codigo] = e;
+  P = config.principal;
+  // rio acima: réguas do rio principal, da mais longe para a mais perto (afluentes ficam de fora)
+  ACIMA = Object.values(estacoes).filter(e => e.rio_acima && !e.rio_acima.afluente && e.fonte === "spaguas")
+    .sort((a, b) => a.rio_acima.ordem - b.rio_acima.ordem).map(e => e.codigo).slice(-4);
+  const e = estacoes[P];
+  document.title = `${config.rio} · TV`;
+  $("#tRio").textContent = config.rio; $("#tCidade").textContent = `· ${config.cidade}`;
+  $("#tRegua").textContent = `Nível · ${e.nome}`;
+  $("#tMed").textContent = `medida em ${curto(P)}, últimas 24 h`;
+  await atualizar();
+  setInterval(atualizar, 5 * 60e3);
+  setTimeout(() => location.reload(), 6 * 36e5);   // recarrega a cada 6 h para pegar versões novas da página
+})();
+</script>
+</body>
+</html>

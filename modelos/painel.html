@@ -1,0 +1,2295 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f9f9f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
+<title>Monitor do Rio</title>
+<meta name="description" content="Nível, chuva, previsão e avisos de cheia em tempo real, com dados da SP Águas e da ANA">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="../icones/icone-192.png">
+<link rel="apple-touch-icon" href="../icones/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Monitor do Rio">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --plano: #f9f9f7; --superficie: #fcfcfb; --superficie-2: #f0efeb; --elevado: #ffffff;
+    --tinta: #0b0b0b; --tinta-2: #52514e; --tinta-3: #898781;
+    --grade: #e8e7e1; --eixo: #c3c2b7; --borda: rgba(11,11,11,.09);
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --neutro: #c4c2b9; --faixa: rgba(137,135,129,.15); --mediana: #6f6d68;
+    --chuva: #5598e7; --bom: #0ca30c; --atencao: #fab219; --alerta: #ec835a; --inundacao: #d03b3b; --extravasa: #8b1a1a;
+    --acento: #2a78d6; --sobe: #b42318; --desce: #006300; --sombra: 0 1px 2px rgba(0,0,0,.05), 0 4px 16px rgba(0,0,0,.04);
+    --r100:#cde2fb; --r150:#b7d3f6; --r200:#9ec5f4; --r250:#86b6ef; --r300:#6da7ec; --r350:#5598e7; --r400:#3987e5;
+    --r450:#2a78d6; --r500:#256abf; --r550:#1c5cab; --r600:#184f95; --r650:#104281; --r700:#0d366b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --plano: #0d0d0d; --superficie: #1a1a19; --superficie-2: #252523; --elevado: #222220;
+      --tinta: #f0efec; --tinta-2: #c3c2b7; --tinta-3: #898781;
+      --grade: #2c2c2a; --eixo: #44443f; --borda: rgba(255,255,255,.09);
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --neutro: #55544f; --faixa: rgba(195,194,183,.10); --mediana: #a3a197;
+      --chuva: #5598e7; --acento: #5598e7; --extravasa: #ff6b6b; --sobe: #f97066; --desce: #0ca30c; --sombra: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --plano: #0d0d0d; --superficie: #1a1a19; --superficie-2: #252523; --elevado: #222220;
+    --tinta: #f0efec; --tinta-2: #c3c2b7; --tinta-3: #898781;
+    --grade: #2c2c2a; --eixo: #44443f; --borda: rgba(255,255,255,.09);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --neutro: #55544f; --faixa: rgba(195,194,183,.10); --mediana: #a3a197;
+    --chuva: #5598e7; --acento: #5598e7; --extravasa: #ff6b6b; --sobe: #f97066; --desce: #0ca30c; --sombra: none;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--plano); color: var(--tinta); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  button, select { font: inherit; color: inherit; }
+  a { color: var(--acento); }
+  .rot { font-size: 11.5px; color: var(--tinta-3); text-transform: uppercase; letter-spacing: .06em; font-weight: 650; }
+
+  /* ---------- barra do topo ---------- */
+  .barra { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--plano) 85%, transparent);
+           backdrop-filter: saturate(1.4) blur(12px); -webkit-backdrop-filter: saturate(1.4) blur(12px);
+           border-bottom: 1px solid var(--borda); padding-top: env(safe-area-inset-top); }
+  .barra-in { max-width: 1200px; margin: 0 auto; padding: 10px 20px; display: flex; align-items: center; gap: 12px; justify-content: space-between; }
+  .voltar { flex: none; display: grid; place-items: center; width: 32px; height: 36px; margin-right: -6px; color: var(--tinta-2); border-radius: 8px; text-decoration: none; }
+  .voltar:hover { background: var(--superficie-2); color: var(--tinta); }
+  .barra-in > .esq { display: flex; align-items: center; gap: 4px; min-width: 0; }
+  .seletor { display: flex; align-items: center; gap: 10px; border: 0; background: none; padding: 4px 6px 4px 0; cursor: pointer; text-align: left; min-width: 0; }
+  .seletor .gota { width: 36px; height: 36px; border-radius: 10px; background: var(--acento); color: #fff; display: grid; place-items: center; flex: none; }
+  .seletor span.txt { display: flex; flex-direction: column; min-width: 0; }
+  .seletor small { font-size: 12px; color: var(--tinta-2); line-height: 1.2; }
+  .seletor strong { font-size: 16px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .seletor svg.seta { flex: none; color: var(--tinta-3); }
+  .vivo { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--tinta-2); white-space: nowrap; }
+  .vivo i { width: 8px; height: 8px; border-radius: 50%; background: var(--bom); flex: none; }
+  .vivo.ok i { animation: pulso 2s infinite; }
+  .vivo.atraso i { background: var(--atencao); }
+  .vivo.erro i { background: var(--inundacao); }
+  @keyframes pulso { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--bom) 50%, transparent); } 50% { box-shadow: 0 0 0 5px transparent; } }
+
+  /* ---------- estrutura ---------- */
+  main { max-width: 1200px; margin: 0 auto; padding: 16px 20px calc(40px + env(safe-area-inset-bottom));
+         display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); transition: opacity .2s; }
+  main.carregando { opacity: .5; }
+  .card { background: var(--superficie); border: 1px solid var(--borda); border-radius: 18px; padding: 18px; box-shadow: var(--sombra); min-width: 0; }
+  .card h2 { font-size: 17px; margin: 0; letter-spacing: -.01em; }
+  .card .sub { font-size: 13px; color: var(--tinta-2); margin: 3px 0 0; }
+  .cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+
+  /* ---------- destaque (agora) ---------- */
+  .hero { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 10px; }
+  .hero::before { content: ""; position: absolute; inset: -60px -60px auto auto; width: 220px; height: 220px; border-radius: 50%;
+                  background: radial-gradient(circle, color-mix(in srgb, var(--cor-status, var(--acento)) 22%, transparent), transparent 70%); pointer-events: none; }
+  .hero-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 650; padding: 4px 11px 4px 9px; border-radius: 999px; background: var(--superficie-2); white-space: nowrap; }
+  .pill i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .hero-linha { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+  .hero-num { font-size: clamp(56px, 16vw, 76px); font-weight: 750; letter-spacing: -.045em; line-height: .95; }
+  .hero-num small { font-size: .36em; font-weight: 500; color: var(--tinta-2); letter-spacing: 0; margin-left: 2px; }
+  .tend { display: flex; flex-direction: column; gap: 1px; padding-bottom: 6px; }
+  .tend b { font-size: 16px; }
+  .tend span { font-size: 13px; color: var(--tinta-2); }
+  .medidor { margin-top: 4px; }
+  .medidor .trilho { position: relative; height: 10px; border-radius: 6px; background: var(--superficie-2); overflow: visible; }
+  .medidor .agua { position: absolute; inset: 0 auto 0 0; border-radius: 6px; background: linear-gradient(90deg, color-mix(in srgb, var(--acento) 55%, transparent), var(--acento)); transition: width .6s; }
+  .medidor .marca { position: absolute; top: -4px; bottom: -4px; width: 2px; border-radius: 1px; }
+  .medidor .escala { position: relative; height: 16px; font-size: 11px; color: var(--tinta-3); margin-top: 6px; }
+  .medidor .escala span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .hero p { margin: 0; font-size: 14px; color: var(--tinta-2); position: relative; }
+  .hero p strong { color: var(--tinta); }
+  .aviso-atraso { color: var(--alerta); font-weight: 600; }
+
+  /* ---------- números rápidos ---------- */
+  .stats { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(140px, 1fr); gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory;
+           margin: 0 -20px; padding: 2px 20px 6px; scrollbar-width: none; }
+  .stats::-webkit-scrollbar { display: none; }
+  .stat { scroll-snap-align: start; background: var(--superficie); border: 1px solid var(--borda); border-radius: 16px; padding: 12px 14px; box-shadow: var(--sombra);
+          display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .stat .v { font-size: 24px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; white-space: nowrap; }
+  .stat .v small { font-size: 13px; font-weight: 500; color: var(--tinta-2); letter-spacing: 0; }
+  .stat .n { font-size: 12px; color: var(--tinta-2); line-height: 1.35; }
+  .sobe { color: var(--sobe); } .desce { color: var(--desce); }
+
+  /* ---------- gráfico ---------- */
+  .seg { display: inline-flex; background: var(--superficie-2); border-radius: 11px; padding: 3px; gap: 2px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .seg::-webkit-scrollbar { display: none; }
+  .seg button { border: 0; background: none; padding: 7px 12px; border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--tinta-2); white-space: nowrap; font-weight: 500; }
+  .seg button[aria-pressed="true"] { background: var(--elevado); color: var(--tinta); font-weight: 650; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  .seg button:disabled { opacity: .35; }
+  .seg.grande { display: flex; width: 100%; }
+  .seg.grande button { flex: 1; padding: 9px 12px; font-size: 15px; }
+  .controles { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 12px 0 10px; }
+  .controles select { background: var(--superficie-2); border: 0; border-radius: 10px; padding: 8px 10px; font-size: 14px; }
+
+  .leitura { min-height: 58px; display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; background: var(--superficie-2); margin-bottom: 8px; }
+  .leitura time { font-size: 12.5px; color: var(--tinta-2); font-weight: 600; }
+  .leitura .vals { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; align-items: baseline; }
+  .leitura .vals span { display: inline-flex; align-items: baseline; gap: 5px; white-space: nowrap; color: var(--tinta-2); }
+  .leitura .vals b { color: var(--tinta); font-size: 15px; font-variant-numeric: tabular-nums; }
+  .leitura .vals i { width: 10px; height: 3px; border-radius: 2px; display: inline-block; align-self: center; }
+  .leitura .vals i.barra { height: 9px; width: 6px; border-radius: 2px; }
+
+  .area-g { position: relative; height: 300px; touch-action: pan-y; }
+  .area-chuva { position: relative; height: 92px; margin-top: 2px; touch-action: pan-y; }
+  .area-chuva .rot-chuva { position: absolute; left: 50px; top: 0; font-size: 11px; color: var(--tinta-3); font-weight: 600; pointer-events: none; }
+
+  .nav { position: relative; height: 46px; margin-top: 10px; border-radius: 10px; background: var(--superficie-2); touch-action: none; user-select: none; cursor: pointer; }
+  .nav svg { position: absolute; inset: 6px 0; width: 100%; height: calc(100% - 12px); }
+  .nav .janela { position: absolute; top: 0; bottom: 0; border-radius: 10px; background: color-mix(in srgb, var(--acento) 14%, transparent);
+                 box-shadow: inset 0 0 0 2px var(--acento); cursor: grab; }
+  .nav .janela:active { cursor: grabbing; }
+  .nav .alca { position: absolute; top: 50%; width: 22px; height: 46px; transform: translate(-50%, -50%); cursor: ew-resize; display: grid; place-items: center; }
+  .nav .alca::after { content: ""; width: 8px; height: 24px; border-radius: 4px; background: var(--acento); box-shadow: 0 0 0 2px var(--superficie); }
+  .nav .alca.e { left: 0; } .nav .alca.d { left: 100%; }
+  .nav-dica { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; color: var(--tinta-3); margin-top: 6px; }
+  .nav-dica button { border: 0; background: none; color: var(--acento); font-weight: 600; font-size: 13px; cursor: pointer; padding: 4px 0; }
+
+  .anos { display: flex; gap: 6px; overflow-x: auto; margin: 12px -18px 0; padding: 0 18px 2px; scrollbar-width: none; }
+  .anos::-webkit-scrollbar { display: none; }
+  .ano { flex: none; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--borda); background: var(--superficie); border-radius: 999px;
+         padding: 6px 12px 6px 10px; font-size: 13.5px; cursor: pointer; color: var(--tinta-2); font-variant-numeric: tabular-nums; }
+  .ano i { width: 14px; height: 4px; border-radius: 2px; background: var(--neutro); }
+  .ano[aria-pressed="true"] { color: var(--tinta); font-weight: 650; border-color: var(--eixo); }
+  .ano em { font-style: normal; font-size: 11px; color: var(--tinta-3); font-weight: 400; }
+
+  .area-chuva.bacia { height: 130px; }
+  @media (min-width: 900px) { .area-chuva.bacia { height: 160px; } }
+  .leg-chuva { margin-top: 6px; }
+  .leg-chuva summary { cursor: pointer; font-size: 13px; color: var(--tinta-2); padding: 6px 0; list-style: none; display: flex; align-items: center; gap: 8px; }
+  .leg-chuva summary::-webkit-details-marker { display: none; }
+  .leg-chuva summary::after { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--tinta-3); border-bottom: 2px solid var(--tinta-3); transform: rotate(45deg); transition: transform .2s; }
+  .leg-chuva details[open] summary::after { transform: rotate(-135deg); }
+  .leg-chuva .chips { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 4px; }
+  .leg-chuva:empty { display: none; }
+  .leg-chuva button { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--borda); background: var(--superficie); border-radius: 10px;
+                      padding: 6px 10px; font-size: 13px; cursor: pointer; color: var(--tinta); text-align: left; }
+  .leg-chuva button i { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+  .leg-chuva button b { font-variant-numeric: tabular-nums; }
+  .leg-chuva button small { color: var(--tinta-3); font-size: 11.5px; display: block; }
+  .leg-chuva button[aria-pressed="false"] { opacity: .45; }
+  .leg-chuva button[aria-pressed="false"] i { background: var(--neutro) !important; }
+  .leg-agora { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--tinta-2); margin-top: 10px; }
+  .leg-agora span { display: inline-flex; align-items: center; gap: 6px; }
+  .leg-agora i { width: 16px; height: 3px; border-radius: 2px; display: inline-block; }
+  .leg-agora i.tracejado { height: 0; border-top: 2px dashed; background: none !important; }
+  .leg-agora i.area { height: 10px; border-radius: 3px; }
+
+  /* ---------- ano a ano (linhas) ---------- */
+  .linhas { display: flex; flex-direction: column; }
+  .linha { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 10px 6px; border: 0; background: none;
+           text-align: left; border-bottom: 1px solid var(--grade); cursor: pointer; border-radius: 8px; }
+  .linha:last-child { border-bottom: 0; }
+  .linha:hover { background: var(--superficie-2); }
+  .linha .ano-n { font-weight: 650; font-variant-numeric: tabular-nums; font-size: 14px; }
+  .linha .ano-n em { display: block; font-style: normal; font-size: 11px; color: var(--tinta-3); font-weight: 500; }
+  .linha .trilho { position: relative; height: 12px; border-radius: 4px; background: var(--superficie-2); }
+  .linha .enche { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--neutro); }
+  .linha .marca { position: absolute; top: -3px; bottom: -3px; width: 2px; border-radius: 1px; opacity: .9; }
+  .linha .val { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .linha .det { grid-column: 2 / 4; font-size: 12px; color: var(--tinta-2); display: flex; gap: 10px; flex-wrap: wrap; }
+  .linha .det .dias { display: inline-flex; gap: 6px; }
+  .linha .det .dias span { display: inline-flex; align-items: center; gap: 4px; }
+  .linha .det .dias i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+  .legenda-cotas { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--tinta-2); margin-top: 10px; }
+  .legenda-cotas span { display: inline-flex; align-items: center; gap: 5px; }
+  .legenda-cotas i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+
+  /* ---------- mapa de calor ---------- */
+  .rolagem { overflow-x: auto; margin: 0 -18px; padding: 0 18px; }
+  table.calor { border-collapse: separate; border-spacing: 2px; width: 100%; min-width: 560px; font-variant-numeric: tabular-nums; }
+  table.calor th { font-size: 11.5px; font-weight: 600; color: var(--tinta-3); padding: 3px; }
+  table.calor th[scope="row"] { text-align: right; padding-right: 8px; color: var(--tinta-2); position: sticky; left: 0; background: var(--superficie); }
+  table.calor td { height: 30px; text-align: center; font-size: 12px; border-radius: 4px; background: var(--superficie-2); color: var(--tinta-3); }
+  table.calor td.max { box-shadow: inset 0 0 0 2px var(--tinta); font-weight: 700; }
+  .escala-calor { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--tinta-2); margin-top: 10px; flex-wrap: wrap; }
+  .escala-calor .barra { display: flex; height: 8px; width: 140px; border-radius: 3px; overflow: hidden; }
+  .escala-calor .barra i { flex: 1; }
+
+  /* ---------- cheias ---------- */
+  ol.cheias { list-style: none; margin: 0; padding: 0; counter-reset: c; }
+  ol.cheias li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--grade); counter-increment: c; }
+  ol.cheias li:last-child { border-bottom: 0; }
+  ol.cheias li::before { content: counter(c); grid-row: span 2; color: var(--tinta-3); font-size: 13px; font-weight: 600; text-align: center; }
+  ol.cheias .quando { font-weight: 600; font-size: 14px; }
+  ol.cheias .quando em { font-style: normal; font-size: 11px; font-weight: 700; color: var(--acento); margin-left: 6px; text-transform: uppercase; letter-spacing: .04em; }
+  ol.cheias .pico { font-weight: 750; font-size: 17px; text-align: right; font-variant-numeric: tabular-nums; }
+  ol.cheias .extra { font-size: 12px; color: var(--tinta-2); }
+  ol.cheias .pill { justify-self: end; font-size: 12px; padding: 2px 9px 2px 7px; }
+
+  details.card summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+  details.card summary::-webkit-details-marker { display: none; }
+  details.card summary::after { content: "+"; font-size: 22px; color: var(--tinta-3); line-height: 1; }
+  details.card[open] summary::after { content: "–"; }
+  .area-perm { position: relative; height: 260px; margin-top: 12px; }
+  .sobre { font-size: 13px; color: var(--tinta-2); line-height: 1.6; }
+  .sobre ul { margin: 8px 0 0; padding-left: 18px; }
+  .creditos { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--grade); }
+  .creditos p { margin: 0 0 6px; }
+  .aviso-legal { color: var(--tinta); }
+  #erro { display: none; border-color: var(--inundacao); color: var(--inundacao); }
+
+  /* ---------- previsão de cheia ---------- */
+  .previsao { position: relative; overflow: hidden; }
+  .previsao .cab { margin-bottom: 14px; }
+  .exp { font-size: 10.5px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; color: var(--tinta-3); border: 1px solid var(--eixo);
+         border-radius: 4px; padding: 0 5px; margin-left: 6px; vertical-align: 2px; }
+  .prev-corpo { display: grid; gap: 16px; }
+  .probs { display: grid; gap: 10px; }
+  .prob { display: grid; grid-template-columns: 124px minmax(0, 1fr) 48px; gap: 10px; align-items: center; font-size: 14px; }
+  .prob .nome { display: inline-flex; align-items: center; gap: 6px; color: var(--tinta-2); }
+  .prob .nome i { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+  .prob .trilho { height: 10px; border-radius: 5px; background: var(--superficie-2); overflow: hidden; }
+  .prob .enche { height: 100%; border-radius: 5px; transition: width .6s; }
+  .prob b { text-align: right; font-variant-numeric: tabular-nums; }
+  .prev-frase { margin: 0; font-size: 14px; color: var(--tinta-2); }
+  .prev-frase strong { color: var(--tinta); }
+  .dias-chuva { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; align-items: end; height: 118px; }
+  .dia-ch { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; height: 100%; font-size: 11.5px; color: var(--tinta-2); min-width: 0; }
+  .dia-ch .col { width: 100%; max-width: 30px; border-radius: 4px 4px 2px 2px; background: var(--chuva); min-height: 2px; position: relative; }
+  .dia-ch .col.passado { background: color-mix(in srgb, var(--chuva) 45%, transparent); }
+  .dia-ch .faixa-ens { position: absolute; left: 50%; width: 2px; transform: translateX(-50%); background: var(--tinta-3); bottom: 0; }
+  .dia-ch b { font-size: 12px; color: var(--tinta); font-variant-numeric: tabular-nums; }
+  .dia-ch span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .prev-info { display: flex; flex-wrap: wrap; gap: 6px; }
+  .prev-info span { font-size: 12.5px; background: var(--superficie-2); border-radius: 8px; padding: 5px 9px; color: var(--tinta-2); }
+  .prev-info b { color: var(--tinta); }
+  details.confianca { font-size: 13px; color: var(--tinta-2); border-top: 1px solid var(--grade); padding-top: 10px; }
+  details.confianca summary { cursor: pointer; font-weight: 600; color: var(--acento); list-style: none; }
+  details.confianca summary::-webkit-details-marker { display: none; }
+  details.confianca p, details.confianca ul { margin: 8px 0 0; line-height: 1.55; }
+  details.confianca ul { padding-left: 18px; }
+  .prev-carregando { color: var(--tinta-3); font-size: 14px; }
+
+  /* ---------- avisos ---------- */
+  .avisos h2 { font-size: 15px; }
+  .avisos .sub { margin-bottom: 10px; }
+  .botoes-avisos { display: flex; flex-wrap: wrap; gap: 8px; }
+  .botao { border: 0; border-radius: 10px; padding: 9px 14px; font-weight: 650; font-size: 14px; background: var(--acento); color: #fff; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+  .botao.sec { background: var(--superficie-2); color: var(--tinta); }
+  .botao[disabled] { opacity: .6; cursor: default; }
+  button.link { border: 0; background: none; padding: 0; color: var(--acento); font: inherit; text-decoration: underline; cursor: pointer; }
+  .trocar { margin-top: 8px; border: 0; background: var(--superficie-2); color: var(--acento); font-weight: 650; border-radius: 8px; padding: 6px 10px; cursor: pointer; font-size: 13px; }
+
+  /* ---------- o que alaga ---------- */
+  .impacto { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  ol.escada { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  ol.escada li { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 2px 12px; padding: 9px 10px; border-radius: 10px; background: var(--superficie-2); border-left: 4px solid var(--neutro); }
+  ol.escada li .alt { font-weight: 750; font-variant-numeric: tabular-nums; font-size: 15px; grid-row: span 2; align-self: center; }
+  ol.escada li strong { font-size: 14px; }
+  ol.escada li span.t { font-size: 12.5px; color: var(--tinta-2); grid-column: 2; }
+  ol.escada li.atingido { border-left-color: var(--inundacao); background: color-mix(in srgb, var(--inundacao) 9%, var(--superficie-2)); }
+  ol.escada li.possivel { border-left-color: var(--alerta); }
+  ol.escada li.marcador { background: none; border-left: 0; padding: 2px 10px; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }
+  ol.escada li.marcador::before { content: ""; flex: 1; height: 2px; background: currentColor; order: 2; }
+  ol.escada li.marcador.agora { color: var(--acento); }
+  ol.escada li.marcador.prev { color: var(--alerta); }
+  ol.escada li em { font-style: normal; font-size: 11px; color: var(--tinta-3); }
+  .mapa-box { min-width: 0; }
+  .mapa { height: 340px; border-radius: 12px; overflow: hidden; background: var(--superficie-2); position: relative; z-index: 0; isolation: isolate; }
+  .leg-mapa { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--tinta-2); margin-top: 8px; }
+  .leg-mapa span { display: inline-flex; align-items: center; gap: 6px; }
+  .leg-mapa i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .nota { font-size: 12px; color: var(--tinta-3); margin: 12px 0 0; }
+  .represa { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13px; color: var(--tinta-2); margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--superficie-2); }
+  .represa:empty { display: none; }
+  @media (min-width: 900px) {
+    .impacto { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); align-items: stretch; }
+    .mapa-box { display: flex; flex-direction: column; }
+    .mapa { flex: 1; height: auto; min-height: 420px; }
+  }
+
+  /* ---------- novas visões ---------- */
+  .area-media { position: relative; height: 300px; margin-top: 8px; }
+  @media (min-width: 900px) { .area-media { height: 340px; } }
+  ol.rec-lista { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+  ol.rec-lista li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 10px 12px; border-radius: 10px; background: var(--superficie-2); align-items: center; }
+  ol.rec-lista li.atual { box-shadow: inset 0 0 0 2px var(--acento); }
+  ol.rec-lista strong { font-size: 14px; }
+  ol.rec-lista small { grid-column: 1 / -1; font-size: 12px; color: var(--tinta-2); }
+  ol.rec-lista .h { font-size: 18px; font-weight: 750; font-variant-numeric: tabular-nums; }
+  ol.rec-lista .faixa { position: relative; grid-column: 1 / -1; height: 8px; border-radius: 4px; background: var(--superficie); }
+  ol.rec-lista .faixa span { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: color-mix(in srgb, var(--acento) 35%, transparent); }
+  ol.rec-lista .faixa i { position: absolute; top: -3px; bottom: -3px; width: 3px; border-radius: 2px; background: var(--acento); }
+
+  /* ---------- memória das cheias ---------- */
+  ol.linha-tempo { list-style: none; margin: 0; padding: 0 0 0 18px; position: relative; display: flex; flex-direction: column; gap: 14px; }
+  ol.linha-tempo::before { content: ""; position: absolute; left: 5px; top: 6px; bottom: 6px; width: 2px; background: var(--grade); }
+  ol.linha-tempo li { position: relative; }
+  ol.linha-tempo li::before { content: ""; position: absolute; left: -18px; top: 5px; width: 12px; height: 12px; border-radius: 50%; background: var(--superficie); box-shadow: inset 0 0 0 2px var(--eixo); }
+  ol.linha-tempo li.destaque::before { background: var(--inundacao); box-shadow: none; }
+  ol.linha-tempo li.agora::before { background: var(--acento); box-shadow: none; }
+  ol.linha-tempo .data-h { display: block; font-size: 13px; font-weight: 750; color: var(--tinta-3); font-variant-numeric: tabular-nums; }
+  ol.linha-tempo strong { display: block; font-size: 15px; }
+  ol.linha-tempo .nv { font-size: 13px; font-weight: 650; color: var(--tinta); }
+  ol.linha-tempo p { margin: 3px 0 0; font-size: 13.5px; color: var(--tinta-2); max-width: 80ch; }
+  ol.linha-tempo small { font-size: 11.5px; color: var(--tinta-3); }
+  ol.linha-tempo .barra-h { height: 6px; border-radius: 3px; background: var(--acento); margin-top: 6px; max-width: 360px; }
+
+  /* ---------- fontes ---------- */
+  ul.fontes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+  ul.fontes li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; background: var(--superficie-2); font-size: 13px; color: var(--tinta-2); }
+  ul.fontes li i { width: 10px; height: 10px; border-radius: 50%; flex: none; margin-top: 4px; }
+  ul.fontes li strong { color: var(--tinta); display: block; font-size: 14px; }
+
+  /* ---------- cartões recolhíveis ---------- */
+  .recolhivel > .cab { cursor: pointer; margin-bottom: 0; border-radius: 10px; user-select: none; }
+  .recolhivel > .cab:focus-visible { outline: 2px solid var(--acento); outline-offset: 4px; }
+  .recolhivel > .corpo { margin-top: 14px; }
+  .recolhivel .lado { display: inline-flex; align-items: center; gap: 10px; }
+  .seta-exp { width: 30px; height: 30px; border-radius: 50%; background: var(--superficie-2); display: inline-grid; place-items: center; flex: none; }
+  .seta-exp::before { content: ""; width: 8px; height: 8px; border-right: 2px solid var(--tinta-2); border-bottom: 2px solid var(--tinta-2); transform: translateY(-2px) rotate(45deg); transition: transform .2s; }
+  .recolhivel > .cab[aria-expanded="true"] .seta-exp::before { transform: translateY(2px) rotate(-135deg); }
+
+  /* ---------- rio acima ---------- */
+  ol.trecho { list-style: none; margin: 0; padding: 0; position: relative; }
+  ol.trecho:not(.afl)::before { content: ""; position: absolute; left: 7px; top: 18px; bottom: 18px; width: 2px; background: var(--grade); }
+  ol.trecho li.no { position: relative; display: grid; grid-template-columns: 16px minmax(0, 1fr) 72px auto; gap: 0 10px; align-items: center;
+                    padding: 8px 6px 8px 0; cursor: pointer; border-radius: 10px; }
+  ol.trecho li.no:hover { background: var(--superficie-2); }
+  ol.trecho li.no .bolinha { width: 16px; height: 16px; border-radius: 50%; border: 3px solid var(--superficie); box-shadow: 0 0 0 1px var(--eixo); z-index: 1; }
+  ol.trecho li.no.cidade .bolinha { width: 16px; height: 16px; box-shadow: 0 0 0 2px var(--tinta); }
+  ol.trecho li.no strong { font-size: 14px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  ol.trecho li.no small { font-size: 12px; color: var(--tinta-2); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  ol.trecho li.no svg { width: 72px; height: 26px; }
+  ol.trecho li.no .num { text-align: right; white-space: nowrap; }
+  ol.trecho li.no .num b { display: block; font-size: 15px; font-variant-numeric: tabular-nums; }
+  ol.trecho li.no .num span { font-size: 12px; font-weight: 600; }
+  ol.trecho li.sel { background: color-mix(in srgb, var(--acento) 9%, transparent); }
+  @media (max-width: 520px) {
+    ol.trecho li.no { grid-template-columns: 16px minmax(0, 1fr) auto; }
+    ol.trecho li.no svg { display: none; }
+    ol.trecho li.no strong { white-space: normal; }
+  }
+  .mini-pill { font-size: 11px; font-weight: 700; padding: 0 6px; border-radius: 4px; color: #fff; margin-left: 6px; vertical-align: 1px; }
+
+  /* ---------- folha de estações ---------- */
+  dialog.folha { border: 0; padding: 0; margin: auto auto 0; width: 100%; max-width: 560px; max-height: 85vh; border-radius: 22px 22px 0 0;
+                 background: var(--superficie); color: var(--tinta); box-shadow: 0 -10px 40px rgba(0,0,0,.25); }
+  dialog.folha::backdrop { background: rgba(0,0,0,.4); backdrop-filter: blur(2px); }
+  dialog.folha[open] { animation: sobe .22s ease-out; }
+  @keyframes sobe { from { transform: translateY(40px); opacity: 0; } }
+  .folha-in { padding: 10px 18px calc(18px + env(safe-area-inset-bottom)); }
+  .folha .puxador { width: 40px; height: 5px; border-radius: 3px; background: var(--eixo); margin: 0 auto 12px; }
+  .folha h3 { font-size: 13px; color: var(--tinta-3); text-transform: uppercase; letter-spacing: .06em; margin: 14px 0 6px; }
+  .op-est { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; width: 100%; text-align: left; border: 1px solid var(--borda); background: var(--superficie);
+            border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; align-items: center; }
+  .op-est[aria-current="true"] { border-color: var(--acento); box-shadow: inset 0 0 0 1px var(--acento); }
+  .op-est strong { font-size: 15px; }
+  .op-est small { font-size: 12px; color: var(--tinta-2); grid-column: 1; }
+  .op-est .nv { grid-row: 1 / 3; grid-column: 2; text-align: right; font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums; }
+  .op-est .nv small { display: block; font-size: 11px; font-weight: 500; color: var(--tinta-3); }
+  .selo { font-size: 10px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; color: var(--acento); border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; margin-left: 6px; vertical-align: 2px; }
+
+  /* ---------- telas maiores ---------- */
+  @media (min-width: 900px) {
+    .barra-in { padding: 12px 28px; }
+    main { padding: 22px 28px 48px; gap: 20px; }
+    /* topo em duas colunas; a da esquerda acompanha a rolagem só até o fim deste bloco */
+    .painel { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 20px; align-items: start; }
+    .direita { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+    .coluna { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 84px; }
+    .stats { grid-auto-flow: row; grid-template-columns: 1fr 1fr; overflow: visible; margin: 0; padding: 0; }
+    .stats .stat:last-child:nth-child(odd) { grid-column: span 2; }
+    .duas { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+    .area-g { height: 380px; }
+    .area-chuva { height: 110px; }
+    dialog.folha { margin: auto; border-radius: 22px; }
+    .card { padding: 22px; }
+    .anos { margin: 12px 0 0; padding: 0 0 2px; flex-wrap: wrap; overflow: visible; }
+  }
+  @media (max-width: 899px) {
+    .painel, .direita, .coluna { display: contents; }
+    .duas { display: contents; }
+  }
+</style>
+</head>
+<body>
+<header class="barra">
+  <div class="barra-in">
+    <div class="esq">
+    <a class="voltar" href="../" title="Escolher outro rio" aria-label="Escolher outro rio"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M11 3.5 5.5 9l5.5 5.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+    <button class="seletor" id="btnEstacao" aria-haspopup="dialog">
+      <span class="gota"><svg width="16" height="18" viewBox="0 0 14 16" aria-hidden="true"><path d="M7 1C7 1 1.5 7.2 1.5 10.4a5.5 5.5 0 0 0 11 0C12.5 7.2 7 1 7 1Z" fill="currentColor"/></svg></span>
+      <span class="txt"><small id="selRio">Carregando…</small><strong id="selNome">&nbsp;</strong></span>
+      <svg class="seta" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+    </button>
+    </div>
+    <span class="vivo" id="vivo"><i></i><span id="vivoTxt">Carregando…</span></span>
+  </div>
+</header>
+
+<dialog class="folha" id="folha" aria-label="Escolher estação">
+  <div class="folha-in">
+    <div class="puxador"></div>
+    <div id="listaEstacoes"></div>
+  </div>
+</dialog>
+
+<main id="principal" class="carregando">
+  <div id="erro" class="card largo"></div>
+
+  <div class="painel">
+  <div class="coluna">
+    <section class="card hero" id="hero">
+      <div class="hero-top"><span class="rot" id="hRot">Agora</span><span class="pill" id="hStatus"><i></i>—</span></div>
+      <div class="hero-linha">
+        <div class="hero-num" id="hNum">—</div>
+        <div class="tend" id="hTend"></div>
+      </div>
+      <div class="medidor" id="medidor"><div class="trilho"><div class="agua" id="mAgua"></div></div><div class="escala" id="mEscala"></div></div>
+      <p id="hFrase"></p>
+    </section>
+    <section class="stats" id="stats" aria-label="Números rápidos"></section>
+    <section class="card avisos" id="cardAvisos" aria-labelledby="tituloAvisos">
+      <h2 id="tituloAvisos">Receber avisos</h2>
+      <p class="sub" id="avisoTexto">Quando o rio passar de uma cota, a água subir rio acima ou a previsão indicar cheia.</p>
+      <div class="botoes-avisos">
+        <button class="botao" id="btnNotif">Avisar neste aparelho</button>
+        <a class="botao sec" id="lnkTelegram" href="#" target="_blank" rel="noopener" hidden>Canal no Telegram</a>
+        <button class="botao sec" id="btnInstalar" hidden>Instalar o app</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="direita">
+  <section class="card grafico">
+    <div class="seg grande" id="modo" role="tablist">
+      <button data-modo="agora" role="tab">Últimos dias</button>
+      <button data-modo="comparar" role="tab">Comparar anos</button>
+    </div>
+    <div class="controles" id="ctrlAgora">
+      <div class="seg" id="modoChuva" aria-label="Chuva mostrada no gráfico">
+        <button data-c="regua">Chuva na régua</button><button data-c="bacia">Chuva na bacia</button>
+      </div>
+      <div class="seg" id="janelas">
+        <button data-d="1">24 h</button><button data-d="3">3 dias</button><button data-d="7">7 dias</button><button data-d="30">30 dias</button>
+      </div>
+    </div>
+    <div class="controles" id="ctrlComp" hidden>
+      <div class="seg" id="periodos">
+        <button data-de="1" data-ate="12">Ano</button><button data-de="10" data-ate="3">Chuvoso</button><button data-de="12" data-ate="3">Verão</button><button data-de="10" data-ate="9">Hidrológico</button>
+      </div>
+      <select id="metrica" aria-label="Medida">
+        <option value="nmax">Nível máximo</option><option value="nmed">Nível médio</option><option value="vmed">Vazão</option><option value="chuva">Chuva acumulada</option>
+      </select>
+    </div>
+
+    <div class="leitura" id="leitura" aria-live="polite"></div>
+    <div class="area-g"><canvas id="gPrincipal" aria-label="Gráfico do nível do rio"></canvas></div>
+    <div class="area-chuva" id="boxChuva"><span class="rot-chuva" id="rotChuva">Chuva (mm)</span><canvas id="gChuva" aria-label="Gráfico de chuva"></canvas></div>
+    <div class="leg-chuva" id="legChuva" role="group" aria-label="Regiões da bacia"></div>
+    <div class="nav" id="nav" role="slider" aria-label="Período visível do gráfico" tabindex="0">
+      <svg viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true"><path id="navLinha" fill="none" stroke="var(--tinta-3)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>
+      <div class="janela" id="navJanela"><span class="alca e" data-alca="e"></span><span class="alca d" data-alca="d"></span></div>
+    </div>
+    <div class="nav-dica"><span id="dicaNav">Arraste a janela para navegar · puxe as bordas para zoom</span><button id="verTudo">Ver tudo</button></div>
+    <div class="leg-agora" id="legAgora"></div>
+    <div class="anos" id="anos" hidden></div>
+  </section>
+
+  <section class="card rio-acima recolhivel" id="cardRio" aria-labelledby="tituloRio">
+    <div class="cab" role="button" tabindex="0" aria-expanded="false" aria-controls="corpoRio">
+      <div><h2 id="tituloRio">Rio acima</h2>
+        <p class="sub" id="rSub"></p></div>
+      <span class="lado"><span class="pill" id="rResumo"><i></i>…</span><span class="seta-exp" aria-hidden="true"></span></span>
+    </div>
+    <div class="corpo" id="corpoRio" hidden>
+      <ol class="trecho" id="rTrecho"><li class="prev-carregando">Carregando réguas…</li></ol>
+      <div class="represa" id="rChapeu"></div>
+      <div class="rot" style="margin:14px 0 6px">Afluentes</div>
+      <ol class="trecho afl" id="rAfl"></ol>
+    </div>
+  </section>
+
+  <section class="card previsao recolhivel" id="cardPrev" aria-labelledby="tituloPrev">
+    <div class="cab" role="button" tabindex="0" aria-expanded="false" aria-controls="corpoPrev">
+      <div><h2 id="tituloPrev">Previsão · 48 h<span class="exp">experimental</span></h2>
+        <p class="sub" id="pSub"></p></div>
+      <span class="lado"><span class="pill" id="pRisco"><i></i>…</span><span class="seta-exp" aria-hidden="true"></span></span>
+    </div>
+    <div class="corpo" id="corpoPrev" hidden>
+      <div class="prev-corpo" id="pCorpo"><span class="prev-carregando">Calculando com a previsão do tempo…</span></div>
+    </div>
+  </section>
+
+  </div><!-- .direita -->
+  </div><!-- .painel -->
+
+  <section class="card largo" id="cardImpacto" aria-labelledby="tituloImpacto">
+    <div class="cab">
+      <div><h2 id="tituloImpacto">O que alaga com cada nível</h2>
+        <p class="sub" id="iSub"></p></div>
+      <span class="pill" id="iResumo"><i></i>…</span>
+    </div>
+    <div class="impacto">
+      <ol class="escada" id="iEscada"></ol>
+      <div class="mapa-box"><div class="mapa" id="iMapa" role="img" aria-label="Mapa do centro com os pontos atingidos em cheias passadas"></div>
+        <div class="leg-mapa"><span><i style="background:var(--inundacao)"></i>atingido no nível de agora</span><span><i style="background:var(--alerta)"></i>pode ser atingido (previsão 48 h)</span><span><i style="background:var(--mediana)"></i>não atingido</span><span><i style="background:var(--acento)"></i><span id="iLegRegua">régua de referência</span></span></div></div>
+    </div>
+    <p class="nota" id="iNota"></p>
+  </section>
+
+  <div class="duas">
+    <section class="card">
+      <div class="cab"><div><h2>Ano a ano</h2><p class="sub" id="anoSub">Maior nível de cada ano e dias acima das cotas. Toque num ano para comparar no gráfico.</p></div></div>
+      <div class="linhas" id="linhas"></div>
+      <div class="legenda-cotas" id="legCotas"></div>
+    </section>
+    <section class="card">
+      <div class="cab"><div><h2>Maiores cheias</h2><p class="sub" id="cheiasSub">Os 10 maiores picos registrados nesta estação.</p></div></div>
+      <ol class="cheias" id="cheias"></ol>
+    </section>
+  </div>
+
+  <section class="card largo">
+    <div class="cab"><div><h2>Nível máximo de cada mês</h2><p class="sub">Mais escuro = rio mais alto. O contorno marca o recorde do mês.</p></div></div>
+    <div class="rolagem"><table class="calor" id="calor"></table></div>
+    <div class="escala-calor" id="escalaCalor"></div>
+  </section>
+
+  <details class="card largo" id="detPerm">
+    <summary><div><h2>Com que frequência o rio fica alto</h2><p class="sub" id="permSub">Curva de permanência do nível médio diário.</p></div></summary>
+    <div class="area-perm"><canvas id="gPerm"></canvas></div>
+  </details>
+
+  <section class="card largo recolhivel" id="cardResposta" aria-labelledby="tcardResposta">
+    <div class="cab" role="button" tabindex="0" aria-expanded="false" aria-controls="ccardResposta">
+      <div><h2 id="tcardResposta">Quanto o rio sobe com essa chuva</h2><p class="sub" id="scardResposta"></p></div>
+      <span class="lado"><span class="pill" id="pcardResposta"><i></i>…</span><span class="seta-exp" aria-hidden="true"></span></span>
+    </div>
+    <div class="corpo" id="ccardResposta" hidden>
+      <p class="prev-frase" id="respTexto"></p>
+      <div class="area-media"><canvas id="gResposta" aria-label="Chuva na bacia versus subida do rio"></canvas></div>
+      <div class="leg-mapa" id="respLeg"></div>
+      <p class="nota" id="respNota"></p>
+    </div>
+  </section>
+  <section class="card largo recolhivel" id="cardSazonal" aria-labelledby="tcardSazonal">
+    <div class="cab" role="button" tabindex="0" aria-expanded="false" aria-controls="ccardSazonal">
+      <div><h2 id="tcardSazonal">Quando o rio enche</h2><p class="sub" id="scardSazonal"></p></div>
+      <span class="lado"><span class="pill" id="pcardSazonal"><i></i>…</span><span class="seta-exp" aria-hidden="true"></span></span>
+    </div>
+    <div class="corpo" id="ccardSazonal" hidden>
+      <div class="area-media"><canvas id="gSazonal" aria-label="Frequência de cheias por mês"></canvas></div>
+      <div class="leg-mapa" id="sazLeg"></div>
+    </div>
+  </section>
+  <section class="card largo recolhivel" id="cardRecessao" aria-labelledby="tcardRecessao">
+    <div class="cab" role="button" tabindex="0" aria-expanded="false" aria-controls="ccardRecessao">
+      <div><h2 id="tcardRecessao">Depois do pico, quanto tempo para baixar</h2><p class="sub" id="scardRecessao"></p></div>
+      <span class="lado"><span class="pill" id="pcardRecessao"><i></i>…</span><span class="seta-exp" aria-hidden="true"></span></span>
+    </div>
+    <div class="corpo" id="ccardRecessao" hidden>
+      <p class="prev-frase" id="recTexto"></p>
+      <ol class="rec-lista" id="recLista"></ol>
+    </div>
+  </section>
+  <section class="card largo recolhivel" id="cardHist" aria-labelledby="tituloHist">
+    <div class="cab" role="button" tabindex="0" aria-expanded="false" aria-controls="corpoHist">
+      <div><h2 id="tituloHist">Memória das cheias</h2><p class="sub" id="hSub"></p></div>
+      <span class="lado"><span class="pill" id="hResumo"><i style="background:var(--inundacao)"></i>…</span><span class="seta-exp" aria-hidden="true"></span></span>
+    </div>
+    <div class="corpo" id="corpoHist" hidden>
+      <ol class="linha-tempo" id="hLinha"></ol>
+    </div>
+  </section>
+
+  <section class="card largo" id="cardFontes" aria-labelledby="tituloFontes">
+    <div class="cab"><div><h2 id="tituloFontes">Situação das fontes de dados</h2><p class="sub">Se uma rede parar, o painel avisa e sugere outra régua.</p></div></div>
+    <ul class="fontes" id="fontes"><li class="prev-carregando">Verificando…</li></ul>
+  </section>
+
+  <section class="card largo sobre">
+    <strong>Sobre os dados</strong>
+    <ul>
+      <li>Réguas da <a href="https://cth.daee.sp.gov.br/sibh/" target="_blank" rel="noopener">SP Águas (SIBH)</a>, a cada 10 min, e da <a href="https://www.snirh.gov.br/hidrotelemetria/" target="_blank" rel="noopener">ANA</a>, a cada 15 min, buscadas direto no seu navegador. Chuva prevista: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>. O histórico é atualizado todo dia.</li>
+      <li id="sobreCotas"></li>
+      <li>Leituras com erro de sensor são descartadas do histórico. Anos <em>parciais</em> têm falhas e podem subestimar picos.</li>
+      <li>Em emergência ligue <strong>199</strong> (Defesa Civil) ou <strong>193</strong> (Bombeiros).</li>
+      <li><a href="tv.html">Modo TV</a>: tela cheia para televisão ou monitor, com letras grandes e atualização automática.</li>
+      <li id="avisosRodape" hidden>Avisos ligados neste aparelho · <button class="link" id="btnDesligarAvisos">desligar</button></li>
+      <li>Quando uma régua da cidade fica sem transmitir, os dias que faltam no histórico são completados com uma régua vizinha convertida (quando há).</li>
+      <li>Definição das cotas (Manual das Salas de Situação de SP): <strong>atenção</strong> = risco significativo, mas incerto; <strong>alerta</strong> = perigo iminente, Defesa Civil de prontidão; <strong>emergência</strong> = situação crítica, ação imediata; <strong>transbordamento</strong> (extravasamento) = rio acima das margens.</li>
+    </ul>
+    <div class="creditos">
+      <p class="aviso-legal"><strong>Aviso:</strong> projeto independente. Os dados, cotas, impactos e previsões <strong>não foram validados pela Defesa Civil</strong> e podem conter erros ou atrasos. <strong>Qualquer uso é de responsabilidade própria.</strong></p>
+      <p>Idealização e criação: <strong>Dimas de Campos</strong> · desenvolvido em parceria com IA (<strong>Claude</strong>, da Anthropic) · <a href="https://github.com/dimasdecampos/monitora-rio" target="_blank" rel="noopener">código no GitHub</a></p>
+    </div>
+  </section>
+</main>
+
+<script>
+// ================= configuração e utilidades =================
+// a bacia vem da pasta da página: …/paraitinga/ → "paraitinga"
+const BACIA = location.pathname.split("/").filter(x => x && !x.includes(".")).at(-1) || "paraitinga";
+const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const COTAS = [   // da mais alta para a mais baixa (nomes das cotas oficiais da SP Águas)
+  { chave: "extravasamento", nome: "Transbordamento", cor: "--extravasa" },
+  { chave: "emergencia", nome: "Emergência", cor: "--inundacao" },
+  { chave: "alerta", nome: "Alerta", cor: "--alerta" },
+  { chave: "atencao", nome: "Atenção", cor: "--atencao" },
+];
+// cotas que a estação tem, da mais alta para a mais baixa, com o valor em cm
+let P, REGUAS_CIDADE = [];   // régua principal da cidade e réguas convertíveis entre si (vêm do config.json)
+const apelido = cod => estacoes[cod]?.curto || estacoes[cod]?.nome || cod;
+const temRegioes = () => !!config.regioes_chuva?.length;
+const cotasDe = (est = estacoes[estado.estacao]) => COTAS.filter(n => est?.cotas_cm?.[n.chave] != null).map(n => ({ ...n, cm: est.cotas_cm[n.chave] }));
+// conversão entre réguas da cidade: régua X = a + b × régua principal (config.conversoes)
+const conv = (cod, p) => { const c = config.conversoes?.[cod]; return c ? c[0] + c[1] * p : p; };
+const desconv = (cod, x) => { const c = config.conversoes?.[cod]; return c ? (x - c[0]) / c[1] : x; };
+const METRICAS = {
+  nmax: { nome: "Nível máximo", un: "m", casas: 2 },
+  nmed: { nome: "Nível médio", un: "m", casas: 2 },
+  vmed: { nome: "Vazão média", un: "m³/s", casas: 1 },
+  chuva: { nome: "Chuva acumulada", un: "mm", casas: 0 },
+};
+const $ = s => document.querySelector(s);
+const tok = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt = (v, c = 2) => v == null || !isFinite(v) ? "—" : v.toLocaleString("pt-BR", { minimumFractionDigits: c, maximumFractionDigits: c });
+const media = a => a.reduce((s, x) => s + x, 0) / a.length;
+const mediana = a => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const ms = l => new Date(l.t).getTime();
+const dataCurta = d => `${+d.slice(8, 10)} ${MESES[+d.slice(5, 7) - 1]} ${d.slice(0, 4)}`;
+const quando = x => new Date(x).toLocaleString("pt-BR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const hojeISO = () => { const h = new Date(); return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, "0")}-${String(h.getDate()).padStart(2, "0")}`; };
+const ha = horas => horas < 1 ? `há ${Math.max(1, Math.round(horas * 60))} min` : horas < 48 ? `há ${fmt(horas, horas < 10 ? 1 : 0)} h` : `há ${fmt(horas / 24, 0)} dias`;
+
+// preferências do visitante (só neste navegador)
+const ler = (k, padrao) => { try { const v = localStorage.getItem(`monitor-${BACIA}-${k}`); return v == null ? padrao : JSON.parse(v); } catch { return padrao; } };
+const guardar = (k, v) => { try { localStorage.setItem(`monitor-${BACIA}-${k}`, JSON.stringify(v)); } catch {} };
+const estado = { chuvaBacia: ler("chuvaBacia", false), mostrarMediana: ler("mostrarMediana", true), mostrarFaixa: ler("mostrarFaixa", true), estacao: null, modo: "agora", dias: 3, de: 1, ate: 12, metrica: "nmax", destaques: new Map(), janela: null, cursor: null };
+let config, estacoes = {};
+window.monitor = estado;   // facilita testes e depuração pelo console
+window.monitorGraficos = () => graficos;
+const cache = {};          // codigo -> { leituras (15 min, 30 dias), diario, quando }
+let graficos = {};
+
+// ================= dados =================
+const URL_ANA = "https://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos";
+const dataBR = d => d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+async function buscarAna(cod, dias) {
+  const agora = new Date();
+  const r = await fetch(`${URL_ANA}?codEstacao=${cod}&dataInicio=${dataBR(new Date(agora - dias * 864e5))}&dataFim=${dataBR(new Date(+agora + 864e5))}`);
+  if (!r.ok) throw new Error(`ANA respondeu ${r.status}`);
+  const xml = new DOMParser().parseFromString(await r.text(), "text/xml");
+  const campo = (n, k) => { const v = n.getElementsByTagName(k)[0]?.textContent.trim(); return v ? +v : null; };
+  const out = new Map();
+  for (const n of xml.getElementsByTagName("DadosHidrometereologicos")) {
+    const t = n.getElementsByTagName("DataHora")[0]?.textContent.trim();
+    if (!t) continue;
+    let nivel = campo(n, "Nivel"), vazao = campo(n, "Vazao");
+    if (nivel != null && nivel < 0) nivel = null;
+    if (vazao != null && (vazao < 0 || vazao >= 9000)) vazao = null;
+    out.set(t, { t: t.replace(" ", "T"), nivel, vazao, chuva: campo(n, "Chuva") });
+  }
+  return [...out.values()].sort((a, b) => a.t < b.t ? -1 : 1);
+}
+// SP Águas (SIBH): leituras a cada 10 min, em UTC; várias estações numa só chamada
+const URL_SIBH = "https://cth.daee.sp.gov.br/sibh/api/v2/measurements";
+const p2 = n => String(n).padStart(2, "0");
+const isoUTC = d => `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}T${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}`;
+const isoLocal = d => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}:00`;
+async function buscarSibh(ests, dias) {
+  const ids = ests.flatMap(e => [e.id_nivel, e.id_chuva].filter(Boolean));
+  const ini = new Date(Date.now() - dias * 864e5), fim = new Date(Date.now() + 36e5);
+  const lotes = [];   // a API aceita no máximo 10 estações por chamada
+  for (let k = 0; k < ids.length; k += 10) lotes.push(ids.slice(k, k + 10));
+  const respostas = await Promise.all(lotes.map(async lote => {
+    const r = await fetch(`${URL_SIBH}?${lote.map(i => `station_prefix_ids[]=${i}`).join("&")}&start_date=${isoUTC(ini)}&end_date=${isoUTC(fim)}`);
+    if (!r.ok) throw new Error(`SP Águas respondeu ${r.status}`);
+    return (await r.json()).measurements || [];
+  }));
+  const porId = {};
+  for (const m of respostas.flat()) if (m.value != null) (porId[m.station_prefix_id] ??= []).push(m);
+  const hora = m => { const [d, h] = m.date.split(" "); return isoLocal(new Date(`${d.replaceAll("/", "-")}T${h}:00Z`)); };
+  const out = {};
+  for (const e of ests) {
+    const mapa = new Map();
+    for (const m of porId[e.id_nivel] || []) { const t = hora(m); mapa.set(t, { t, nivel: +m.value >= 0 ? +m.value : null, vazao: null, chuva: null }); }
+    for (const m of porId[e.id_chuva] || []) { const t = hora(m), l = mapa.get(t) || { t, nivel: null, vazao: null, chuva: null }; l.chuva = +m.value >= 0 && +m.value <= 50 ? +m.value : null; mapa.set(t, l); }
+    const ls = [...mapa.values()].sort((a, b) => a.t < b.t ? -1 : 1);
+    // régua voltando de falha às vezes manda valor absurdo e travado (ex.: 10,31 m): salto > 3 m em até 6 h é descartado
+    let bom = null;
+    for (const l of ls) {
+      if (l.nivel == null) continue;
+      if (bom && Math.abs(l.nivel - bom.nivel) > 300 && ms(l) - ms(bom) <= 6 * 36e5) { l.nivel = null; l.suspeita = true; continue; }
+      bom = l;
+    }
+    out[e.codigo] = ls;
+  }
+  return out;
+}
+async function buscarLeituras(est, dias) {
+  return est.fonte === "spaguas" ? (await buscarSibh([est], dias))[est.codigo] : buscarAna(est.codigo, dias);
+}
+async function buscarDiario(cod) {
+  const r = await fetch(`historico/${cod}/diario.json`);
+  if (!r.ok) return [];
+  const j = await r.json(), comp = new Set(j.preenchidos?.dias || []);
+  // dias sem leitura nesta régua vêm completados com a régua vizinha convertida (marcados em "completado")
+  return j.dados.map(([d, nmin, nmed, nmax, vmed, vmax, chuva, n]) => ({ d, nmin, nmed, nmax, vmed, vmax, chuva, n, completado: comp.has(d) ? j.preenchidos.com : null }));
+}
+// junta o diário salvo com os dias recentes vindos ao vivo
+function diarioCompleto(c) {
+  const dias = new Map(c.diario.map(r => [r.d, r]));
+  const porDia = {};
+  for (const l of c.leituras) (porDia[l.t.slice(0, 10)] ??= []).push(l);
+  for (const [d, ls] of Object.entries(porDia)) {
+    const nv = ls.map(l => l.nivel).filter(v => v != null), vz = ls.map(l => l.vazao).filter(v => v != null), ch = ls.map(l => l.chuva).filter(v => v != null);
+    if (!nv.length || (dias.get(d)?.n || 0) > nv.length) continue;
+    dias.set(d, { d, nmin: Math.min(...nv), nmed: media(nv), nmax: Math.max(...nv), vmed: vz.length ? media(vz) : null,
+                  vmax: vz.length ? Math.max(...vz) : null, chuva: ch.length ? ch.reduce((s, x) => s + x, 0) : null, n: nv.length });
+  }
+  return [...dias.values()].sort((a, b) => a.d < b.d ? -1 : 1);
+}
+async function carregar(cod) {
+  if (!cache[cod]) {
+    const [leituras, diario] = await Promise.all([buscarLeituras(estacoes[cod], 30), buscarDiario(cod)]);
+    cache[cod] = { leituras, diario, quando: Date.now() };
+  }
+  cache[cod].dias = diarioCompleto(cache[cod]);
+  return cache[cod];
+}
+async function atualizarAoVivo() {
+  const c = cache[estado.estacao]; if (!c) return;
+  try {
+    const novas = await buscarLeituras(estacoes[estado.estacao], 2), mapa = new Map(c.leituras.map(l => [l.t, l]));
+    for (const l of novas) mapa.set(l.t, l);
+    const corte = Date.now() - 31 * 864e5;
+    c.leituras = [...mapa.values()].filter(l => ms(l) >= corte).sort((a, b) => a.t < b.t ? -1 : 1);
+    c.dias = diarioCompleto(c);
+    desenharHero(); desenharStats();
+    if (estado.modo === "agora") desenharAgora(true);
+  } catch { marcarVivo("erro"); }
+}
+
+// ================= estado ao vivo =================
+const comNivel = ls => ls.filter(l => l.nivel != null);
+function classificar(cm) {
+  const cl = cotasDe();
+  if (!cl.length) return { nome: "Sem cotas", cor: "--neutro", sem: true };
+  return cl.find(n => cm >= n.cm) || { nome: "Normal", cor: "--bom" };
+}
+function variacao(ls, horas) {
+  const n = comNivel(ls); if (n.length < 2) return null;
+  const u = n.at(-1);
+  for (let i = n.length - 2; i >= 0; i--) { const h = (ms(u) - ms(n[i])) / 36e5; if (h >= horas * .92) return { delta: u.nivel - n[i].nivel, horas: h }; }
+  return null;
+}
+function marcarVivo(tipo, texto) {
+  $("#vivo").className = "vivo " + tipo;
+  $("#vivoTxt").textContent = texto || (tipo === "erro" ? "Sem conexão com a fonte de dados" : "");
+}
+
+// ================= destaque =================
+function desenharHero() {
+  const est = estacoes[estado.estacao], c = cache[estado.estacao], u = comNivel(c.leituras).at(-1);
+  if (!u) { $("#hNum").textContent = "—"; $("#hFrase").textContent = "A estação não enviou leituras nos últimos 30 dias."; marcarVivo("erro", "Estação sem dados"); return; }
+  const horas = (Date.now() - ms(u)) / 36e5, atrasada = horas > est.atraso_max_horas, st = classificar(u.nivel);
+  document.documentElement.style.setProperty("--cor-status", tok(st.cor));
+  $("#hRot").innerHTML = atrasada ? `<span class="aviso-atraso">⚠ Última leitura ${ha(horas)}</span>` : `Agora · ${new Date(ms(u)).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · ${est.operadora}`;
+  $("#hStatus").innerHTML = `<i style="background:${tok(st.cor)}"></i>${st.nome}`;
+  $("#hNum").innerHTML = `${fmt(u.nivel / 100, 2)}<small>m</small>`;
+  marcarVivo(atrasada ? "atraso" : "ok", atrasada ? `Sem leitura nova ${ha(horas)}` : `Ao vivo · ${ha(horas)}`);
+
+  const v = variacao(c.leituras, 1), taxa = v ? v.delta / v.horas : null;
+  let txt = "Estável", cls = "";
+  if (taxa != null && taxa >= 10) { txt = "Subindo rápido"; cls = "sobe"; }
+  else if (taxa != null && taxa >= 2) { txt = "Subindo"; cls = "sobe"; }
+  else if (taxa != null && taxa <= -2) { txt = "Baixando"; cls = "desce"; }
+  const seta = cls === "sobe" ? "▲" : cls === "desce" ? "▼" : "▬";
+  $("#hTend").innerHTML = taxa == null ? "" : `<b class="${cls}">${seta} ${txt}</b><span>${Math.round(taxa) > 0 ? "+" : ""}${fmt(Math.round(taxa) || 0, 0)} cm/h</span>`;
+
+  // medidor com as cotas
+  const cl = cotasDe(est), topo = Math.max((cl[0]?.cm ?? u.nivel) * 1.2, u.nivel * 1.05);
+  $("#mAgua").style.width = Math.min(100, u.nivel / topo * 100) + "%";
+  $("#mAgua").style.background = `linear-gradient(90deg, color-mix(in srgb, ${tok("--acento")} 45%, transparent), ${tok("--acento")})`;
+  $("#medidor .trilho").querySelectorAll(".marca").forEach(m => m.remove());
+  for (const n of cl) {
+    const m = document.createElement("span"); m.className = "marca";
+    m.style.left = n.cm / topo * 100 + "%"; m.style.background = tok(n.cor); m.title = `${n.nome}: ${fmt(n.cm / 100, 2)} m`;
+    $("#medidor .trilho").appendChild(m);
+  }
+  $("#mEscala").innerHTML = `<span style="left:0;transform:none">0</span>` +
+    cl.slice().reverse().map(n => `<span style="left:${n.cm / topo * 100}%">${fmt(n.cm / 100, 1)}</span>`).join("");
+
+  // comparação com o normal da época (±7 dias, anos anteriores)
+  const hoje = hojeISO(), ano = +hoje.slice(0, 4), alvo = Date.UTC(2024, +hoje.slice(5, 7) - 1, +hoje.slice(8, 10));
+  const janela = c.dias.filter(r => {
+    if (+r.d.slice(0, 4) >= ano || r.nmed == null) return false;
+    const x = Date.UTC(2024, +r.d.slice(5, 7) - 1, +r.d.slice(8, 10)), d = Math.abs(x - alvo);
+    return Math.min(d, 366 * 864e5 - d) <= 7 * 864e5;
+  });
+  const normal = mediana(janela.map(r => r.nmed));
+  const verbo = atrasada ? "estava" : "está";
+  if (normal != null) {
+    const dif = (u.nivel - normal) / 100;
+    $("#hFrase").innerHTML = `O ${est.rio.replace("Rio ", "rio ")} ${verbo} <strong>${fmt(Math.abs(dif), 2)} m ${dif >= 0 ? "acima" : "abaixo"} do normal</strong> para ${+hoje.slice(8, 10)} de ${MESES[+hoje.slice(5, 7) - 1]} (${fmt(normal / 100, 2)} m).` +
+      (atrasada ? ` <span class="aviso-atraso">A estação parou de transmitir; o nível real pode ser outro.</span>` : "") +
+      (atrasada && estado.estacao !== P && REGUAS_CIDADE.includes(estado.estacao) ? `<br><button class="trocar" data-cod="${P}">Ver a régua ${apelido(P)} →</button>` : "");
+  } else $("#hFrase").textContent = "";
+}
+
+function desenharStats() {
+  const est = estacoes[estado.estacao], c = cache[estado.estacao], ls = c.leituras;
+  const fim = ls.length ? ms(ls.at(-1)) : Date.now();
+  const soma = h => ls.filter(l => fim - ms(l) < h * 36e5).reduce((s, l) => s + (l.chuva || 0), 0);
+  const temChuva = ls.some(l => l.chuva != null);
+  const vz = ls.filter(l => l.vazao != null).at(-1);
+  const ano = new Date().getFullYear(), doAno = c.dias.filter(r => +r.d.slice(0, 4) === ano && r.nmax != null);
+  const pico = doAno.reduce((m, r) => (!m || r.nmax > m.nmax ? r : m), null);
+  const baixa = cotasDe(est).at(-1), acima = baixa ? doAno.filter(r => r.nmax >= baixa.cm).length : 0;
+  // pico do ano entre todos os anos
+  const picos = new Map();
+  for (const r of c.dias) { const y = r.d.slice(0, 4); if (r.nmax != null && (!picos.has(y) || r.nmax > picos.get(y))) picos.set(y, r.nmax); }
+  const rank = pico ? [...picos.values()].sort((a, b) => b - a).indexOf(pico.nmax) + 1 : null;
+  const cards = [
+    temChuva ? ["Chuva 24 h", `${fmt(soma(24), 1)}<small> mm</small>`, `Última hora: ${fmt(soma(1), 1)} mm`] : null,
+    temChuva ? ["Chuva 7 dias", `${fmt(soma(168), 0)}<small> mm</small>`, `30 dias: ${fmt(soma(720), 0)} mm`] : null,
+    vz ? ["Vazão", `${fmt(vz.vazao, 0)}<small> m³/s</small>`, "Volume de água passando"] : null,
+    pico ? [`Pico de ${ano}`, `${fmt(pico.nmax / 100, 2)}<small> m</small>`, `${dataCurta(pico.d)} · ${rank}º maior de ${picos.size} anos`] : null,
+    baixa ? [`Dias acima da ${baixa.nome.toLowerCase()}`, `${acima}<small> em ${ano}</small>`, `Cota${est.cotas_oficiais ? " oficial" : ""}: ${fmt(baixa.cm / 100, 2)} m`] : null,
+  ].filter(Boolean);
+  $("#stats").innerHTML = cards.map(([r, v, n]) => `<div class="stat"><span class="rot">${r}</span><span class="v">${v}</span><span class="n">${n}</span></div>`).join("");
+}
+
+// ================= plugins de desenho =================
+const pluginCotas = {
+  id: "cotas",
+  afterDatasetsDraw(c, _, op) {
+    if (!op?.ativo) return;
+    const { ctx, chartArea: a, scales: { y } } = c;
+    ctx.save();
+    for (const n of cotasDe()) {
+      const v = n.cm / 100;
+      if (v > y.max || v < y.min) continue;
+      const py = Math.round(y.getPixelForValue(v)) + .5;
+      ctx.strokeStyle = tok(n.cor); ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
+      ctx.beginPath(); ctx.moveTo(a.left, py); ctx.lineTo(a.right, py); ctx.stroke(); ctx.setLineDash([]);
+      ctx.font = "600 10.5px system-ui"; ctx.textAlign = "right"; ctx.textBaseline = "bottom";
+      const t = n.nome, w = ctx.measureText(t).width;
+      ctx.fillStyle = tok("--superficie"); ctx.globalAlpha = .85; ctx.fillRect(a.right - w - 8, py - 14, w + 6, 13); ctx.globalAlpha = 1;
+      ctx.fillStyle = tok("--tinta-2"); ctx.fillText(t, a.right - 4, py - 2);
+    }
+    ctx.restore();
+  },
+};
+const pluginCursor = {
+  id: "cursor",
+  afterDatasetsDraw(c) {
+    if (estado.cursor == null) return;
+    const { ctx, chartArea: a, scales: { x } } = c;
+    if (estado.cursor < x.min || estado.cursor > x.max) return;
+    const px = Math.round(x.getPixelForValue(estado.cursor)) + .5;
+    ctx.save(); ctx.strokeStyle = tok("--tinta-3"); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(px, a.top); ctx.lineTo(px, a.bottom); ctx.stroke();
+    // pontos nas linhas
+    c.data.datasets.forEach((ds, i) => {
+      if (!ds.marcarCursor || !c.isDatasetVisible(i)) return;
+      const p = pontoEm(ds.data, estado.cursor); if (!p || p.y == null) return;
+      ctx.beginPath(); ctx.arc(px, c.scales.y.getPixelForValue(p.y), 4.5, 0, 7);
+      ctx.fillStyle = ds.borderColor; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = tok("--superficie"); ctx.stroke();
+    });
+    ctx.restore();
+  },
+};
+const pluginHoje = {
+  id: "hoje",
+  beforeDatasetsDraw(c, _, op) {
+    if (op?.x == null) return;
+    const { ctx, chartArea: a, scales: { x } } = c;
+    if (op.x < x.min || op.x > x.max) return;
+    const px = Math.round(x.getPixelForValue(op.x)) + .5;
+    ctx.save(); ctx.strokeStyle = tok("--tinta-2"); ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
+    ctx.beginPath(); ctx.moveTo(px, a.top); ctx.lineTo(px, a.bottom); ctx.stroke();
+    ctx.restore();
+  },
+  afterDatasetsDraw(c, _, op) {
+    // rótulo no topo (só no gráfico principal), por cima das linhas
+    if (op?.x == null || !op.rotulo) return;
+    const { ctx, chartArea: a, scales: { x } } = c;
+    if (op.x < x.min || op.x > x.max) return;
+    const px = Math.round(x.getPixelForValue(op.x)) + .5;
+    ctx.save(); ctx.font = "700 11px system-ui";
+    const w = ctx.measureText(op.rotulo).width + 12, lx = Math.min(Math.max(px - w / 2, a.left), a.right - w);
+    ctx.fillStyle = tok("--tinta-2"); ctx.beginPath(); ctx.roundRect(lx, a.top + 2, w, 17, 8); ctx.fill();
+    ctx.fillStyle = tok("--superficie"); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(op.rotulo, lx + w / 2, a.top + 11);
+    ctx.restore();
+  },
+};
+const pluginRotuloFinal = {
+  id: "rotuloFinal",
+  afterDatasetsDraw(c) {
+    const { ctx, chartArea: a, scales: { x } } = c;
+    ctx.save(); ctx.font = "650 11.5px system-ui"; ctx.textBaseline = "middle";
+    const usados = [];
+    c.data.datasets.forEach((ds, i) => {
+      if (!ds.rotuloFinal || !c.isDatasetVisible(i)) return;
+      let idx = -1;
+      for (let k = ds.data.length - 1; k >= 0; k--) if (ds.data[k].y != null && ds.data[k].x <= x.max && ds.data[k].x >= x.min) { idx = k; break; }
+      if (idx < 0) return;
+      const pt = c.getDatasetMeta(i).data[idx]; let y = pt.y;
+      while (usados.some(u => Math.abs(u - y) < 14)) y -= 14;
+      usados.push(y);
+      const w = ctx.measureText(ds.rotuloFinal).width, lx = Math.min(pt.x + 7, a.right - w - 2);
+      ctx.fillStyle = tok("--superficie"); ctx.globalAlpha = .85; ctx.fillRect(lx - 3, y - 8, w + 6, 16); ctx.globalAlpha = 1;
+      ctx.fillStyle = tok("--tinta"); ctx.fillText(ds.rotuloFinal, lx, y);
+    });
+    ctx.restore();
+  },
+};
+Chart.register(pluginCotas, pluginCursor, pluginHoje, pluginRotuloFinal);
+
+function pontoEm(dados, x) {
+  // busca binária do ponto mais próximo de x
+  let lo = 0, hi = dados.length - 1;
+  if (hi < 0) return null;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (dados[m].x < x) lo = m; else hi = m; }
+  return Math.abs(dados[lo].x - x) <= Math.abs(dados[hi].x - x) ? dados[lo] : dados[hi];
+}
+
+const LARGURA_Y = 46;  // eixo Y com largura fixa para alinhar nível e chuva
+function opcoesBase() {
+  const t3 = tok("--tinta-3"), grade = tok("--grade");
+  return {
+    responsive: true, maintainAspectRatio: false, animation: false, parsing: false, normalized: true,
+    layout: { padding: { top: 8, right: 4 } },
+    interaction: { mode: "nearest", axis: "x", intersect: false },
+    events: ["mousemove", "mouseout", "touchstart", "touchmove", "touchend", "click"],
+    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+    elements: { point: { hoverRadius: 0, radius: 0 } },
+    scales: {
+      x: { type: "linear", grid: { color: grade, drawTicks: false }, border: { color: tok("--eixo") },
+           ticks: { color: t3, padding: 6, font: { size: 11.5 }, maxRotation: 0, autoSkipPadding: 22, align: "inner", maxTicksLimit: innerWidth < 700 ? 5 : 9 } },
+      y: { grid: { color: grade, drawTicks: false }, border: { display: false }, afterFit: ax => { ax.width = LARGURA_Y; },
+           ticks: { color: t3, padding: 6, font: { size: 11.5 }, maxTicksLimit: 6 } },
+    },
+    onHover: (ev, _, chart) => moverCursor(ev, chart),
+  };
+}
+function moverCursor(ev, chart) {
+  const a = chart.chartArea;
+  if (ev.type === "touchend") return;   // no celular o valor tocado fica na faixa de leitura
+  if (ev.type === "mouseout" || ev.x < a.left || ev.x > a.right) { estado.cursor = null; }
+  else estado.cursor = chart.scales.x.getValueForPixel(ev.x);
+  redesenharCursor();
+}
+let quadroCursor = 0;
+function redesenharCursor() {
+  cancelAnimationFrame(quadroCursor);
+  quadroCursor = requestAnimationFrame(() => { graficos.principal?.draw(); graficos.chuva?.draw(); atualizarLeitura(); });
+}
+function criar(id, nome, cfg) {
+  graficos[nome]?.destroy();
+  const canvas = document.getElementById(id);
+  graficos[nome] = new Chart(canvas, cfg);
+  canvas.onmouseleave = () => { estado.cursor = null; redesenharCursor(); };
+  return graficos[nome];
+}
+
+// ================= navegador (zoom e rolagem) =================
+const nav = { el: null, min: 0, max: 1, ao: null };
+function navConfigurar(min, max, pontos, ao) {
+  nav.min = min; nav.max = max; nav.ao = ao;
+  const ys = pontos.map(p => p.y).filter(v => v != null), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  let d = "", desenhando = false;
+  for (const p of pontos) {
+    if (p.y == null) { desenhando = false; continue; }
+    const X = ((p.x - min) / (max - min || 1) * 1000).toFixed(1), Y = (95 - (p.y - y0) / (y1 - y0 || 1) * 90).toFixed(1);
+    d += (desenhando ? "L" : "M") + X + " " + Y; desenhando = true;
+  }
+  $("#navLinha").setAttribute("d", d);
+}
+function navMostrar() {
+  const [a, b] = estado.janela, w = nav.max - nav.min || 1;
+  const j = $("#navJanela");
+  j.style.left = (a - nav.min) / w * 100 + "%";
+  j.style.width = Math.max(.5, (b - a) / w * 100) + "%";
+}
+function definirJanela(a, b, origem) {
+  const minLarg = (nav.max - nav.min) * .02;
+  if (b - a < minLarg) { if (origem === "e") a = b - minLarg; else b = a + minLarg; }
+  if (a < nav.min) { b += nav.min - a; a = nav.min; }
+  if (b > nav.max) { a -= b - nav.max; b = nav.max; }
+  estado.janela = [Math.max(nav.min, a), Math.min(nav.max, b)];
+  navMostrar();
+  cancelAnimationFrame(nav.quadro);
+  nav.quadro = requestAnimationFrame(() => nav.ao?.(estado.janela));
+}
+function iniciarNavegador() {
+  const el = $("#nav");
+  let arrasto = null;
+  const valor = px => nav.min + (px / el.clientWidth) * (nav.max - nav.min);
+  el.addEventListener("pointerdown", ev => {
+    estado.janelaManual = true;
+    const r = el.getBoundingClientRect(), x = ev.clientX - r.left, [a, b] = estado.janela;
+    const alca = ev.target.dataset?.alca;
+    if (alca) arrasto = { tipo: alca, x0: x, a, b };
+    else if (ev.target.closest("#navJanela")) arrasto = { tipo: "mover", x0: x, a, b };
+    else { const meio = valor(x), l = b - a; definirJanela(meio - l / 2, meio + l / 2); arrasto = { tipo: "mover", x0: x, a: estado.janela[0], b: estado.janela[1] }; }
+    el.setPointerCapture(ev.pointerId); ev.preventDefault();
+  });
+  el.addEventListener("pointermove", ev => {
+    if (!arrasto) return;
+    const r = el.getBoundingClientRect(), dx = (ev.clientX - r.left - arrasto.x0) / el.clientWidth * (nav.max - nav.min);
+    if (arrasto.tipo === "mover") definirJanela(arrasto.a + dx, arrasto.b + dx);
+    else if (arrasto.tipo === "e") definirJanela(Math.min(arrasto.a + dx, arrasto.b), arrasto.b, "e");
+    else definirJanela(arrasto.a, Math.max(arrasto.b + dx, arrasto.a), "d");
+  });
+  const soltar = () => { arrasto = null; marcarJanelasAtivas(); };
+  el.addEventListener("pointerup", soltar); el.addEventListener("pointercancel", soltar);
+  el.addEventListener("keydown", ev => {
+    const [a, b] = estado.janela, passo = (b - a) * .2;
+    if (ev.key === "ArrowLeft") definirJanela(a - passo, b - passo);
+    else if (ev.key === "ArrowRight") definirJanela(a + passo, b + passo);
+    else if (ev.key === "+" || ev.key === "=") definirJanela(a + passo, b - passo);
+    else if (ev.key === "-") definirJanela(a - passo, b + passo);
+    else return;
+    estado.janelaManual = true; ev.preventDefault();
+  });
+  // roda do mouse sobre o gráfico = zoom (no computador)
+  $(".area-g").addEventListener("wheel", ev => {
+    if (ev.ctrlKey || ev.metaKey) {
+      if (!graficos.principal) return;
+      const ch = graficos.principal, cx = ch.scales.x.getValueForPixel(ev.offsetX), [a, b] = estado.janela, f = ev.deltaY > 0 ? 1.2 : 1 / 1.2;
+      if (ev.deltaY === 0) return;
+      ev.preventDefault(); estado.janelaManual = true;
+      definirJanela(cx - (cx - a) * f, cx + (b - cx) * f); marcarJanelasAtivas();
+    }
+  }, { passive: false });
+  $("#verTudo").onclick = () => { estado.janelaManual = true; definirJanela(nav.min, nav.max); marcarJanelasAtivas(); };
+}
+function marcarJanelasAtivas() {
+  if (estado.modo !== "agora") return;
+  document.querySelectorAll("#janelas button").forEach(bt => bt.setAttribute("aria-pressed", !estado.janelaManual && +bt.dataset.d === estado.dias));
+}
+function ajustarY(chart, a, b, incluirCotas) {
+  let lo = Infinity, hi = -Infinity;
+  for (const ds of chart.data.datasets) {
+    if (ds.foraDaEscala) continue;
+    for (const p of ds.data) if (p.y != null && p.x >= a && p.x <= b) { if (p.y < lo) lo = p.y; if (p.y > hi) hi = p.y; }
+  }
+  if (!isFinite(lo)) return;
+  if (incluirCotas) {
+    const at = (cotasDe().at(-1)?.cm ?? Infinity) / 100;
+    if (at > hi && at - hi < Math.max(.8, (hi - lo) * .6)) hi = at;   // mostra a cota de atenção quando o rio está perto dela
+  }
+  const folga = Math.max(.1, (hi - lo) * .12);
+  chart.options.scales.y.min = Math.max(0, Math.floor((lo - folga) * 10) / 10);
+  chart.options.scales.y.max = Math.ceil((hi + folga) * 10) / 10;
+}
+
+// ================= visão "últimos dias" =================
+function seriesChuva(ls, porDia) {
+  const mapa = new Map();
+  for (const l of ls) {
+    if (l.chuva == null) continue;
+    const k = porDia ? l.t.slice(0, 10) + "T12:00:00" : l.t.slice(0, 13) + ":30:00";
+    mapa.set(k, (mapa.get(k) || 0) + l.chuva);
+  }
+  return [...mapa].map(([k, y]) => ({ x: new Date(k).getTime(), y })).sort((a, b) => a.x - b.x);
+}
+function formatoTempo(v, larguraDias) {
+  const d = new Date(v);
+  if (larguraDias <= 1.5) return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  if (larguraDias <= 4) return `${d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")} ${d.getHours()}h`;
+  return `${d.getDate()} ${MESES[d.getMonth()]}`;
+}
+// ---- chuva na bacia: soma das regiões que fazem o rio subir (medida + prevista) ----
+const bacia = { quando: 0, regioes: null, carregando: null };
+const CORES_REGIAO = ["--s1", "--s2", "--s3", "--s4"];
+const somaPorDia = pts => {
+  const m = new Map();
+  for (const p of pts) { const d = new Date(p.x); d.setHours(12, 0, 0, 0); m.set(+d, (m.get(+d) || 0) + p.y); }
+  return [...m].map(([x, y]) => ({ x, y })).sort((a, b) => a.x - b.x);
+};
+function carregarChuvaBacia() {
+  if (bacia.regioes && Date.now() - bacia.quando < 10 * 60e3) return Promise.resolve(bacia.regioes);
+  return bacia.carregando ??= (async () => {
+    const regs = config.regioes_chuva, cods = regs.flatMap(r => r.estacoes), ests = cods.map(c => estacoes[c]);
+    const hoje = new Date(), meses = [0, 1].map(k => { const d = new Date(hoje.getFullYear(), hoje.getMonth() - k, 1); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}`; });
+    const [hist, vivo, previsto] = await Promise.all([
+      // histórico de hora em hora (dos dois últimos meses), atualizado todo dia
+      Promise.all(cods.map(c => Promise.all(meses.map(m => fetch(`historico/${c}/${m}.json`).then(r => r.ok ? r.json() : { dados: [] }).catch(() => ({ dados: [] })))))),
+      // últimas 48 h ao vivo (SP Águas)
+      buscarSibh(ests, 2).catch(() => ({})),
+      // previsão nos mesmos pontos (Open-Meteo)
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${ests.map(e => e.lat).join(",")}&longitude=${ests.map(e => e.lon).join(",")}&hourly=precipitation&forecast_days=8&timezone=America%2FSao_Paulo`)
+        .then(r => r.ok ? r.json() : null).catch(() => null),
+    ]);
+    const medida = {}, prevista = {};
+    cods.forEach((c, k) => {
+      const m = new Map();
+      for (const arq of hist[k]) for (const [t, , , ch] of arq.dados) if (ch != null && ch >= 0 && ch <= 150) m.set(t.slice(0, 13), ch);   // ignora erros do pluviômetro
+      const h48 = new Map();
+      for (const l of vivo[c] || []) if (l.chuva != null) { const h = l.t.slice(0, 13); h48.set(h, (h48.get(h) || 0) + l.chuva); }
+      for (const [h, v] of h48) m.set(h, v);   // as horas ao vivo substituem as do arquivo
+      medida[c] = m;
+    });
+    if (previsto) [].concat(previsto).forEach((pt, k) => {
+      const m = new Map(); pt.hourly.time.forEach((t, j) => m.set(t.slice(0, 13), pt.hourly.precipitation[j] ?? 0)); prevista[cods[k]] = m;
+    });
+    const agoraH = isoLocal(new Date()).slice(0, 13), corte = Date.now() - 32 * 864e5;
+    const serie = (r, fonte, filtro) => {
+      const horas = new Set(r.estacoes.flatMap(c => [...(fonte[c]?.keys() || [])]));
+      return [...horas].filter(filtro).map(h => {
+        const vs = r.estacoes.map(c => fonte[c]?.get(h)).filter(v => v != null);   // média dos pluviômetros da região
+        return { x: new Date(h + ":30:00").getTime(), y: vs.length ? media(vs) : 0 };
+      }).filter(p => p.x >= corte).sort((a, b) => a.x - b.x);
+    };
+    bacia.regioes = regs.map((r, k) => {
+      const med = serie(r, medida, h => h <= agoraH), prv = serie(r, prevista, h => h > agoraH);
+      return { ...r, cor: CORES_REGIAO[k], med, prv, medDia: somaPorDia(med), prvDia: somaPorDia(prv) };
+    });
+    bacia.quando = Date.now(); bacia.carregando = null;
+    return bacia.regioes;
+  })().catch(e => { bacia.carregando = null; throw e; });
+}
+// legenda das regiões: total de chuva no trecho visível, da que mais choveu para a que menos; toque liga/desliga
+function desenharLegChuva(a, b) {
+  const ch = graficos.chuva; if (!ch || !ch.data.datasets[0]?.regiao) { $("#legChuva").innerHTML = ""; return; }
+  const ocultas = new Set(ler("regioesOcultas", []));
+  const linhas = bacia.regioes.map(r => {
+    const soma = tipo => ch.data.datasets.filter(d => d.regiao === r && d.tipo === tipo).flatMap(d => d.data).filter(p => p.x >= a && p.x <= b).reduce((s, p) => s + p.y, 0);
+    return { r, med: soma("med"), prv: soma("prv") };
+  }).sort((x, y) => (y.med + y.prv) - (x.med + x.prv));
+  const total = linhas.filter(l => !ocultas.has(l.r.curto)).reduce((s, l) => s + l.med + l.prv, 0);
+  const topo = linhas.find(l => !ocultas.has(l.r.curto));
+  $("#legChuva").innerHTML = `<details id="legChuvaDet"${ler("legChuvaAberta", false) ? " open" : ""}>
+    <summary><span>Chuva por região · soma <b>${fmt(total, 0)} mm</b>${topo ? ` · mais chuva: <b>${topo.r.curto}</b>` : ""}</span></summary>
+    <div class="chips">` + linhas.map(l => `<button data-reg="${l.r.curto}" aria-pressed="${!ocultas.has(l.r.curto)}">
+      <i style="background:${tok(l.r.cor)}"></i><span>${l.r.nome} · <b>${fmt(l.med + l.prv, 0)} mm</b>
+      <small>${l.prv >= .5 ? `${fmt(l.med, 0)} medidos + ${fmt(l.prv, 0)} previstos · ` : ""}${l.r.chegada}</small></span></button>`).join("") +
+    `</div></details>`;
+  $("#legChuvaDet").addEventListener("toggle", ev => guardar("legChuvaAberta", ev.target.open));
+}
+function aplicarRegioesOcultas() {
+  const ch = graficos.chuva; if (!ch || !ch.data.datasets[0]?.regiao) return;
+  const ocultas = new Set(ler("regioesOcultas", []));
+  ch.data.datasets.forEach((d, k) => ch.setDatasetVisibility(k, !ocultas.has(d.regiao.curto)));
+}
+
+function chuvaBaciaEm(alvo, futuro) {
+  const porDia = $("#rotChuva").textContent.includes("dia"), tol = porDia ? 864e5 : 36e5;
+  const itens = graficos.chuva.data.datasets.filter((d, k) => d.regiao && d.tipo === (futuro ? "prv" : "med") && graficos.chuva.isDatasetVisible(k)).map(d => {
+    const q = d.data.length ? pontoEm(d.data, alvo) : null; return { d, v: q && Math.abs(q.x - alvo) < tol ? q.y : 0 };
+  });
+  const total = itens.reduce((s, i) => s + i.v, 0);
+  return `<span><b>${fmt(total, 1)} mm</b>${futuro ? " previstos" : ""} na bacia ${porDia ? "no dia" : "na hora"}</span>` +
+    itens.map(i => `<span><i class="barra" style="background:${i.d.backgroundColor}"></i>${i.d.regiao.curto} <b>${fmt(i.v, 1)}</b></span>`).join("");
+}
+
+// ---- linha de previsão (modelo por prazo, régua da CESP) e faixa típica da época ----
+function interp(dados, x) {
+  if (!dados.length || x < dados[0].x || x > dados.at(-1).x) return null;
+  let j = dados.findIndex(p => p.x >= x);
+  if (dados[j].x === x || j === 0) return dados[j].y;
+  const a = dados[j - 1], b = dados[j];
+  return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x);
+}
+function linhaPrevista(ultimo) {
+  const m = prev.modelo, ref = prev.ref, d = prev.dados;
+  if (!m?.passarela?.trajetoria || !ref || !d || !REGUAS_CIDADE.includes(estado.estacao)) return null;
+  // o modelo trabalha na régua principal: converte a variação para a régua mostrada
+  const k = estado.estacao === P ? 1 : config.conversoes[estado.estacao][1];
+  const minimo = Math.min(...comNivel(cache[estado.estacao]?.leituras || []).map(l => l.nivel / 100), ultimo.y);
+  const i = d.tempo.indexOf(horaLocal(new Date(ref.t)));
+  if (i < 720) return null;
+  const f = m.fator_previsao, soma = (a, b) => d.media.slice(Math.max(0, a), Math.max(0, b)).reduce((s, v) => s + v, 0);
+  const x = { a: Math.log1p(soma(i - 24, i + 1)), b: Math.log1p(soma(i - 72, i + 1)), s: soma(i - 720, i - 72) / 100, n: ref.H0 / 100 };
+  // a linha parte da última leitura da estação mostrada e soma a variação prevista
+  const pts = [{ x: ultimo.x, lo: ultimo.y, md: ultimo.y, hi: ultimo.y }];
+  for (const pz of m.passarela.trajetoria.prazos) {
+    if (i + pz.h >= d.tempo.length) break;
+    const ra = Math.log1p(soma(i + 1, i + pz.h + 1) * f), rf = Math.log1p(soma(i + pz.h - 23, i + pz.h + 1) * f);
+    const v = [1, x.n, x.n * x.n, x.a, x.b, x.s, ra, rf, ra * x.s, rf * x.s, ra * x.n, x.a * (24 / (pz.h + 24)), Math.max(ref.dc6 || 0, 0) / 100 * (24 / (pz.h + 24))];
+    const p = pz.pesos.reduce((s, w, k) => s + w * v[k], 0);
+    const q = pz.faixas.find(fx => p <= fx.ate).q;
+    const piso = Math.max(0, minimo - .1);   // não deixa a previsão abaixo do mínimo recente
+    pts.push({ x: ultimo.x + pz.h * 36e5, lo: Math.max(piso, ultimo.y + k * (p + q[1]) / 100), md: Math.max(piso, ultimo.y + k * (p + q[3]) / 100), hi: ultimo.y + k * (p + q[5]) / 100 });
+  }
+  const agoraH = d.tempo.indexOf(horaLocal(new Date()));
+  const chuva = d.tempo.map((t, j) => ({ x: new Date(t + ":00").getTime() + 18e5, y: d.media[j] * f, j })).filter(p => p.j > agoraH && p.y > 0);
+  return { pts, chuva };
+}
+function faixaTipica(dias, inicio) {
+  const ano = new Date().getFullYear(), out = [];
+  const doAno = d => Date.UTC(2024, +d.slice(5, 7) - 1, +d.slice(8, 10));
+  const hist = dias.filter(r => +r.d.slice(0, 4) < ano && r.nmed != null);
+  if (new Set(hist.map(r => r.d.slice(0, 4))).size < 3) return [];
+  for (let k = 0; k <= 30; k++) {
+    const dia = new Date(inicio + k * 864e5); dia.setHours(12, 0, 0, 0);
+    const alvo = Date.UTC(2024, dia.getMonth(), dia.getDate());
+    const v = hist.filter(r => { const dd = Math.abs(doAno(r.d) - alvo); return Math.min(dd, 366 * 864e5 - dd) <= 3 * 864e5; }).map(r => r.nmed / 100).sort((a, b) => a - b);
+    if (v.length < 10) continue;
+    out.push({ x: dia.getTime(), lo: v[Math.floor(.1 * (v.length - 1))], md: v[Math.floor(.5 * (v.length - 1))], hi: v[Math.ceil(.9 * (v.length - 1))] });
+  }
+  return out;
+}
+function janelaPadrao() {
+  const agora = Date.now(), d = estado.dias;
+  return [agora - d * 864e5, agora + Math.min(7, Math.max(1, d / 2)) * 864e5];
+}
+
+function desenharAgora(manterJanela) {
+  const c = cache[estado.estacao], est = estacoes[estado.estacao], ls = c.leituras;
+  const nivel = comNivel(ls).map(l => ({ x: ms(l), y: l.nivel / 100 }));
+  const vazio = !nivel.length;
+  const fimObs = vazio ? Date.now() : Math.max(nivel.at(-1).x, Date.now() - 36e5), min = fimObs - 30 * 864e5;
+  const previsto = vazio ? null : linhaPrevista(nivel.at(-1));
+  const tipica = faixaTipica(c.dias, Date.now());
+  const max = Math.max(fimObs, previsto ? previsto.pts.at(-1).x : 0);   // o gráfico vai só até o fim da previsão
+  graficos.limite = [min, max];
+  const chuvaHora = seriesChuva(ls, false), chuvaDia = seriesChuva(ls, true), temChuva = ls.some(l => l.chuva != null) || !!previsto;
+  const chuvaPrevHora = previsto ? previsto.chuva : [];
+  const chuvaPrevDia = (() => { const m = new Map(); for (const p of chuvaPrevHora) { const d = new Date(p.x); d.setHours(12, 0, 0, 0); m.set(+d, (m.get(+d) || 0) + p.y); } return [...m].map(([x, y]) => ({ x, y })); })();
+  $("#boxChuva").hidden = !temChuva;
+
+  const op = opcoesBase();
+  op.scales.x.min = min; op.scales.x.max = max;
+  op.scales.x.ticks.callback = function (v) { return formatoTempo(v, (this.max - this.min) / 864e5); };
+  op.scales.y.ticks.callback = v => fmt(v, 1);
+  op.plugins.cotas = { ativo: true };
+  op.plugins.hoje = { x: Date.now(), rotulo: "agora" };
+  const grad = ctx => { const { ctx: g, chartArea: a } = ctx.chart; if (!a) return null; const gr = g.createLinearGradient(0, a.top, 0, a.bottom);
+    gr.addColorStop(0, tok("--s1") + "40"); gr.addColorStop(1, tok("--s1") + "00"); return gr; };
+  const ds = [
+    { label: "Nível", data: nivel, borderColor: tok("--s1"), backgroundColor: grad, fill: "start", borderWidth: 2, pointRadius: 0, tension: .15, marcarCursor: true, spanGaps: 3 * 36e5, order: 0 },
+  ];
+  if (tipica.length) {
+    ds.push({ label: "típico mín", tipo: "tip-lo", data: tipica.map(p => ({ x: p.x, y: p.lo })), borderWidth: 0, pointRadius: 0, fill: false, order: 9, foraDaEscala: true });
+    ds.push({ label: "típico máx", tipo: "tip-hi", data: tipica.map(p => ({ x: p.x, y: p.hi })), borderWidth: 0, pointRadius: 0, fill: "-1", backgroundColor: tok("--faixa"), order: 9, foraDaEscala: true, tension: .3 });
+  }
+  if (previsto) {
+    const azulClaro = tok("--s1") + "2e";
+    ds.push({ label: "prev mín", tipo: "prev-lo", data: previsto.pts.map(p => ({ x: p.x, y: p.lo })), borderWidth: 0, pointRadius: 0, fill: false, order: 5, tension: .3 });
+    ds.push({ label: "prev máx", tipo: "prev-hi", data: previsto.pts.map(p => ({ x: p.x, y: p.hi })), borderWidth: 0, pointRadius: 0, fill: "-1", backgroundColor: azulClaro, order: 5, tension: .3 });
+    ds.push({ label: "Previsão", tipo: "prev-md", data: previsto.pts.map(p => ({ x: p.x, y: p.md })), borderColor: tok("--s1"), borderWidth: 2, borderDash: [6, 4], pointRadius: 0, order: 1, tension: .3, marcarCursor: true });
+  }
+  // mantém a borda direita do gráfico de chuva igual à do nível (inclusive ao girar o celular)
+  const sincronizar = { id: "sincronizar", afterLayout(ch) {
+    const c = graficos.chuva, r = ch.width - ch.chartArea.right;
+    if (c && c !== ch && c.options.layout.padding.right !== r) { c.options.layout.padding.right = r; c.update("none"); }
+  } };
+  const principal = criar("gPrincipal", "principal", { type: "line", options: op, data: { datasets: ds }, plugins: [sincronizar] });
+
+  $("#legAgora").innerHTML = `<span><i style="background:${tok("--s1")}"></i>medido</span>` +
+    (previsto ? `<span><i class="tracejado" style="border-color:${tok("--s1")}"></i>previsão provável</span><span><i class="area" style="background:${tok("--s1")}2e"></i>8 em 10 chances</span>` : "") +
+    (tipica.length ? `<span><i class="area" style="background:${tok("--faixa")}"></i>nível típico da época</span>` : "") +
+    (previsto && !(temRegioes() && estado.chuvaBacia && bacia.regioes) ? `<span><i class="area" style="background:color-mix(in srgb, ${tok("--chuva")} 45%, transparent)"></i>chuva prevista</span>` : "") +
+    (temRegioes() && estado.chuvaBacia && bacia.regioes
+      ? `<span><i class="area" style="background:color-mix(in srgb, ${tok("--s1")} 40%, transparent)"></i>chuva: tom claro = previsão</span>` : "");
+
+  const cidade = temRegioes();
+  $("#modoChuva").hidden = !cidade;
+  $("#boxChuva").classList.toggle("bacia", !!(cidade && estado.chuvaBacia));
+  const modoBacia = cidade && estado.chuvaBacia && bacia.regioes;
+  if (cidade && estado.chuvaBacia && !bacia.regioes && !bacia.carregando)
+    carregarChuvaBacia().then(() => { if (estado.modo === "agora") desenharAgora(true); }).catch(() => {});
+  if (temChuva || modoBacia) {
+    const opc = opcoesBase();
+    opc.layout.padding.top = 14;
+    opc.layout.padding.right = principal.width - principal.chartArea.right;   // mesma borda direita do gráfico de nível
+    opc.scales.x.min = min; opc.scales.x.max = max;
+    opc.scales.x.ticks.display = false; opc.scales.x.grid.display = false;
+    opc.scales.x.offset = false;   // barras não podem deslocar o eixo: ele precisa casar com o do nível
+    opc.scales.y.beginAtZero = true; opc.scales.y.suggestedMax = 2; opc.scales.y.ticks.maxTicksLimit = 3;
+    opc.scales.y.ticks.callback = v => fmt(v, 0);
+    opc.plugins.hoje = { x: Date.now() };
+    const barra = { barPercentage: 1, categoryPercentage: 1, maxBarThickness: 14 };
+    const dsChuva = modoBacia
+      ? bacia.regioes.flatMap(r => [   // barras empilhadas: a altura total é a soma das regiões
+          { label: r.nome, regiao: r, tipo: "med", data: r.med, backgroundColor: tok(r.cor), stack: "bacia", borderColor: tok("--superficie"), borderWidth: { top: 1 }, borderSkipped: "bottom", ...barra },
+          { label: r.nome + " (prevista)", regiao: r, tipo: "prv", data: r.prv, backgroundColor: `color-mix(in srgb, ${tok(r.cor)} 40%, transparent)`, stack: "bacia", borderColor: tok("--superficie"), borderWidth: { top: 1 }, borderSkipped: "bottom", ...barra },
+        ])
+      : [
+          { label: "Chuva", data: chuvaHora, backgroundColor: tok("--chuva"), borderRadius: 2, grouped: false, ...barra },
+          { label: "Chuva prevista", data: chuvaPrevHora, backgroundColor: `color-mix(in srgb, ${tok("--chuva")} 45%, transparent)`, borderRadius: 2, grouped: false, ...barra },
+        ];
+    if (modoBacia) { opc.scales.x.stacked = true; opc.scales.y.stacked = true; }
+    opc.scales.y.min = 0;
+    criar("gChuva", "chuva", { type: "bar", options: opc, data: { datasets: dsChuva } });
+    aplicarRegioesOcultas();
+  } else { graficos.chuva?.destroy(); graficos.chuva = null; }
+
+  // linha "medida" no navegador + previsão tracejada
+  navConfigurar(min, max, nivel.concat(previsto ? previsto.pts.slice(1).map(p => ({ x: p.x, y: p.md })) : []), ([a, b]) => {
+    for (const ch of [graficos.principal, graficos.chuva]) if (ch) { ch.options.scales.x.min = a; ch.options.scales.x.max = b; }
+    ajustarY(principal, a, b, true);
+    if (graficos.chuva) {
+      const porDia = (b - a) / 864e5 > 7, dss = graficos.chuva.data.datasets;
+      if (modoBacia) {
+        for (const d of dss) d.data = d.tipo === "med" ? (porDia ? d.regiao.medDia : d.regiao.med) : (porDia ? d.regiao.prvDia : d.regiao.prv);
+      } else {
+        dss[0].data = porDia ? chuvaDia : chuvaHora; dss[1].data = porDia ? chuvaPrevDia : chuvaPrevHora;
+      }
+      const totais = new Map();   // empilhado: a escala vai até a maior soma visível
+      dss.forEach((d, k) => { if (!graficos.chuva.isDatasetVisible(k)) return;
+        for (const p of d.data) if (p.x >= a && p.x <= b) totais.set(p.x, modoBacia ? (totais.get(p.x) || 0) + p.y : Math.max(totais.get(p.x) || 0, p.y)); });
+      graficos.chuva.options.scales.y.max = Math.max(2, Math.ceil(Math.max(0, ...totais.values()) * 1.15));
+      $("#rotChuva").textContent = modoBacia ? `Chuva na bacia (mm por ${porDia ? "dia" : "hora"}, soma das 4 regiões)` : porDia ? "Chuva (mm por dia)" : "Chuva (mm por hora)";
+      graficos.chuva.update("none");
+      desenharLegChuva(a, b);
+    } else $("#legChuva").innerHTML = "";
+    principal.update("none");
+    atualizarLeitura();
+  });
+  if (manterJanela && estado.janelaManual && estado.janela && estado.janela[0] >= min && estado.janela[1] <= max) definirJanela(...estado.janela);
+  else definirJanela(...janelaPadrao());
+  marcarJanelasAtivas();
+}
+
+// ================= visão "comparar anos" =================
+const vira = () => estado.de > estado.ate;
+const noPeriodo = m => vira() ? (m >= estado.de || m <= estado.ate) : (m >= estado.de && m <= estado.ate);
+const temporada = d => { const y = +d.slice(0, 4), m = +d.slice(5, 7); return vira() && m <= estado.ate ? y - 1 : y; };
+const rotulo = s => vira() ? `${s}/${String(s + 1).slice(2)}` : String(s);
+const refIni = () => Date.UTC(vira() ? 2023 : 2024, estado.de - 1, 1);
+const refAno = m => vira() ? (m >= estado.de ? 2023 : 2024) : 2024;
+const posicao = d => { const m = +d.slice(5, 7); return Math.round((Date.UTC(refAno(m), m - 1, +d.slice(8, 10)) - refIni()) / 864e5); };
+const duracao = () => Math.round((Date.UTC(2024, estado.ate, 1) - refIni()) / 864e5);
+const nomeDoDia = x => { const d = new Date(refIni() + Math.round(x) * 864e5); return `${d.getUTCDate()} ${MESES[d.getUTCMonth()]}`; };
+function inicioDosMeses() {
+  const n = vira() ? 12 - estado.de + 1 + estado.ate : estado.ate - estado.de + 1, out = [];
+  for (let k = 0; k < n; k++) { const m = (estado.de - 1 + k) % 12 + 1; out.push({ x: Math.round((Date.UTC(refAno(m), m - 1, 1) - refIni()) / 864e5), m }); }
+  return out;
+}
+function temporadas() {
+  const len = duracao(), mapa = new Map(), dias = cache[estado.estacao].dias;
+  for (const r of dias) {
+    if (!noPeriodo(+r.d.slice(5, 7))) continue;
+    const s = temporada(r.d);
+    if (!mapa.has(s)) mapa.set(s, { s, dias: new Array(len).fill(null) });
+    const p = posicao(r.d);
+    if (p >= 0 && p < len) mapa.get(s).dias[p] = r;
+  }
+  const hoje = hojeISO(), sHoje = noPeriodo(+hoje.slice(5, 7)) ? temporada(hoje) : null, pHoje = sHoje != null ? posicao(hoje) : null;
+  const lista = [...mapa.values()].sort((a, b) => a.s - b.s);
+  lista.forEach((t, i) => {
+    const validos = t.dias.filter(r => r && r.nmax != null), primeiro = t.dias.findIndex(r => r);
+    t.atual = t.s === sHoje;
+    const esperado = (t.atual ? pHoje + 1 : len) - (i === 0 ? Math.max(0, primeiro) : 0);
+    t.parcial = !t.atual && (validos.length / Math.max(1, esperado) < .8 || (validos.length ? media(validos.map(r => r.n)) : 0) < 6);
+    t.pico = validos.reduce((m, r) => (!m || r.nmax > m.nmax ? r : m), null);
+  });
+  return { lista, pHoje, len };
+}
+function valores(t) {
+  const m = estado.metrica;
+  if (m === "chuva") {
+    const ult = t.dias.findLastIndex(r => r && r.chuva != null);
+    let acc = 0, comecou = false;
+    return t.dias.map((r, i) => { if (i > ult) return null; if (r && r.chuva != null) { acc += r.chuva; comecou = true; } return comecou ? acc : null; });
+  }
+  return t.dias.map(r => r && r[m] != null ? (m === "vmed" ? r[m] : r[m] / 100) : null);
+}
+function destaquesPadrao(lista) {
+  estado.destaques = new Map();
+  const atual = lista.find(t => t.atual) || lista.at(-1);
+  if (!atual) return;
+  estado.destaques.set(atual.s, "--s1");
+  const anterior = lista.filter(t => t !== atual && t.pico && t.s < atual.s).at(-1);   // só o ano atual e o anterior
+  if (anterior) estado.destaques.set(anterior.s, "--s2");
+}
+function alternarDestaque(s) {
+  // até 3 anos em destaque, qualquer um (inclusive desligar o atual); sempre fica pelo menos um
+  const d = estado.destaques, ehAtual = temporadas().lista.find(t => t.atual)?.s === s;
+  if (d.has(s)) { if (d.size > 1) d.delete(s); }
+  else {
+    const usadas = [...d.values()];
+    const ordem = ehAtual ? ["--s1", "--s2", "--s3"] : ["--s2", "--s3", "--s1"];   // o ano atual volta azul quando dá
+    let cor = ordem.find(c => !usadas.includes(c));
+    if (!cor) { const maisAntigo = [...d.keys()][0]; cor = d.get(maisAntigo); d.delete(maisAntigo); }
+    d.set(s, cor);
+  }
+  if (estado.modo === "comparar") desenharComparar(true); else trocarModo("comparar");
+  desenharLinhas();
+}
+
+let compCache = null;
+function desenharComparar(manterJanela) {
+  const { lista, pHoje, len } = temporadas(), met = METRICAS[estado.metrica], ehNivel = estado.metrica.startsWith("n");
+  if (!estado.destaques.size || ![...estado.destaques.keys()].some(s => lista.find(t => t.s === s))) destaquesPadrao(lista);
+  const series = new Map(lista.map(t => [t.s, valores(t)]));
+  const ref = lista.filter(t => !t.atual && !t.parcial);
+  const pontos = arr => arr.map((y, x) => ({ x, y }));
+  const datasets = [];
+  let faixa = null;
+  if (ref.length >= 2) {
+    const lo = [], hi = [], md = [];
+    for (let x = 0; x < len; x++) {
+      const vs = ref.map(t => series.get(t.s)[x]).filter(v => v != null);
+      lo.push(vs.length >= 2 ? Math.min(...vs) : null); hi.push(vs.length >= 2 ? Math.max(...vs) : null); md.push(vs.length >= 2 ? mediana(vs) : null);
+    }
+    faixa = { lo, hi, md, nome: `${rotulo(ref[0].s)}–${rotulo(ref.at(-1).s)}` };
+    if (estado.mostrarFaixa) datasets.push({ label: "mín", data: pontos(lo), borderWidth: 0, pointRadius: 0, fill: false, order: 9, foraDaEscala: false });
+    if (estado.mostrarFaixa) datasets.push({ label: "máx", data: pontos(hi), borderWidth: 0, pointRadius: 0, fill: "-1", backgroundColor: tok("--faixa"), order: 9 });
+    if (estado.mostrarMediana) datasets.push({ label: "Mediana", data: pontos(md), borderColor: tok("--mediana"), borderWidth: 1.5, pointRadius: 0, order: 5, tension: .2, marcarCursor: true, cor: "--mediana" });
+  }
+  for (const t of lista) {
+    const cor = estado.destaques.get(t.s);
+    if (!cor) continue;
+    datasets.push({ label: rotulo(t.s), data: pontos(series.get(t.s)), borderColor: tok(cor), borderWidth: cor === "--s1" ? 2.6 : 2, pointRadius: 0,
+                    order: cor === "--s1" ? 0 : 1, rotuloFinal: rotulo(t.s), spanGaps: 3, tension: .2, marcarCursor: true, cor, parcial: t.parcial });
+  }
+  compCache = { datasets, faixa, met, lista };
+
+  const op = opcoesBase(), marcos = inicioDosMeses();
+  op.scales.x.min = 0; op.scales.x.max = len - 1;
+  op.scales.x.afterBuildTicks = ax => {
+    const larg = ax.max - ax.min;
+    ax.ticks = (larg < 75 ? Array.from({ length: Math.ceil(len / 7) }, (_, i) => ({ value: i * 7 })) : marcos.map(m => ({ value: m.x })))
+      .filter(t => t.value >= ax.min && t.value <= ax.max);
+  };
+  op.scales.x.ticks.callback = function (v) { const m = marcos.find(k => k.x === v); return (this.max - this.min) < 75 ? nomeDoDia(v) : m ? MESES[m.m - 1] : ""; };
+  op.scales.y.ticks.callback = v => fmt(v, met.casas === 2 ? 1 : 0);
+  op.plugins.cotas = { ativo: ehNivel };
+  op.plugins.hoje = { x: pHoje, rotulo: "hoje" };
+  const ch = criar("gPrincipal", "principal", { type: "line", data: { datasets }, options: op });
+  graficos.chuva?.destroy(); graficos.chuva = null;
+
+  const atual = lista.find(t => t.atual), base = atual ? series.get(atual.s) : faixa?.md || [];
+  navConfigurar(0, len - 1, pontos(faixa?.md || base), ([a, b]) => {
+    ch.options.scales.x.min = a; ch.options.scales.x.max = b;
+    if (ehNivel || estado.metrica === "vmed") ajustarY(ch, a, b, ehNivel);
+    else { ch.options.scales.y.min = 0; ch.options.scales.y.max = undefined; }
+    ch.update("none"); atualizarLeitura();
+  });
+  if (manterJanela && estado.janela && estado.janela[1] <= len - 1) definirJanela(...estado.janela);
+  else if (innerWidth < 700 && pHoje != null && len > 120) definirJanela(pHoje - 75, pHoje + 15);   // celular: abre perto de hoje
+  else definirJanela(0, len - 1);
+
+  $("#anos").innerHTML = lista.slice().reverse().map(t => {
+    const cor = estado.destaques.get(t.s);
+    return `<button class="ano" data-s="${t.s}" aria-pressed="${!!cor}"><i style="${cor ? `background:${tok(cor)}` : ""}"></i>${rotulo(t.s)}${t.atual ? " <em>atual</em>" : t.parcial ? " <em>parcial</em>" : ""}</button>`;
+  }).join("") + (faixa ? `<button class="ano extra" data-extra="mostrarMediana" aria-pressed="${estado.mostrarMediana}"><i style="background:${tok("--mediana")};height:2px"></i>mediana</button>
+    <button class="ano extra" data-extra="mostrarFaixa" aria-pressed="${estado.mostrarFaixa}"><i style="background:${tok("--faixa")};height:10px;border-radius:3px"></i>faixa mín–máx</button>` : "");
+}
+
+// ================= faixa de leitura (substitui o balão) =================
+function atualizarLeitura() {
+  if (!graficos.principal) return;
+  if (estado.modo === "agora") {
+    const c = cache[estado.estacao], nivel = graficos.principal.data.datasets[0].data;
+    if (!nivel.length) { $("#leitura").innerHTML = "<time>Sem leituras</time>"; return; }
+    const alvo = estado.cursor ?? nivel.at(-1).x;
+    if (alvo > nivel.at(-1).x + 30 * 60e3) {   // cursor no futuro: previsão e faixa típica
+      const serie = tipo => graficos.principal.data.datasets.find(d => d.tipo === tipo)?.data || [];
+      const md = interp(serie("prev-md"), alvo), lo = interp(serie("prev-lo"), alvo), hi = interp(serie("prev-hi"), alvo);
+      const tlo = interp(serie("tip-lo"), alvo), thi = interp(serie("tip-hi"), alvo);
+      let chuva = "";
+      if (graficos.chuva && graficos.chuva.data.datasets[0]?.regiao) chuva = chuvaBaciaEm(alvo, true);
+      else if (graficos.chuva) {
+        const dsp = graficos.chuva.data.datasets[1].data, porDia = $("#rotChuva").textContent.includes("dia"), q = pontoEm(dsp, alvo);
+        if (dsp.length && q && Math.abs(q.x - alvo) < (porDia ? 864e5 : 36e5)) chuva = `<span><i class="barra" style="background:color-mix(in srgb, ${tok("--chuva")} 45%, transparent)"></i><b>${fmt(q.y, 1)} mm</b>previstos ${porDia ? "no dia" : "na hora"}</span>`;
+      }
+      $("#leitura").innerHTML = `<time>${md != null ? "Previsão" : "Sem previsão para esta data"} · ${quando(alvo)}</time><div class="vals">` +
+        (md != null ? `<span><i style="background:${tok("--s1")}"></i><b>${fmt(md, 2)} m</b>provável</span><span>8 em 10 chances: <b>${fmt(lo, 2)}–${fmt(hi, 2)} m</b></span>` : "") +
+        (tlo != null ? `<span>típico da época: <b>${fmt(tlo, 1)}–${fmt(thi, 1)} m</b></span>` : "") + chuva + "</div>";
+      return;
+    }
+    const p = pontoEm(nivel, alvo);
+    const l = c.leituras.find(x => ms(x) === p.x);
+    let chuva = "";
+    if (graficos.chuva && graficos.chuva.data.datasets[0]?.regiao) chuva = chuvaBaciaEm(alvo, false);
+    else if (graficos.chuva) {
+      const ds = graficos.chuva.data.datasets[0].data, q = pontoEm(ds, alvo), porDia = $("#rotChuva").textContent.includes("dia");
+      chuva = `<span><i class="barra" style="background:${tok("--chuva")}"></i><b>${fmt(q && Math.abs(q.x - alvo) < (porDia ? 864e5 : 36e5) ? q.y : 0, 1)} mm</b>${porDia ? "no dia" : "na hora"}</span>`;
+    }
+    $("#leitura").innerHTML = `<time>${estado.cursor == null ? "Última leitura · " : ""}${quando(p.x)}</time><div class="vals">
+      <span><i style="background:${tok("--s1")}"></i><b>${fmt(p.y, 2)} m</b>nível</span>${chuva}
+      ${l?.vazao != null ? `<span><b>${fmt(l.vazao, 0)} m³/s</b>vazão</span>` : ""}</div>`;
+  } else if (compCache) {
+    const { datasets, faixa, met } = compCache, [a, b] = estado.janela;
+    const pHoje = graficos.principal.options.plugins.hoje.x;
+    const x = Math.round(estado.cursor ?? (pHoje != null && pHoje >= a && pHoje <= b ? pHoje : b));
+    const itens = datasets.filter(d => d.marcarCursor).map(d => ({ d, y: d.data[x]?.y })).filter(i => i.y != null).sort((p, q) => q.y - p.y);
+    // dias completados com a régua vizinha (a régua desta estação estava sem transmitir)
+    const comp = compCache.lista.filter(t => estado.destaques.has(t.s) && t.dias[x]?.completado).map(t => rotulo(t.s));
+    const nota = comp.length ? ` · <span title="Dia sem leitura nesta régua; completado com a ${estacoes[compCache.lista.find(t => t.dias[x]?.completado).dias[x].completado]?.nome || "régua vizinha"} convertida">${comp.join(", ")}: dia completado com a régua vizinha</span>` : "";
+    $("#leitura").innerHTML = `<time>${nomeDoDia(x)}${x === pHoje && estado.cursor == null ? " · hoje" : ""} — ${met.nome.toLowerCase()}${nota}</time><div class="vals">` +
+      itens.map(i => `<span><i style="background:${i.d.borderColor}"></i><b>${fmt(i.y, met.casas)}</b>${i.d.label}${i.d.parcial ? "*" : ""}</span>`).join("") +
+      (faixa && estado.mostrarFaixa && faixa.lo[x] != null ? `<span>faixa ${faixa.nome}: <b>${fmt(faixa.lo[x], met.casas)}–${fmt(faixa.hi[x], met.casas)}</b> ${met.un}</span>` : "") + "</div>";
+  }
+}
+
+// ================= ano a ano, cheias, mapa, permanência =================
+function desenharLinhas() {
+  const cl = cotasDe(), { lista } = temporadas();
+  const comPico = lista.filter(t => t.pico).reverse();
+  const topo = Math.max((cl[0]?.cm ?? 0) * 1.15, ...comPico.map(t => t.pico.nmax));
+  $("#linhas").innerHTML = comPico.map(t => {
+    const cor = estado.destaques.get(t.s), dias = {};
+    for (const r of t.dias) { if (!r || r.nmax == null) continue; const n = cl.find(n => r.nmax >= n.cm); if (n) dias[n.chave] = (dias[n.chave] || 0) + 1; }
+    const total = Object.values(dias).reduce((s, x) => s + x, 0);
+    return `<button class="linha" data-s="${t.s}" aria-pressed="${!!cor}">
+      <span class="ano-n">${rotulo(t.s)}${t.atual ? "<em>atual</em>" : t.parcial ? "<em>parcial</em>" : ""}</span>
+      <span class="trilho"><span class="enche" style="width:${t.pico.nmax / topo * 100}%;${cor ? `background:${tok(cor)}` : ""}"></span>
+        ${cl.map(n => `<span class="marca" style="left:${n.cm / topo * 100}%;background:${tok(n.cor)}"></span>`).join("")}</span>
+      <span class="val">${fmt(t.pico.nmax / 100, 2)} m</span>
+      <span class="det"><span>${dataCurta(t.pico.d)}</span>${total ? `<span class="dias">${cl.slice().reverse().filter(n => dias[n.chave]).map(n => `<span><i style="background:${tok(n.cor)}"></i>${dias[n.chave]} d</span>`).join("")}</span>` : `<span>${cl.length ? `nenhum dia acima da ${cl.at(-1).nome.toLowerCase()}` : "sem cotas cadastradas"}</span>`}</span>
+    </button>`;
+  }).join("");
+  $("#legCotas").innerHTML = cl.slice().reverse().map(n => `<span><i style="background:${tok(n.cor)}"></i>${n.nome} ≥ ${fmt(n.cm / 100, 2)} m</span>`).join("") + (cl.length ? `<span>· d = dias${estacoes[estado.estacao].cotas_oficiais ? " · cotas oficiais SP Águas" : ""}</span>` : "");
+  const nome = estado.de === 1 && estado.ate === 12 ? "" : ` (${MESES[estado.de - 1]}–${MESES[estado.ate - 1]})`;
+  $("#anoSub").textContent = `Maior nível de cada ${vira() ? "temporada" : "ano"}${nome} e dias acima das cotas. Toque para comparar no gráfico.`;
+}
+
+function desenharCheias() {
+  const dias = cache[estado.estacao].dias.filter(r => r.nmax != null);
+  const ord = [...dias].sort((a, b) => b.nmax - a.nmax), esc = [], t = d => Date.parse(d + "T12:00");
+  for (const r of ord) { if (esc.length >= 10) break; if (esc.every(e => Math.abs(t(e.d) - t(r.d)) > 7 * 864e5)) esc.push(r); }
+  const porData = new Map(dias.map(r => [r.d, r])), ano = String(new Date().getFullYear());
+  $("#cheias").innerHTML = esc.map(r => {
+    const ontem = porData.get(new Date(t(r.d) - 864e5).toISOString().slice(0, 10));
+    const sub = ontem?.nmin != null ? r.nmax - Math.min(ontem.nmin, r.nmin ?? Infinity) : null, st = classificar(r.nmax);
+    return `<li><span class="quando">${dataCurta(r.d)}${r.d.startsWith(ano) ? "<em>este ano</em>" : ""}</span><span class="pico">${fmt(r.nmax / 100, 2)} m</span>
+      <span class="extra">${sub != null ? `subiu ${fmt(sub / 100, 2)} m em 24 h` : ""}${r.vmax != null ? ` · ${fmt(r.vmax, 0)} m³/s` : ""}</span>
+      ${st.sem ? "" : `<span class="pill"><i style="background:${tok(st.cor)}"></i>${st.nome}</span>`}</li>`;
+  }).join("");
+  const desde = dias[0]?.d.slice(0, 4);
+  $("#cheiasSub").textContent = `Os 10 maiores picos desde ${desde}, com pelo menos 7 dias entre eles.`;
+}
+
+function desenharCalor() {
+  const dias = cache[estado.estacao].dias, porMes = new Map();
+  for (const r of dias) { if (r.nmax == null) continue; const k = r.d.slice(0, 7), a = porMes.get(k); if (!a || r.nmax > a.nmax) porMes.set(k, r); }
+  const anos = [...new Set([...porMes.keys()].map(k => +k.slice(0, 4)))].sort((a, b) => b - a);
+  const vals = [...porMes.values()].map(r => r.nmax), lo = Math.min(...vals), hi = Math.max(...vals);
+  const passos = ["--r100", "--r150", "--r200", "--r250", "--r300", "--r350", "--r400", "--r450", "--r500", "--r550", "--r600", "--r650", "--r700"];
+  const recorde = new Map();
+  for (const [k, r] of porMes) { const m = k.slice(5); if (!recorde.has(m) || r.nmax > recorde.get(m)) recorde.set(m, r.nmax); }
+  let h = `<thead><tr><th></th>${MESES.map(m => `<th scope="col">${m}</th>`).join("")}</tr></thead><tbody>`;
+  for (const a of anos) {
+    h += `<tr><th scope="row">${a}</th>`;
+    for (let m = 1; m <= 12; m++) {
+      const k = `${a}-${String(m).padStart(2, "0")}`, r = porMes.get(k);
+      if (!r) { h += "<td>·</td>"; continue; }
+      const i = Math.min(passos.length - 1, Math.floor((r.nmax - lo) / (hi - lo || 1) * passos.length));
+      h += `<td class="${recorde.get(k.slice(5)) === r.nmax ? "max" : ""}" style="background:${tok(passos[i])};color:${i >= 7 ? "#fff" : "#0b0b0b"}" title="${MESES[m - 1]}/${a}: ${fmt(r.nmax / 100, 2)} m em ${dataCurta(r.d)}">${fmt(r.nmax / 100, 1)}</td>`;
+    }
+    h += "</tr>";
+  }
+  $("#calor").innerHTML = h + "</tbody>";
+  $("#escalaCalor").innerHTML = `<span>${fmt(lo / 100, 1)} m</span><span class="barra">${passos.map(p => `<i style="background:${tok(p)}"></i>`).join("")}</span><span>${fmt(hi / 100, 1)} m</span>`;
+}
+
+function desenharPermanencia() {
+  if (!$("#detPerm").open) return;
+  const { lista } = temporadas(), atual = lista.find(t => t.atual), ref = lista.filter(t => !t.atual && !t.parcial);
+  const q = vs => { const s = [...vs].sort((a, b) => b - a); return Array.from({ length: 101 }, (_, i) => ({ x: i, y: s[Math.round(i / 100 * (s.length - 1))] / 100 })); };
+  const vRef = ref.flatMap(t => t.dias.filter(r => r?.nmed != null).map(r => r.nmed)), vAt = atual ? atual.dias.filter(r => r?.nmed != null).map(r => r.nmed) : [];
+  const op = opcoesBase();
+  op.scales.x.min = 0; op.scales.x.max = 100; op.scales.x.ticks.callback = v => v + "%"; op.scales.x.ticks.stepSize = 25;
+  op.scales.y.ticks.callback = v => fmt(v, 1) + " m";
+  op.plugins.cotas = { ativo: true };
+  op.onHover = null;
+  const ds = [];
+  if (vRef.length) ds.push({ label: "Anos completos", data: q(vRef), borderColor: tok("--mediana"), borderWidth: 2, pointRadius: 0 });
+  if (vAt.length) ds.push({ label: rotulo(atual.s), data: q(vAt), borderColor: tok("--s1"), borderWidth: 2.5, pointRadius: 0, rotuloFinal: rotulo(atual.s) });
+  graficos.perm?.destroy();
+  graficos.perm = new Chart($("#gPerm"), { type: "line", data: { datasets: ds }, options: op });
+  const at = cotasDe().at(-1)?.cm ?? Infinity, pct = vs => vs.length ? vs.filter(v => v >= at).length / vs.length * 100 : null;
+  $("#permSub").textContent = `Em ${fmt(pct(vRef), 1)}% dos dias dos anos completos o nível médio passou da cota de atenção` + (vAt.length ? `; em ${rotulo(atual.s)}, ${fmt(pct(vAt), 1)}%.` : ".");
+}
+
+// ================= previsão de cheia (experimental) =================
+// Modelo treinado em scripts/modelo_cheias (régua da CESP, 58041000). Mesmas variáveis de logistico.py.
+const prev = { modelo: null, dados: null, sazonal: null };
+const pad = n => String(n).padStart(2, "0");
+const horaLocal = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:00`;
+const sigmoide = z => 1 / (1 + Math.exp(-Math.max(-30, Math.min(30, z))));
+// Modelo na régua da Passarela (scripts/modelo_cheias/passarela.py). Versão B usa a subida da régua de Cunha.
+function chanceDeSubir(H0, x, f48, G) {
+  if (G <= 0) return 1;
+  const f = Math.log1p(f48), a = Math.log1p(x.p24), b = Math.log1p(x.p72), solo = x.api / 100, g = G / 100;
+  const v = [1, g, f, a, b, solo, H0 / 100, f * solo, f * g, a * g, g * g];
+  if (x.versao === "B") { const dc = Math.max(x.dc6, 0) / 100; v.push(dc, Math.max(x.dc12, 0) / 100, dc / (g + .3)); }
+  const pesos = x.versao === "B" ? prev.modelo.passarela.pesos_B : prev.modelo.passarela.pesos_A;
+  return sigmoide(pesos.reduce((s, w, i) => s + w * v[i], 0));
+}
+
+async function buscarPrevisao() {
+  prev.modelo ??= await (await fetch(config.previsao.modelo)).json();
+  const m = prev.modelo, lat = m.pontos.map(p => p.lat).join(","), lon = m.pontos.map(p => p.lon).join(",");
+  const base = `latitude=${lat}&longitude=${lon}&hourly=precipitation&timezone=America%2FSao_Paulo`;
+  const [det, ens] = await Promise.all([
+    fetch(`https://api.open-meteo.com/v1/forecast?${base}&past_days=31&forecast_days=8`).then(r => { if (!r.ok) throw new Error(`Open-Meteo ${r.status}`); return r.json(); }),
+    fetch(`https://ensemble-api.open-meteo.com/v1/ensemble?${base}&models=gfs025&forecast_days=3`).then(r => r.ok ? r.json() : null).catch(() => null),
+  ]);
+  const pts = [].concat(det), tempo = pts[0].hourly.time;
+  const media = tempo.map((_, i) => pts.reduce((s, p) => s + (p.hourly.precipitation[i] ?? 0), 0) / pts.length);
+  let membros = [];
+  if (ens) {
+    const ep = [].concat(ens), tt = ep[0].hourly.time;
+    membros = Object.keys(ep[0].hourly).filter(k => k.startsWith("precipitation")).map(k => ({
+      tempo: tt, serie: tt.map((_, i) => ep.reduce((s, p) => s + (p.hourly[k][i] ?? 0), 0) / ep.length),
+    }));
+  }
+  prev.dados = { tempo, media, membros };
+  // frequência histórica de cheias por mês (régua principal)
+  if (!prev.sazonal) {
+    const dias = cache[P]?.diario || await buscarDiario(P);
+    const porAnoMes = new Map();
+    for (const r of dias) if (r.nmax != null) { const k = r.d.slice(0, 7); porAnoMes.set(k, Math.max(porAnoMes.get(k) || 0, r.nmax)); }
+    prev.sazonal = porAnoMes;
+  }
+}
+
+async function nivelDeReferencia() {
+  // o modelo trabalha na régua principal; a subida de uma régua rio acima (config.previsao.rio_acima) melhora a previsão
+  const ler = async cod => {
+    const c = cache[cod], r = rioAcima.dados[cod];
+    const ls = c && Date.now() - c.quando < 10 * 60e3 ? c.leituras
+      : r && Date.now() - rioAcima.quando < 10 * 60e3 ? r : await buscarLeituras(estacoes[cod], 2).catch(() => []);
+    return comNivel(ls || []);
+  };
+  const [pas, cunha] = await Promise.all([ler(P), config.previsao.rio_acima ? ler(config.previsao.rio_acima) : []]);
+  const u = pas.at(-1);
+  if ((!u || Date.now() - ms(u) > 3 * 36e5) && config.reserva) {   // reserva: outra régua da cidade, convertida
+    const ana = comNivel(await buscarLeituras(estacoes[config.reserva], 2).catch(() => [])).at(-1);
+    if (ana && (!u || ms(ana) > ms(u))) return { H0: desconv(config.reserva, ana.nivel), t: ms(ana), fonte: `${apelido(config.reserva)} convertida`, versao: "A" };
+    if (!u) return null;
+  }
+  if (!u) return null;
+  const ref = { H0: u.nivel, t: ms(u), fonte: apelido(P), versao: "A" };
+  const cu = cunha.at(-1);
+  if (cu && Date.now() - ms(cu) < 2 * 36e5) {
+    const antes = h => {
+      const alvo = ms(cu) - h * 36e5, l = cunha.reduce((m, x) => Math.abs(ms(x) - alvo) < Math.abs(ms(m) - alvo) ? x : m, cunha[0]);
+      return Math.abs(ms(l) - alvo) < 36e5 ? l.nivel : null;
+    };
+    const a6 = antes(6), a12 = antes(12);
+    if (a6 != null && a12 != null) Object.assign(ref, { versao: "B", dc6: cu.nivel - a6, dc12: cu.nivel - a12, fonte: `${apelido(P)} + ${apelido(config.previsao.rio_acima)}` });
+  }
+  return ref;
+}
+
+async function desenharPrevisao() {
+  const card = $("#cardPrev");
+  if (!config.previsao) { card.hidden = true; return; }
+  card.hidden = false;
+  try {
+    if (!prev.dados || Date.now() - prev.quando > 30 * 60e3) { await buscarPrevisao(); prev.quando = Date.now(); }
+    const ref = await nivelDeReferencia();
+    if (!ref) throw new Error("sem leitura recente do rio");
+    prev.ref = ref;
+    renderizarPrevisao(ref);
+    desenharImpactos(); verificarAvisos(); desenharFontes(); desenharVisoes();
+    if (estado.modo === "agora" && cache[estado.estacao]) desenharAgora(true);   // acrescenta a linha de previsão ao gráfico
+  } catch (e) {
+    $("#pRisco").innerHTML = `<i style="background:${tok("--neutro")}"></i>indisponível`;
+    $("#pCorpo").innerHTML = `<span class="prev-carregando">Não foi possível calcular agora (${e.message}). Tentaremos de novo em instantes.</span>`;
+  }
+}
+
+function renderizarPrevisao(ref) {
+  const m = prev.modelo, { tempo, media, membros } = prev.dados, fator = m.fator_previsao, H0 = ref.H0;
+  let i = tempo.indexOf(horaLocal(new Date()));
+  if (i < 0) i = tempo.findLastIndex(t => t <= horaLocal(new Date()));
+  const soma = (a, b) => media.slice(Math.max(0, a), Math.max(0, b)).reduce((s, v) => s + v, 0);
+  const x = { p24: soma(i - 24, i + 1), p72: soma(i - 72, i + 1), api: soma(i - 720, i - 72), versao: ref.versao, dc6: ref.dc6 || 0, dc12: ref.dc12 || 0 };
+  const fDet = soma(i + 1, i + 49) * fator;
+  const cenarios = membros.map(mb => { const j = mb.tempo.indexOf(tempo[i]); return j < 0 || j + 49 > mb.serie.length ? null : mb.serie.slice(j + 1, j + 49).reduce((s, v) => s + v, 0) * fator; }).filter(v => v != null);
+  const fs = cenarios.length >= 5 ? cenarios : [fDet];
+  const P = G => fs.reduce((s, f) => s + chanceDeSubir(H0, x, f, G), 0) / fs.length;
+
+  // cotas da régua principal (onde o modelo trabalha), da mais baixa para a mais alta
+  const linhas = cotasDe(estacoes[P]).reverse().map(n => ({ ...n, cesp: n.cm }));   // cotas da régua principal
+  const probs = Object.fromEntries(linhas.map(n => [n.chave, P(n.cesp - H0)]));
+  // pico provável (50%) e cenário pessimista (10%) — em cm acima do nível atual
+  const subida = alvo => { for (let G = 5; G <= 700; G += 5) if (P(G) < alvo) return G - 5; return 700; };
+  const g50 = subida(.5), g10 = subida(.1);
+  // resultado na régua da cidade escolhida; para outras estações, na régua principal
+  const reguaCod = REGUAS_CIDADE.includes(estado.estacao) ? estado.estacao : P;
+  const paraRegua = cm => reguaCod === P ? cm : conv(reguaCod, cm);
+  prev.pico = { agora: H0, provavel: H0 + g50, alto: H0 + g10 };   // na régua principal (usado em "o que alaga")
+  const naRegua = cm => fmt(paraRegua(cm) / 100, 2);
+
+  // nível de risco: olha a próxima cota que ainda não foi passada
+  const proxima = linhas.find(n => H0 < n.cesp);
+  const pr = proxima ? probs[proxima.chave] : 1;
+  prev.chanceProxima = proxima ? { p: pr, nome: proxima.nome, cm: proxima.cm, chave: proxima.chave } : null;
+  const jaAcima = H0 >= linhas[0].cesp;   // já em atenção: o risco é de piorar
+  const risco = !proxima ? ["Acima do transbordamento", "--extravasa"]
+    : pr < .1 ? [jaAcima ? "Sem sinal de piora" : "Risco baixo", "--bom"]
+    : pr < .3 ? [jaAcima ? "Pode piorar" : "Risco moderado", "--atencao"]
+    : pr < .6 ? [jaAcima ? "Risco alto de piorar" : "Risco alto", "--alerta"]
+    : ["Risco muito alto", "--inundacao"];
+  $("#pRisco").innerHTML = `<i style="background:${tok(risco[1])}"></i>${risco[0]}`;
+
+  // chuva por dia: ontem + hoje + 5 dias, com a faixa dos cenários (10%–90%) quando houver
+  const hoje = horaLocal(new Date()).slice(0, 10), diasLista = [...new Set(tempo.map(t => t.slice(0, 10)))];
+  const k0 = Math.max(0, diasLista.indexOf(hoje) - 1), dias = diasLista.slice(k0, k0 + 7);
+  const porDia = d => tempo.reduce((s, t, j) => t.startsWith(d) ? s + media[j] : s, 0) * (d >= hoje ? fator : 1);
+  const faixaDia = d => {
+    if (cenarios.length < 5 || d < hoje) return null;
+    const v = membros.map(mb => mb.tempo.reduce((s, t, j) => t.startsWith(d) ? s + mb.serie[j] : s, 0) * fator).sort((a, b) => a - b);
+    if (!membros[0].tempo.some(t => t.startsWith(d))) return null;
+    return [v[Math.floor(.1 * (v.length - 1))], v[Math.ceil(.9 * (v.length - 1))]];
+  };
+  const colunas = dias.map(d => ({ d, mm: porDia(d), faixa: faixaDia(d) }));
+  const escala = Math.max(10, ...colunas.map(c => Math.max(c.mm, c.faixa?.[1] || 0)));
+  const nomeDia = d => d === hoje ? "hoje" : d < hoje ? "ontem" : new Date(d + "T12:00").toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
+  const hBarra = 78;
+  const limite48 = tempo[Math.min(tempo.length - 1, i + 48)]?.slice(0, 10) || hoje;
+  const depois = colunas.filter(c => c.d > limite48 && c.mm >= 25);
+
+  const solo = x.api + x.p72, sm = m.solo_mm;
+  const estadoSolo = solo < sm.p33 ? "seco" : solo < sm.p66 ? "úmido" : solo < sm.p90 ? "encharcado" : "muito encharcado";
+  const ord = fs.slice().sort((a, b) => a - b), f10 = ord[Math.floor(.1 * (ord.length - 1))], f90 = ord[Math.ceil(.9 * (ord.length - 1))];
+  const mes = new Date().getMonth() + 1, anoAtual = new Date().getFullYear();
+  const anosMes = [...prev.sazonal].filter(([k]) => +k.slice(5) === mes && +k.slice(0, 4) < anoAtual);
+  const comCheia = anosMes.filter(([, v]) => v >= linhas[0].cesp).length;
+  const idade = (Date.now() - ref.t) / 36e5;
+  const t = m.passarela.teste;
+
+  $("#pSub").textContent = `${config.rio} em ${config.cidade} · ${apelido(reguaCod)} · ${cenarios.length >= 5 ? `${cenarios.length} cenários de chuva (GFS)` : "previsão de chuva Open-Meteo"} · atualizado ${new Date(prev.quando).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  $("#pCorpo").innerHTML = `
+    <div class="probs" role="list" aria-label="Chance de passar de cada cota em 48 horas">
+      ${linhas.map(n => {
+        const p = probs[n.chave], ja = H0 >= n.cesp;
+        return `<div class="prob" role="listitem"><span class="nome" title="${n.nome}: ${naRegua(n.cesp)} m"><i style="background:${tok(n.cor)}"></i>${n.nome}</span>
+          <span class="trilho"><span class="enche" style="width:${Math.max(1.5, p * 100)}%;background:${tok(n.cor)}"></span></span>
+          <b>${ja ? "já" : p < .01 ? "<1%" : fmt(p * 100, 0) + "%"}</b></div>`;
+      }).join("")}
+    </div>
+    <p class="prev-frase">${g50 < 10
+      ? `O rio deve <strong>ficar perto do nível atual</strong> (${naRegua(H0)} m)`
+      : `Pico mais provável: <strong>${naRegua(H0 + g50)} m</strong>`}${g10 > g50 + 5 ? `; num cenário de mais chuva, pode chegar a <strong>${naRegua(H0 + g10)} m</strong>` : ""}.
+      ${idade > 3 ? `<span class="aviso-atraso">Atenção: a última leitura do rio é de ${ha(idade)}.</span>` : ""}</p>
+    <div>
+      <div class="rot" style="margin-bottom:8px">Chuva na bacia por dia (mm)</div>
+      <div class="dias-chuva">${colunas.map(c => `<div class="dia-ch" title="${c.faixa ? `cenários: ${fmt(c.faixa[0], 0)}–${fmt(c.faixa[1], 0)} mm` : ""}">
+          <b>${fmt(c.mm, 0)}</b>
+          <span class="col${c.d < hoje ? " passado" : ""}" style="height:${c.mm / escala * hBarra}px">${c.faixa ? `<span class="faixa-ens" style="bottom:${c.faixa[0] / escala * hBarra}px;height:${Math.max(2, (c.faixa[1] - c.faixa[0]) / escala * hBarra)}px"></span>` : ""}</span>
+          <span>${nomeDia(c.d)}</span></div>`).join("")}</div>
+    </div>
+    <div class="prev-info">
+      <span>Últimas 24 h: <b>${fmt(x.p24, 0)} mm</b> · 72 h: <b>${fmt(x.p72, 0)} mm</b></span>
+      <span>Prevista 48 h: <b>${fmt(fDet, 0)} mm</b>${cenarios.length >= 5 ? ` (cenários ${fmt(f10, 0)}–${fmt(f90, 0)})` : ""}</span>
+      <span>Solo: <b>${estadoSolo}</b> (${fmt(solo, 0)} mm em 30 dias)</span>
+      ${anosMes.length ? `<span>Em ${MESES[mes - 1]}, passou da atenção em <b>${comCheia} de ${anosMes.length} anos</b></span>` : ""}
+    </div>
+    ${depois.length ? `<p class="prev-frase">⚠ Chuva forte prevista depois das 48 h: ${depois.map(c => `<strong>${fmt(c.mm, 0)} mm ${["sábado", "domingo"].includes(new Date(c.d + "T12:00").toLocaleDateString("pt-BR", { weekday: "long" })) ? "no" : "na"} ${new Date(c.d + "T12:00").toLocaleDateString("pt-BR", { weekday: "long" })}</strong>`).join(", ")}. Ainda fora do alcance do modelo — acompanhe a atualização.</p>` : ""}
+    <details class="confianca">
+      <summary>Como funciona e quão confiável é</summary>
+      <p>Um modelo estatístico treinado com o nível da régua ${apelido(P)}, a chuva na bacia (${config.textos?.chuva_bacia || "pontos da bacia"}) e, quando está transmitindo, a subida da régua ${apelido(config.previsao.rio_acima)}, rio acima. Ele combina o nível atual, a chuva dos últimos dias, o quanto o solo está encharcado e a chuva prevista, e calcula a chance de o rio chegar a cada cota oficial em 48 h.</p>
+      <ul>
+        <li>Testado de ${t.periodo.replace(" a ", " até ")} com a previsão do tempo real da época: das <b>${t.cheias}</b> vezes em que o rio passou da atenção, avisou (chance ≥ ${t.limiar_aviso * 100}%) <b>${t.avisadas["6"]}</b> com 6 h de antecedência, ${t.avisadas["12"]} com 12 h e ${t.avisadas["24"]} com 24 h.</li>
+        <li>Em ${t.dias_sem_cheia} dos ${t.dias_com_aviso} dias com aviso, a cheia não veio. Com a régua de Cunha, foram ${t.B_dias_sem_cheia} de ${t.B_dias_com_aviso}.</li>
+        <li>Tempestades muito localizadas na serra podem escapar da previsão. O aviso costuma vir poucas horas antes.</li>
+        <li>Cotas da régua ${apelido(P)}. Nível de partida: ${ref.fonte}, ${ha(idade)}.</li>
+        <li><b>Não substitui os alertas da Defesa Civil (199).</b></li>
+      </ul>
+    </details>`;
+}
+
+// ================= rio acima (réguas da SP Águas ao longo do rio) =================
+const rioAcima = { dados: {}, quando: 0 };
+function miniGrafico(ls) {
+  const n = ls.filter(l => Date.now() - ms(l) < 48 * 36e5);
+  if (n.length < 2) return "";
+  const x0 = ms(n[0]), x1 = ms(n.at(-1)), ys = n.map(l => l.nivel), lo = Math.min(...ys), hi = Math.max(...ys);
+  const pts = n.map(l => `${((ms(l) - x0) / (x1 - x0 || 1) * 70 + 1).toFixed(1)},${(24 - (l.nivel - lo) / (hi - lo || 1) * 22).toFixed(1)}`).join(" ");
+  return `<svg viewBox="0 0 72 26" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="${tok("--s1")}" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+}
+async function desenharRioAcima() {
+  const card = $("#cardRio");
+  const lista = Object.values(estacoes).filter(e => e.rio_acima && e.fonte === "spaguas"), cidade = estacoes[P];
+  if (!lista.length) { card.hidden = true; return; }
+  card.hidden = false;
+  try {
+    if (Date.now() - rioAcima.quando > 4 * 60e3) {
+      rioAcima.dados = await buscarSibh([...lista, ...(cidade.fonte === "spaguas" ? [cidade] : [])], 2);
+      if (cidade.fonte !== "spaguas") rioAcima.dados[P] = await buscarLeituras(cidade, 2).catch(() => []);
+      rioAcima.quando = Date.now();
+    }
+  } catch {
+    $("#rTrecho").innerHTML = `<li class="prev-carregando">SP Águas indisponível agora; tentaremos de novo em instantes.</li>`; return;
+  }
+  const montar = e => {
+    const ls = comNivel(rioAcima.dados[e.codigo] || []), u = ls.at(-1);
+    const v = variacao(ls, 3), cl = cotasDe(e), st = u ? cl.find(n => u.nivel >= n.cm) : null;
+    return { e, ls, u, dif: v ? v.delta : null, st };
+  };
+  const trecho = lista.filter(e => !e.rio_acima.afluente).sort((a, b) => a.rio_acima.ordem - b.rio_acima.ordem).map(montar);
+  trecho.push({ ...montar(cidade), cidade: true });
+  const afl = lista.filter(e => e.rio_acima.afluente).map(montar);
+
+  const li = r => {
+    const { e, u, dif, st } = r;
+    const cls = dif == null ? "" : dif >= 5 ? "sobe" : dif <= -5 ? "desce" : "";
+    const seta = cls === "sobe" ? "▲" : cls === "desce" ? "▼" : "▬";
+    const onde = r.cidade ? "cidade" : e.rio_acima?.horas_ate_cidade ? `~${e.rio_acima.horas_ate_cidade} h até a cidade` : "afluente";
+    const velho = u && Date.now() - ms(u) > 2 * 36e5;
+    return `<li class="no${r.cidade ? " cidade" : ""}${e.codigo === estado.estacao ? " sel" : ""}" data-cod="${e.codigo}">
+      <span class="bolinha" style="background:${tok(st ? st.cor : "--neutro")}"></span>
+      <div><strong>${e.nome}${st ? `<span class="mini-pill" style="background:${tok(st.cor)};${st.cor === "--atencao" ? "color:#0b0b0b" : ""}">${st.nome}</span>` : ""}</strong>
+        <small>${onde}${u ? ` · ${velho ? "⚠ " : ""}${new Date(ms(u)).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : " · sem leitura"}</small></div>
+      ${miniGrafico(r.ls)}
+      <div class="num"><b>${u ? fmt(u.nivel / 100, 2) + " m" : "—"}</b><span class="${cls}">${dif == null ? "" : `${seta} ${Math.round(dif) > 0 ? "+" : ""}${fmt(Math.round(dif) || 0, 0)} cm/3h`}</span></div>
+    </li>`;
+  };
+  $("#rTrecho").innerHTML = trecho.map(li).join("");
+  $("#rAfl").innerHTML = afl.map(li).join("");
+
+  // resumo: a água está subindo em algum ponto rio acima?
+  const subindo = trecho.filter(r => !r.cidade && r.dif != null && r.dif >= 10);
+  const baixando = trecho.filter(r => !r.cidade && r.dif != null && r.dif <= -10);
+  const acimaCota = trecho.filter(r => !r.cidade && r.st);
+  let resumo;
+  if (subindo.length) {
+    const h = Math.min(...subindo.map(r => r.e.rio_acima.horas_ate_cidade));
+    resumo = ["Água subindo rio acima", "--alerta", `Subindo em ${subindo.map(r => r.e.nome.replace(" — ", " (") + (r.e.nome.includes(" — ") ? ")" : "")).join(", ")}. Essa água chega à cidade em cerca de ${h} h.`];
+  } else if (acimaCota.length) resumo = ["Rio alto rio acima", "--atencao", `${acimaCota.map(r => r.e.nome).join(", ")} acima da cota de ${acimaCota[0].st.nome.toLowerCase()}.`];
+  else if (baixando.length) resumo = ["Rio acima baixando", "--bom", "As réguas rio acima estão baixando."];
+  else resumo = ["Rio acima estável", "--bom", "Sem subida nas réguas rio acima nas últimas 3 h."];
+  // afluente que deságua logo abaixo da cidade e, cheio, represa o rio principal (config.represamento)
+  const rep = config.represamento, ch = rep && afl.find(r => r.e.codigo === rep.afluente), cid = trecho.at(-1);
+  rioAcima.represa = null;
+  if (ch?.u) {
+    const at = estacoes[rep.afluente].cotas_cm.atencao, alto = ch.u.nivel >= at, rapido = ch.dif != null && ch.dif >= 30;
+    const cidadeAlta = cid?.u && cid.u.nivel >= estacoes[P].cotas_cm.alerta;
+    const rio = config.rio.replace("Rio ", "");
+    rioAcima.represa = alto && cidadeAlta ? ["alto", "--inundacao", `${rep.nome} cheio com o ${rio} alto: a água pode represar perto da cidade${rep.historia ? ` (${rep.historia})` : ""}.`]
+      : alto || (rapido && cidadeAlta) ? ["atenção", "--alerta", `${rep.nome} ${alto ? "acima da cota de atenção" : "subindo rápido"}: pode represar o ${rio} perto da cidade.`]
+      : ["baixo", "--bom", `${rep.nome} em ${fmt(ch.u.nivel / 100, 2)} m (atenção a partir de ${fmt(at / 100, 2)} m). Sem sinal de represamento.`];
+    if (rioAcima.represa[0] === "alto") resumo = ["Risco de represamento", "--inundacao", rioAcima.represa[2]];
+  }
+  $("#rChapeu").innerHTML = rioAcima.represa ? `<span class="pill"><i style="background:${tok(rioAcima.represa[1])}"></i>Represamento: ${rioAcima.represa[0]}</span><span>${rioAcima.represa[2]}</span>` : "";
+  $("#rResumo").innerHTML = `<i style="background:${tok(resumo[1])}"></i>${resumo[0]}`;
+  $("#rSub").textContent = `${resumo[2]} · ${config.textos?.rio_acima || "SP Águas"}`;
+  rioAcima.trecho = trecho;
+  desenharImpactos(); verificarAvisos();
+}
+
+// ================= o que alaga com cada nível =================
+let impactos = null, mapa = null, marcadores = [];
+async function desenharImpactos() {
+  const card = $("#cardImpacto");
+  if (!config.impactos) { card.hidden = true; return; }
+  card.hidden = false;
+  impactos ??= await fetch(config.impactos).then(r => r.json()).catch(() => null);
+  if (!impactos) return;
+  $("#iNota").textContent = impactos.nota || "";
+  $("#iLegRegua").textContent = `régua ${apelido(P)}`;
+  const ls = comNivel(cache[P]?.leituras || rioAcima.dados[P] || []), u = ls.at(-1);
+  const agora = u?.nivel, alto = prev.pico?.alto, provavel = prev.pico?.provavel;
+  const niveis = impactos.niveis.slice().sort((a, b) => b.cm - a.cm);
+  const marcas = [];
+  if (agora != null) marcas.push({ cm: agora, tipo: "agora", txt: `Agora: ${fmt(agora / 100, 2)} m` });
+  if (alto != null && alto > (agora ?? 0) + 5) marcas.push({ cm: alto, tipo: "prev", txt: `Pode chegar a ${fmt(alto / 100, 2)} m em 48 h` });
+  const itens = [...niveis.map(n => ({ ...n, eh: "nivel" })), ...marcas.map(m => ({ ...m, eh: "marca" }))].sort((a, b) => b.cm - a.cm);
+  $("#iEscada").innerHTML = itens.map(n => n.eh === "marca"
+    ? `<li class="marcador ${n.tipo}">${n.txt}</li>`
+    : `<li class="${agora != null && agora >= n.cm ? "atingido" : alto != null && alto >= n.cm ? "possivel" : ""}">
+        <span class="alt">${fmt(n.cm / 100, 2)}</span><strong>${n.titulo}${n.aproximado ? " <em>(aprox.)</em>" : ""}</strong>
+        <span class="t">${n.texto}${n.fonte ? ` <a href="${n.fonte}" target="_blank" rel="noopener">fonte</a>` : ""}</span></li>`).join("");
+  const pior = niveis.find(n => agora != null && agora >= n.cm);
+  const cor = !pior ? "--bom" : pior.tipo === "registro" ? "--inundacao" : cotasDe(estacoes[P]).find(c => Math.abs(c.cm - pior.cm) < 1)?.cor || "--atencao";
+  $("#iResumo").innerHTML = `<i style="background:${tok(cor)}"></i>${pior ? pior.titulo.replace(" (cota oficial)", "") : "Abaixo da atenção"}`;
+  $("#iSub").textContent = `Régua ${apelido(P)} · agora ${agora != null ? fmt(agora / 100, 2) + " m" : "sem leitura"}${provavel != null ? ` · previsão 48 h: provável ${fmt(provavel / 100, 2)} m` : ""}`;
+  if (!window.L) return;   // mapa só quando a biblioteca carregar
+  if (!mapa) {
+    const p = estacoes[P];
+    mapa = L.map("iMapa", { scrollWheelZoom: false, attributionControl: true }).setView([p.lat, p.lon], 15);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(mapa);
+    L.circleMarker([p.lat, p.lon], { radius: 7, color: "#fff", weight: 2, fillColor: tok("--acento"), fillOpacity: 1 }).addTo(mapa).bindPopup(`Régua ${apelido(P)} (${p.operadora})`);
+  }
+  marcadores.forEach(m => m.remove());
+  marcadores = impactos.lugares.map(l => {
+    const st = agora != null && agora >= l.cm ? "--inundacao" : alto != null && alto >= l.cm ? "--alerta" : "--mediana";
+    return L.circleMarker([l.lat, l.lon], { radius: 9, color: "#fff", weight: 2, fillColor: tok(st), fillOpacity: .95 })
+      .addTo(mapa).bindPopup(`<strong>${l.nome}</strong><br>Alagou com a régua ${apelido(P)} em cerca de ${fmt(l.cm / 100, 2)} m`);
+  });
+  if (!mapa._enquadrado) {   // enquadra os pontos registrados e a régua
+    mapa.fitBounds(L.latLngBounds([...impactos.lugares.map(l => [l.lat, l.lon]), [estacoes[P].lat, estacoes[P].lon]]), { padding: [24, 24] });
+    mapa._enquadrado = true;
+  }
+  setTimeout(() => mapa.invalidateSize(), 50);
+}
+
+// ================= visões: resposta à chuva, sazonalidade, recessão =================
+let estat = null;
+const carregarEstat = async () => estat ??= config.estatisticas ? await fetch(config.estatisticas).then(r => r.ok ? r.json() : null).catch(() => null) : null;
+const cardAberto = id => !$("#c" + id).hidden;
+const NOMES_SOLO = ["solo seco", "solo úmido", "solo encharcado"], CORES_SOLO = ["--r250", "--r450", "--r650"];
+
+function situacaoAtualChuva() {
+  // mesma janela do histórico: 24 h passadas + 48 h previstas; solo pela chuva dos 30 dias anteriores
+  const d = prev.dados, m = prev.modelo; if (!d || !m || !estat?.resposta) return null;
+  let i = d.tempo.indexOf(horaLocal(new Date())); if (i < 0) i = d.tempo.findLastIndex(t => t <= horaLocal(new Date()));
+  const soma = (a, b) => d.media.slice(Math.max(0, a), Math.max(0, b)).reduce((s, v) => s + v, 0);
+  const x = soma(i - 24, i + 1) + soma(i + 1, i + 49) * m.fator_previsao, solo = soma(i - 24 - 720, i - 24);
+  const [l1, l2] = estat.resposta.solo_limites_mm;
+  return { x, classe: solo < l1 ? 0 : solo < l2 ? 1 : 2, solo };
+}
+function parecidos(sit) {
+  const pts = estat.resposta.pontos, larg = Math.max(5, sit.x * .25);
+  let viz = pts.filter(p => p[2] === sit.classe && Math.abs(p[0] - sit.x) <= larg);
+  if (viz.length < 15) viz = pts.filter(p => Math.abs(p[0] - sit.x) <= larg * 1.5);
+  const ys = viz.map(p => p[1]).sort((a, b) => a - b), q = f => ys[Math.min(ys.length - 1, Math.floor(f * (ys.length - 1)))];
+  return ys.length ? { n: ys.length, p10: q(.1), p50: q(.5), p90: q(.9) } : null;
+}
+async function desenharResposta() {
+  await carregarEstat(); if (!estat?.resposta) { $("#cardResposta").hidden = true; return; }
+  const sit = situacaoAtualChuva(), viz = sit && parecidos(sit);
+  const u = comNivel(cache[P]?.leituras || rioAcima.dados[P] || []).at(-1);
+  $("#scardResposta").textContent = `Cada ponto é um dia: chuva na bacia × quanto a régua ${apelido(P)} subiu`;
+  $("#respNota").textContent = `Chuva média na bacia (${config.textos?.chuva_bacia || "pontos da bacia"}) de 24 h antes até 48 h depois; subida máxima da régua ${apelido(P)} nas 72 h seguintes. Solo pela chuva dos 30 dias anteriores.`;
+  if (sit && viz) {
+    $("#pcardResposta").innerHTML = `<i style="background:${tok(viz.p50 >= 50 ? "--alerta" : viz.p50 >= 20 ? "--atencao" : "--bom")}"></i>Agora: sobe ~${fmt(viz.p50 / 100, 1)} m`;
+    $("#respTexto").innerHTML = `Agora: <strong>${fmt(sit.x, 0)} mm</strong> na bacia (24 h passadas + 48 h previstas), com <strong>${NOMES_SOLO[sit.classe]}</strong>. ` +
+      `Em ${viz.n} situações parecidas, a régua ${apelido(P)} subiu em média <strong>${fmt(viz.p50 / 100, 2)} m</strong> (de ${fmt(viz.p10 / 100, 2)} a ${fmt(viz.p90 / 100, 2)} m em 8 de cada 10 casos)` +
+      (u ? ` — a partir de agora, isso levaria a cerca de <strong>${fmt((u.nivel + viz.p50) / 100, 2)} m</strong>, podendo chegar a ${fmt((u.nivel + viz.p90) / 100, 2)} m.` : ".");
+  } else $("#pcardResposta").innerHTML = `<i style="background:${tok("--neutro")}"></i>Chuva × subida`;
+  if (!cardAberto("cardResposta")) return;
+  const op = opcoesBase();
+  op.parsing = false; op.interaction = { mode: "nearest", intersect: true };
+  op.plugins.tooltip = { enabled: true, callbacks: { label: c => ` ${fmt(c.parsed.x, 0)} mm → subiu ${fmt(c.parsed.y, 2)} m` } };
+  op.onHover = null;
+  op.scales.x.min = 0; op.scales.x.max = Math.min(160, Math.max(100, Math.ceil((sit?.x || 0) * 1.3 / 10) * 10));
+  op.scales.x.ticks.callback = v => v + " mm"; op.scales.x.ticks.align = "center";
+  op.scales.y.min = -0.2; op.scales.y.ticks.callback = v => fmt(v, 1) + " m";
+  const ds = [0, 1, 2].map(c => ({ type: "scatter", label: NOMES_SOLO[c], data: estat.resposta.pontos.filter(p => p[2] === c).map(p => ({ x: p[0], y: p[1] / 100 })),
+    backgroundColor: tok(CORES_SOLO[c]) + "aa", borderColor: tok("--superficie"), borderWidth: .5, pointRadius: 3, pointHoverRadius: 6 }));
+  const marca = { id: "agoraChuva", afterDatasetsDraw(ch) {
+    if (!sit) return; const { ctx, chartArea: a, scales: { x, y } } = ch, px = x.getPixelForValue(sit.x);
+    if (px < a.left || px > a.right) return;
+    ctx.save();
+    if (viz) { ctx.fillStyle = tok("--alerta") + "33"; ctx.fillRect(px - 6, y.getPixelForValue(viz.p90 / 100), 12, y.getPixelForValue(viz.p10 / 100) - y.getPixelForValue(viz.p90 / 100)); }
+    ctx.strokeStyle = tok("--alerta"); ctx.lineWidth = 2; ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(px, a.top); ctx.lineTo(px, a.bottom); ctx.stroke(); ctx.setLineDash([]);
+    if (viz) { const py = y.getPixelForValue(viz.p50 / 100); ctx.beginPath(); ctx.arc(px, py, 6, 0, 7); ctx.fillStyle = tok("--alerta"); ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = tok("--superficie"); ctx.stroke(); }
+    ctx.font = "650 11.5px system-ui"; ctx.fillStyle = tok("--tinta"); ctx.textAlign = px > (a.left + a.right) / 2 ? "right" : "left";
+    ctx.fillText("agora", px + (ctx.textAlign === "left" ? 6 : -6), a.top + 12); ctx.restore();
+  } };
+  graficos.resposta?.destroy();
+  graficos.resposta = new Chart($("#gResposta"), { type: "scatter", data: { datasets: ds }, options: op, plugins: [marca] });
+  $("#respLeg").innerHTML = [0, 1, 2].map(c => `<span><i style="background:${tok(CORES_SOLO[c])}"></i>${NOMES_SOLO[c]}</span>`).join("") +
+    `<span><i style="background:${tok("--alerta")}"></i>agora (faixa de 8 em 10 casos parecidos)</span>`;
+}
+
+async function desenharSazonal() {
+  await carregarEstat(); if (!estat?.sazonal) { $("#cardSazonal").hidden = true; return; }
+  const mesAt = new Date().getMonth() + 1, sm = estat.sazonal.find(x => x.mes === mesAt);
+  const maisCheio = estat.sazonal.slice().sort((a, b) => b.emergencia / b.anos - a.emergencia / a.anos)[0];
+  $("#pcardSazonal").innerHTML = `<i style="background:${tok(sm.atencao / sm.anos >= .5 ? "--alerta" : sm.atencao ? "--atencao" : "--bom")}"></i>${MESES[mesAt - 1]}: atenção em ${sm.atencao} de ${sm.anos} anos`;
+  $("#scardSazonal").textContent = `Mês mais perigoso: ${MESES[maisCheio.mes - 1]} (emergência em ${maisCheio.emergencia} de ${maisCheio.anos} anos). Em quantos anos a régua ${apelido(P)} passou de cada cota, desde ${estat.desde || "o início do histórico"}.`;
+  if (!cardAberto("cardSazonal")) return;
+  const niveis = [["atencao", "Atenção", "--atencao"], ["alerta", "Alerta", "--alerta"], ["emergencia", "Emergência", "--inundacao"], ["extravasamento", "Transbordamento", "--extravasa"]];
+  const op = opcoesBase();
+  op.parsing = true; op.onHover = null;
+  op.interaction = { mode: "index", intersect: false };
+  op.plugins.tooltip = { enabled: true, callbacks: { title: c => MESES[c[0].dataIndex], label: c => ` ${c.dataset.label}: ${estat.sazonal[c.dataIndex][niveis[c.datasetIndex][0]]} de ${estat.sazonal[c.dataIndex].anos} anos` } };
+  op.scales.x = { type: "category", grid: { display: false }, ticks: { color: tok("--tinta-3"), font: c => ({ size: 12, weight: c.index === mesAt - 1 ? "800" : "400" }) } };
+  op.scales.y.min = 0; op.scales.y.max = 100; op.scales.y.ticks.callback = v => v + "%";
+  const ds = niveis.map(([k, nome, cor], j) => ({ label: nome, data: estat.sazonal.map(x => x.anos ? x[k] / x.anos * 100 : 0), backgroundColor: tok(cor),
+    grouped: false, barPercentage: .78 - j * .14, categoryPercentage: .9, borderRadius: { topLeft: 3, topRight: 3 }, borderSkipped: "bottom", order: -j }));
+  const destaque = { id: "mesAtual", beforeDatasetsDraw(ch) {
+    const { ctx, chartArea: a, scales: { x } } = ch, w = (a.right - a.left) / 12, px = x.getPixelForValue(mesAt - 1);
+    ctx.save(); ctx.fillStyle = tok("--acento") + "14"; ctx.fillRect(px - w / 2, a.top, w, a.bottom - a.top); ctx.restore();
+  } };
+  graficos.sazonal?.destroy();
+  graficos.sazonal = new Chart($("#gSazonal"), { type: "bar", data: { labels: MESES, datasets: ds }, options: op, plugins: [destaque] });
+  $("#sazLeg").innerHTML = niveis.map(([, nome, cor]) => `<span><i style="background:${tok(cor)}"></i>passou da ${nome.toLowerCase()}</span>`).join("") + `<span>· destaque = mês atual</span>`;
+}
+
+async function desenharRecessao() {
+  await carregarEstat(); if (!estat?.recessao) { $("#cardRecessao").hidden = true; return; }
+  const fx = estat.recessao.faixas, at = estat.cotas.atencao;
+  const ls = comNivel(cache[P]?.leituras || rioAcima.dados[P] || []), u = ls.at(-1);
+  $("#scardRecessao").textContent = `Horas até a régua ${apelido(P)} voltar abaixo da atenção, nas cheias desde ${estat.desde || "o início do histórico"}`;
+  let atual = null, texto = `A régua ${apelido(P)} está abaixo da cota de atenção.`;
+  if (u && u.nivel >= at) {
+    const ult = ls.filter(l => ms(u) - ms(l) <= 72 * 36e5), pico = ult.reduce((m, l) => l.nivel > m.nivel ? l : m, ult[0]);
+    const desde = (ms(u) - ms(pico)) / 36e5, v = variacao(ls, 3);
+    atual = fx.find(f => pico.nivel >= f.de && pico.nivel < f.ate);
+    const baixando = (desde >= 3 && u.nivel <= pico.nivel - 3) || (v && v.delta <= -2);
+    if (atual && baixando) {
+      const resto = h => Math.max(1, h - desde), quandoH = h => new Date(Date.now() + resto(h) * 36e5).toLocaleString("pt-BR", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+      texto = `O pico foi de <strong>${fmt(pico.nivel / 100, 2)} m</strong> há ${fmt(desde, 0)} h e o rio está baixando. Pelo histórico, deve voltar abaixo da atenção em cerca de <strong>${fmt(resto(atual.mediana_h), 0)} h</strong> (${quandoH(atual.mediana_h)}), normalmente entre ${fmt(resto(atual.p25_h), 0)} e ${fmt(resto(atual.p75_h), 0)} h — se não chover mais.`;
+      $("#pcardRecessao").innerHTML = `<i style="background:${tok("--atencao")}"></i>Volta abaixo da atenção em ~${fmt(resto(atual.mediana_h), 0)} h`;
+    } else {
+      texto = `A régua ${apelido(P)} está acima da atenção (${fmt(u.nivel / 100, 2)} m) e ainda não começou a baixar.`;
+      $("#pcardRecessao").innerHTML = `<i style="background:${tok("--alerta")}"></i>Ainda não baixando`;
+    }
+  } else $("#pcardRecessao").innerHTML = `<i style="background:${tok("--bom")}"></i>Abaixo da atenção`;
+  $("#recTexto").innerHTML = texto;
+  const maxH = Math.max(...fx.map(f => f.p75_h));
+  $("#recLista").innerHTML = fx.map(f => `<li class="${f === atual ? "atual" : ""}"><strong>Pico ${f.nome} (${fmt(f.de / 100, 2)}${f.ate < 9000 ? `–${fmt(f.ate / 100, 2)}` : "+"} m)</strong>
+      <span class="h">~${fmt(f.mediana_h, 0)} h</span>
+      <span class="faixa"><span style="left:${f.p25_h / maxH * 100}%;width:${(f.p75_h - f.p25_h) / maxH * 100}%"></span><i style="left:${f.mediana_h / maxH * 100}%"></i></span>
+      <small>${f.eventos} cheia${f.eventos > 1 ? "s" : ""} · metade delas baixou entre ${fmt(f.p25_h, 0)} e ${fmt(f.p75_h, 0)} h</small></li>`).join("");
+}
+function desenharVisoes() { desenharResposta(); desenharSazonal(); desenharRecessao(); }
+
+// ================= memória das cheias =================
+async function desenharMemoria() {
+  if (!config.impactos) { $("#cardHist").hidden = true; return; }
+  impactos ??= await fetch(config.impactos).then(r => r.json()).catch(() => null);
+  if (!impactos?.historia?.length) { $("#cardHist").hidden = true; return; }
+  $("#cardHist").hidden = false;
+  const u = comNivel(cache[P]?.leituras || rioAcima.dados[P] || []).at(-1);
+  const recorde = impactos.historia.filter(h => h.cm).reduce((m, h) => h.cm > m.cm ? h : m, { cm: 0 });
+  $("#hSub").textContent = `Grandes cheias de ${config.cidade}, de ${impactos.historia[0].data.slice(0, 4)} até hoje`;
+  if (recorde.cm) $("#hResumo").innerHTML = `<i style="background:${tok("--inundacao")}"></i>Maior: ${recorde.data.slice(0, 4)}, ≈ ${fmt(recorde.cm / 100, 0)} m`;
+  const maior = Math.max(...impactos.historia.filter(h => h.cm).map(h => h.cm), u?.nivel || 0);
+  const itens = impactos.historia.slice().reverse();
+  const data = d => d.length === 4 ? d : new Date(d + "T12:00").toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" });
+  $("#hLinha").innerHTML = (u ? `<li class="agora"><span class="data-h">Agora</span><strong>${fmt(u.nivel / 100, 2)} m na régua ${apelido(P)}</strong>
+      <div class="barra-h" style="width:${u.nivel / maior * 100}%"></div></li>` : "") +
+    itens.map(h => `<li class="${h.destaque ? "destaque" : ""}"><span class="data-h">${data(h.data)}</span><strong>${h.titulo}</strong>
+      ${h.nivel ? `<span class="nv">${h.nivel}</span>` : ""}<p>${h.texto}</p>
+      ${h.cm ? `<div class="barra-h" style="width:${h.cm / maior * 100}%;background:${tok("--neutro")}"></div>` : ""}
+      <small>${h.fonte}</small></li>`).join("");
+}
+
+// ================= situação das fontes de dados =================
+const fontes = { ana: null, ana_quando: 0, hist: null };
+async function desenharFontes() {
+  // réguas de referência de cada rede: a principal, a reserva ou a primeira da bacia
+  const todas = Object.values(estacoes), daRede = f => [P, config.reserva].map(c => estacoes[c]).find(e => e?.fonte === f) || todas.find(e => e.fonte === f);
+  const refAna = daRede("ana"), refSp = daRede("spaguas");
+  if (refAna && Date.now() - fontes.ana_quando > 10 * 60e3) {
+    fontes.ana = comNivel(await buscarAna(refAna.codigo, 1).catch(() => [])).at(-1) || null; fontes.ana_quando = Date.now();
+  }
+  fontes.hist ??= await fetch("historico/index.json").then(r => r.json()).catch(() => null);
+  if (refSp && !rioAcima.dados[refSp.codigo] && !cache[refSp.codigo] && !fontes.spTentou) {
+    fontes.spTentou = true; rioAcima.dados[refSp.codigo] = (await buscarSibh([refSp], 1).catch(() => ({})))[refSp.codigo];
+  }
+  const sp = refSp && comNivel(rioAcima.dados[refSp.codigo] || cache[refSp.codigo]?.leituras || []).at(-1);
+  const idade = l => l ? (Date.now() - ms(l)) / 36e5 : Infinity;
+  const linha = (nome, ok, txt) => `<li><i style="background:${tok(ok === true ? "--bom" : ok === false ? "--inundacao" : "--atencao")}"></i><div><strong>${nome}</strong>${txt}</div></li>`;
+  $("#fontes").innerHTML = [
+    refSp ? linha("SP Águas (SIBH)", idade(sp) < 1 ? true : idade(sp) < 3 ? null : false, sp ? `${apelido(refSp.codigo)}: última leitura ${ha(idade(sp))}` : "sem resposta") : "",
+    refAna ? linha("ANA (telemetria)", idade(fontes.ana) < 2 ? true : idade(fontes.ana) < 4 ? null : false, fontes.ana ? `${apelido(refAna.codigo)}: última leitura ${ha(idade(fontes.ana))}` : "sem resposta") : "",
+    !config.previsao ? "" : linha("Open-Meteo (chuva prevista)", prev.quando ? (Date.now() - prev.quando < 90 * 60e3) : null, prev.quando ? `Previsão atualizada às ${new Date(prev.quando).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : "carregando"),
+    linha("Histórico (GitHub)", fontes.hist ? (Date.now() - Date.parse(fontes.hist.atualizado_em + "T12:00") < 3 * 864e5) : null, fontes.hist ? `Atualizado em ${new Date(fontes.hist.atualizado_em + "T12:00").toLocaleDateString("pt-BR")}` : "carregando"),
+  ].join("");
+}
+
+// ================= avisos no aparelho =================
+// Funcionam com o painel aberto (ou instalado e aberto em segundo plano). O canal do Telegram avisa sempre.
+function avisoJaDado(chave, horas) {
+  const v = ler("aviso-" + chave, 0);
+  if (Date.now() - v < horas * 36e5) return true;
+  guardar("aviso-" + chave, Date.now()); return false;
+}
+async function notificar(titulo, corpo, chave, horas) {
+  if (!ler("avisos", false) || typeof Notification === "undefined" || Notification.permission !== "granted") return;
+  if (avisoJaDado(chave, horas)) return;
+  const reg = await navigator.serviceWorker?.getRegistration?.().catch(() => null);
+  const op = { body: corpo, icon: "../icones/icone-192.png", badge: "../icones/icone-192.png", tag: `${BACIA}-${chave}` };
+  if (reg) reg.showNotification(titulo, op); else new Notification(titulo, op);
+}
+function verificarAvisos() {
+  const t = rioAcima.trecho || [], cid = t.at(-1);
+  if (cid?.u && Date.now() - ms(cid.u) < 2 * 36e5) {
+    const cl = cotasDe(estacoes[P]), cota = cl.find(n => cid.u.nivel >= n.cm);
+    const anterior = ler("ultima-cota", null);
+    if (cota && cota.chave !== anterior && (!anterior || cl.findIndex(n => n.chave === cota.chave) < cl.findIndex(n => n.chave === anterior)))
+      notificar(`${config.rio}: ${cota.nome}`, `${apelido(P)} em ${fmt(cid.u.nivel / 100, 2)} m (cota de ${cota.nome.toLowerCase()}: ${fmt(cota.cm / 100, 2)} m).`, "cota-" + cota.chave, 6);
+    guardar("ultima-cota", cota ? cota.chave : null);
+  }
+  for (const r of t) if (!r.cidade && r.dif != null && r.dif >= 20 && r.e.rio_acima?.horas_ate_cidade)
+    notificar(`Água subindo em ${r.e.nome}`, `+${fmt(r.dif, 0)} cm em 3 h (${fmt(r.u.nivel / 100, 2)} m). Chega à cidade em cerca de ${r.e.rio_acima.horas_ate_cidade} h.`, "sobe-" + r.e.codigo, 6);
+  if (rioAcima.represa?.[0] === "alto") notificar("Risco de represamento", rioAcima.represa[2], "represa", 12);
+  const pr = prev.chanceProxima;
+  if (pr && pr.p >= .3) notificar(`Previsão: ${fmt(pr.p * 100, 0)}% de chance de ${pr.nome.toLowerCase()}`, `Nas próximas 48 h, a régua ${apelido(P)} pode chegar a ${fmt(pr.cm / 100, 2)} m.`, "prev-" + pr.chave, 12);
+}
+function configurarAvisos() {
+  const btn = $("#btnNotif");
+  const atualizar = () => {
+    const ativo = ler("avisos", false) && typeof Notification !== "undefined" && Notification.permission === "granted";
+    // depois de ligado, o cartão some; dá para desligar pelo rodapé
+    $("#cardAvisos").hidden = ativo && $("#btnInstalar").hidden && $("#lnkTelegram").hidden;
+    btn.hidden = ativo;
+    $("#avisosRodape").hidden = !ativo;
+  };
+  $("#btnDesligarAvisos").onclick = () => { guardar("avisos", false); atualizar(); };
+  if (typeof Notification === "undefined") { btn.disabled = true; btn.textContent = "Este navegador não mostra avisos"; }
+  else btn.onclick = async () => {
+    if (ler("avisos", false) && Notification.permission === "granted") { guardar("avisos", false); atualizar(); return; }
+    const p = await Notification.requestPermission();
+    guardar("avisos", p === "granted"); atualizar();
+    if (p === "granted") notificar("Avisos ligados", "Você será avisado quando o rio passar de uma cota, a água subir rio acima ou a previsão indicar cheia.", "teste-" + Date.now(), 0);
+  };
+  atualizar();
+  if (config.avisos?.telegram) { $("#lnkTelegram").href = config.avisos.telegram; $("#lnkTelegram").hidden = false; }
+  let pedido = null;
+  addEventListener("beforeinstallprompt", ev => { ev.preventDefault(); pedido = ev; $("#btnInstalar").hidden = false; atualizar(); });
+  $("#btnInstalar").onclick = async () => { if (!pedido) return; pedido.prompt(); await pedido.userChoice; pedido = null; $("#btnInstalar").hidden = true; atualizar(); };
+}
+
+// ================= folha de estações =================
+async function abrirFolha() {
+  const lista = $("#listaEstacoes");
+  lista.innerHTML = config.rios.map(rio => `<h3>${rio.nome}</h3>` + rio.estacoes.map(e => `
+    <button class="op-est" data-cod="${e.codigo}" aria-current="${e.codigo === estado.estacao}">
+      <strong>${e.nome}${e.codigo === P ? '<span class="selo">referência</span>' : ""}</strong>
+      <span class="nv" id="nv-${e.codigo}">…</span>
+      <small>${e.operadora} · ${e.prefixo || e.codigo}${e.observacao ? " · " + e.observacao : ""}</small>
+    </button>`).join("")).join("");
+  $("#folha").showModal();
+  const todas = config.rios.flatMap(r => r.estacoes);
+  const mostrar = (e, ls) => {
+    const u = comNivel(ls || []).at(-1), el = document.getElementById("nv-" + e.codigo);
+    if (el) el.innerHTML = u ? `${fmt(u.nivel / 100, 2)} m<small>${ha((Date.now() - ms(u)) / 36e5)}</small>` : "—";
+  };
+  const sp = todas.filter(e => e.fonte === "spaguas" && !cache[e.codigo]);
+  if (sp.length) buscarSibh(sp, 1).then(r => sp.forEach(e => mostrar(e, r[e.codigo]))).catch(() => sp.forEach(e => mostrar(e, [])));
+  for (const e of todas) {
+    if (cache[e.codigo]) mostrar(e, cache[e.codigo].leituras);
+    else if (e.fonte !== "spaguas") buscarAna(e.codigo, 1).then(ls => mostrar(e, ls)).catch(() => mostrar(e, []));
+  }
+}
+
+// ================= orquestração =================
+function trocarModo(modo) {
+  estado.modo = modo; estado.cursor = null; estado.janelaManual = false;
+  document.querySelectorAll("#modo button").forEach(b => b.setAttribute("aria-pressed", b.dataset.modo === modo));
+  $("#ctrlAgora").hidden = modo !== "agora"; $("#ctrlComp").hidden = modo !== "comparar"; $("#anos").hidden = modo !== "comparar"; $("#legAgora").hidden = modo !== "agora"; $("#legChuva").hidden = modo !== "agora";
+  estado.janela = null;
+  if (modo === "agora") { $("#boxChuva").hidden = false; desenharAgora(); } else { $("#boxChuva").hidden = true; desenharComparar(); }
+  salvarURL();
+}
+function marcarControles() {
+  document.querySelectorAll("#periodos button").forEach(b => b.setAttribute("aria-pressed", +b.dataset.de === estado.de && +b.dataset.ate === estado.ate));
+  const c = cache[estado.estacao], temChuva = c.dias.some(r => r.chuva > 0), temVazao = c.dias.some(r => r.vmed != null);
+  if ((estado.metrica === "chuva" && !temChuva) || (estado.metrica === "vmed" && !temVazao)) estado.metrica = "nmax";
+  $("#metrica").querySelector('[value="chuva"]').disabled = !temChuva;
+  $("#metrica").querySelector('[value="vmed"]').disabled = !temVazao;
+  $("#metrica").value = estado.metrica;
+}
+function salvarURL() {
+  const p = new URLSearchParams({ estacao: estado.estacao, modo: estado.modo });
+  if (estado.modo === "comparar") { p.set("de", estado.de); p.set("ate", estado.ate); p.set("medida", estado.metrica); }
+  history.replaceState(null, "", "?" + p);
+}
+function desenharTudo() {
+  marcarControles();
+  const { lista } = temporadas();
+  if (!estado.destaques.size) destaquesPadrao(lista);
+  desenharHero(); desenharStats();
+  trocarModo(estado.modo);
+  desenharLinhas(); desenharCheias(); desenharCalor(); desenharPermanencia();
+  desenharPrevisao(); desenharRioAcima(); desenharImpactos(); desenharMemoria(); desenharFontes(); desenharVisoes();
+}
+async function trocarEstacao(cod) {
+  estado.estacao = cod; estado.destaques = new Map(); estado.janela = null;
+  const est = estacoes[cod];
+  $("#selRio").textContent = est.rio; $("#selNome").textContent = est.nome;
+  $("#principal").classList.add("carregando");
+  try {
+    await carregar(cod);
+    $("#erro").style.display = "none";
+    desenharTudo();
+  } catch (e) {
+    $("#erro").style.display = "block"; $("#erro").textContent = "Não foi possível carregar os dados: " + e.message;
+    marcarVivo("erro");
+  }
+  $("#principal").classList.remove("carregando");
+}
+
+async function iniciar() {
+  config = await (await fetch("config.json")).json();
+  config.rios.forEach(r => r.estacoes.forEach(e => estacoes[e.codigo] = { ...e, rio: r.nome }));
+  P = config.principal; REGUAS_CIDADE = config.reguas_cidade || [P];
+  document.title = `${config.rio} · ${config.cidade}`;
+  document.querySelector('meta[name="description"]').content = `Nível, chuva e avisos de cheia do ${config.rio} em ${config.cidade}, com dados da SP Águas e da ANA.`;
+  document.querySelector('meta[name="apple-mobile-web-app-title"]').content = config.rio;
+  $("#sobreCotas").innerHTML = config._aviso_cotas || "";
+  const p = new URLSearchParams(location.search);
+  estado.estacao = config.estacao_padrao || P;
+  if (estacoes[p.get("estacao")]) estado.estacao = p.get("estacao");
+  if (p.get("modo") === "comparar") estado.modo = "comparar";
+  if (+p.get("de") >= 1 && +p.get("de") <= 12 && +p.get("ate") >= 1 && +p.get("ate") <= 12) { estado.de = +p.get("de"); estado.ate = +p.get("ate"); }
+  if (METRICAS[p.get("medida")]) estado.metrica = p.get("medida");
+
+  iniciarNavegador();
+  if (matchMedia("(pointer: fine)").matches) $("#dicaNav").textContent = "Arraste a janela ou as bordas abaixo · Ctrl + roda do mouse no gráfico para zoom";
+  else $("#dicaNav").textContent = "Toque no gráfico para ver os valores · arraste a janela para navegar, puxe as bordas para zoom";
+  $("#btnEstacao").onclick = abrirFolha;
+  $("#folha").addEventListener("click", ev => {
+    const b = ev.target.closest(".op-est");
+    if (b) { $("#folha").close(); if (b.dataset.cod !== estado.estacao) trocarEstacao(b.dataset.cod); }
+    else if (ev.target === $("#folha")) $("#folha").close();     // toque fora fecha
+  });
+  $("#modo").onclick = ev => { const b = ev.target.closest("button"); if (b && b.dataset.modo !== estado.modo) trocarModo(b.dataset.modo); };
+  const marcarChuva = () => document.querySelectorAll("#modoChuva button").forEach(b => b.setAttribute("aria-pressed", (b.dataset.c === "bacia") === estado.chuvaBacia));
+  marcarChuva();
+  $("#legChuva").onclick = ev => {
+    const b = ev.target.closest("button[data-reg]"); if (!b) return;
+    const ocultas = new Set(ler("regioesOcultas", []));
+    ocultas.has(b.dataset.reg) ? ocultas.delete(b.dataset.reg) : ocultas.add(b.dataset.reg);
+    if (ocultas.size >= config.regioes_chuva.length) return;   // ao menos uma região ligada
+    guardar("regioesOcultas", [...ocultas]); aplicarRegioesOcultas();
+    if (estado.janela) definirJanela(...estado.janela);   // recalcula escala, legenda e leitura
+  };
+  $("#modoChuva").onclick = ev => {
+    const b = ev.target.closest("button"); if (!b) return;
+    estado.chuvaBacia = b.dataset.c === "bacia"; guardar("chuvaBacia", estado.chuvaBacia); marcarChuva();
+    if (estado.modo === "agora") desenharAgora(true);
+  };
+  setInterval(() => { if (estado.chuvaBacia) { bacia.quando = 0; carregarChuvaBacia().then(() => { if (estado.modo === "agora") desenharAgora(true); }).catch(() => {}); } }, 10 * 60e3);
+  $("#janelas").onclick = ev => {
+    const b = ev.target.closest("button"); if (!b) return;
+    estado.dias = +b.dataset.d; estado.janelaManual = false; definirJanela(...janelaPadrao()); marcarJanelasAtivas();
+  };
+  $("#periodos").onclick = ev => {
+    const b = ev.target.closest("button"); if (!b) return;
+    estado.de = +b.dataset.de; estado.ate = +b.dataset.ate; estado.destaques = new Map();
+    marcarControles(); desenharComparar(); desenharLinhas(); salvarURL();
+  };
+  $("#metrica").onchange = e => { estado.metrica = e.target.value; desenharComparar(true); salvarURL(); };
+  $("#anos").onclick = ev => {
+    const b = ev.target.closest(".ano"); if (!b) return;
+    if (b.dataset.extra) { estado[b.dataset.extra] = !estado[b.dataset.extra]; guardar(b.dataset.extra, estado[b.dataset.extra]); desenharComparar(true); }
+    else alternarDestaque(+b.dataset.s);
+  };
+  // cartões recolhíveis: começam fechados; o navegador lembra a escolha
+  document.querySelectorAll(".recolhivel").forEach(card => {
+    const cab = card.querySelector(".cab"), corpo = card.querySelector(".corpo"), chave = "aberto-" + card.id;
+    const abrir = sim => { cab.setAttribute("aria-expanded", sim); corpo.hidden = !sim; if (sim) setTimeout(() => card.dispatchEvent(new CustomEvent("abriu")), 0); };
+    abrir(ler(chave, false));
+    const alternar = () => { const sim = corpo.hidden; abrir(sim); guardar(chave, sim); };
+    cab.addEventListener("click", ev => { if (!ev.target.closest("a, li[data-cod]")) alternar(); });
+    cab.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); alternar(); } });
+  });
+  $("#linhas").onclick = ev => {
+    const b = ev.target.closest(".linha"); if (!b) return;
+    alternarDestaque(+b.dataset.s);
+    if (innerWidth < 900) document.querySelector(".grafico").scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  $("#detPerm").addEventListener("toggle", desenharPermanencia);
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => desenharTudo());
+
+  await trocarEstacao(estado.estacao);
+  setInterval(atualizarAoVivo, 5 * 60e3);
+  setInterval(desenharPrevisao, 15 * 60e3);
+  setInterval(desenharRioAcima, 5 * 60e3);
+  setInterval(desenharFontes, 5 * 60e3);
+  configurarAvisos();
+  $("#cardResposta").addEventListener("abriu", desenharResposta);
+  $("#cardSazonal").addEventListener("abriu", desenharSazonal);
+  $("#cardRecessao").addEventListener("abriu", desenharRecessao);
+  $("#hero").addEventListener("click", ev => { const b = ev.target.closest(".trocar"); if (b) trocarEstacao(b.dataset.cod); });
+  addEventListener("load", () => desenharImpactos());   // o mapa precisa da biblioteca Leaflet
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("../sw.js").catch(() => {});
+  $("#cardRio").addEventListener("click", ev => { const li = ev.target.closest("li[data-cod]"); if (li && li.dataset.cod !== estado.estacao) trocarEstacao(li.dataset.cod); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { atualizarAoVivo(); desenharPrevisao(); } });
+}
+iniciar();
+</script>
+</body>
+</html>

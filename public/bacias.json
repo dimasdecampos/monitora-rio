@@ -1,0 +1,16 @@
+{
+  "bacias": [
+    {
+      "id": "paraitinga",
+      "rio": "Rio Paraitinga",
+      "cidade": "São Luiz do Paraitinga",
+      "descricao": "Do alto da serra em Cunha até o centro histórico de São Luiz do Paraitinga."
+    },
+    {
+      "id": "paraibuna",
+      "rio": "Rio Paraibuna",
+      "cidade": "Natividade da Serra",
+      "descricao": "Da serra em Santa Virgínia até Natividade da Serra e a represa de Paraibuna."
+    }
+  ]
+}

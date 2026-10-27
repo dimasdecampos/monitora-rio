@@ -14,7 +14,7 @@ BACIA = ["slp", "lagoinha", "cunha", "cabeceiras", "norte"]
 
 def nivel_horario(cod):
     linhas = []
-    for f in sorted(glob.glob(RAIZ + f"/public/historico/{cod}/????-??.json")):
+    for f in sorted(glob.glob(RAIZ + f"/public/paraitinga/historico/{cod}/????-??.json")):
         linhas += json.load(open(f))["dados"]
     linhas = c.sem_picos_falsos(sorted(linhas))
     h = {}

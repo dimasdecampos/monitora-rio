@@ -1,0 +1,125 @@
+{
+  "id": "paraibuna",
+  "rio": "Rio Paraibuna",
+  "cidade": "Natividade da Serra",
+  "titulo": "Rio Paraibuna em Natividade da Serra",
+  "descricao": "Da serra em Santa Virgínia até Natividade da Serra e a represa de Paraibuna.",
+  "principal": "58068000",
+  "reserva": null,
+  "estacao_padrao": "58068000",
+  "reguas_cidade": [
+    "58068000"
+  ],
+  "previsao": null,
+  "impactos": null,
+  "estatisticas": "estatisticas.json",
+  "represamento": null,
+  "textos": {
+    "rio_acima": "A água leva cerca de 4 h para descer da serra (Ponte Alta) até Natividade",
+    "chuva_bacia": "Serra do Mar (Santa Virgínia)"
+  },
+  "avisos": {
+    "telegram": null
+  },
+  "atualizar_a_cada_minutos": 5,
+  "_aviso_cotas": "Cotas em cm. Em Ponte Alta são as oficiais da SP Águas. Em Natividade (Fazenda Palmeiras) são provisórias, estimadas pelo histórico. A represa e a régua abaixo da barragem não têm cotas cadastradas.",
+  "rios": [
+    {
+      "nome": "Rio Paraibuna",
+      "estacoes": [
+        {
+          "codigo": "sp792",
+          "fonte": "spaguas",
+          "id_nivel": "792",
+          "id_chuva": "29003",
+          "prefixo": "2E-052",
+          "nome": "Ponte Alta — Núcleo Santa Virgínia",
+          "operadora": "SP Águas / SAISP",
+          "lat": -23.3301,
+          "lon": -45.1437,
+          "atraso_max_horas": 1,
+          "historico_desde": "2024-01",
+          "cotas_oficiais": true,
+          "cotas_cm": {
+            "atencao": 520,
+            "alerta": 579.9,
+            "emergencia": 640,
+            "extravasamento": 700,
+            "inundacao": 640
+          },
+          "curto": "Ponte Alta",
+          "rio_acima": {
+            "ordem": 1,
+            "horas_ate_cidade": 4
+          },
+          "observacao": "Rio Paraibuna na serra (Núcleo Santa Virgínia). A água leva ~4 h (3 a 7 h) até Natividade."
+        },
+        {
+          "codigo": "58068000",
+          "fonte": "ana",
+          "nome": "Fazenda Palmeiras — Natividade da Serra",
+          "operadora": "CESP",
+          "lat": -23.4211,
+          "lon": -45.2889,
+          "atraso_max_horas": 2,
+          "observacao": "Cotas provisórias, estimadas pelo histórico (não oficiais). Maior pico registrado: 7,02 m em 22/02/2026.",
+          "cotas_cm": {
+            "atencao": 250,
+            "alerta": 350,
+            "emergencia": 450,
+            "inundacao": 450
+          },
+          "curto": "Natividade",
+          "historico_desde": "2015-01"
+        }
+      ]
+    },
+    {
+      "nome": "Represa e barragem de Paraibuna",
+      "estacoes": [
+        {
+          "codigo": "sp15001",
+          "fonte": "spaguas",
+          "id_nivel": "15001",
+          "prefixo": "58087080",
+          "nome": "Represa de Paraibuna — nível do reservatório",
+          "curto": "Represa",
+          "operadora": "CESP — ANA",
+          "lat": -23.4131,
+          "lon": -45.6025,
+          "atraso_max_horas": 3,
+          "historico_desde": "2024-01",
+          "observacao": "Nível da água na represa, em metros acima do nível do mar.",
+          "cotas_cm": {}
+        },
+        {
+          "codigo": "sp33174",
+          "fonte": "spaguas",
+          "id_nivel": "33174",
+          "id_chuva": "15072",
+          "prefixo": "58087300",
+          "nome": "Paraibuna — abaixo da barragem",
+          "curto": "Abaixo da barragem",
+          "operadora": "CESP — ANA",
+          "lat": -23.4142,
+          "lon": -45.6081,
+          "atraso_max_horas": 3,
+          "historico_desde": "2024-01",
+          "observacao": "Rio logo abaixo da barragem, a montante da cidade de Paraibuna. O nível depende da água liberada pela usina.",
+          "cotas_cm": {}
+        }
+      ]
+    }
+  ],
+  "conversoes": {},
+  "regioes_chuva": [
+    {
+      "nome": "Serra do Mar (Santa Virgínia)",
+      "curto": "Serra",
+      "estacoes": [
+        "sp792"
+      ],
+      "chegada": "chega a Natividade em ~4 h"
+    }
+  ]
+}

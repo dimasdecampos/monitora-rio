@@ -1,10 +1,14 @@
-# Monitor do Rio Paraitinga — São Luiz do Paraitinga (SP)
+# Monitor dos Rios — Alto Paraíba do Sul (SP)
 
-Painel em tempo real do nível e da chuva do Rio Paraitinga, de Cunha até São Luiz do
-Paraitinga, e do Rio Paraibuna, com previsão experimental de cheias, histórico desde
-2015/2018 e avisos.
+Painéis em tempo real do nível e da chuva de cada rio, com histórico, avisos e modo TV.
+Um mesmo código atende várias bacias; cada uma tem sua pasta com configuração e histórico.
 
-**Painel:** https://dimasdecampos.github.io/monitora-rio-slp/
+| Bacia | Cidade de referência | Painel |
+|---|---|---|
+| Rio Paraitinga (e afluentes) | São Luiz do Paraitinga | https://dimasdecampos.github.io/monitora-rio/paraitinga/ |
+| Rio Paraibuna (e represa) | Natividade da Serra | https://dimasdecampos.github.io/monitora-rio/paraibuna/ |
+
+**Página inicial:** https://dimasdecampos.github.io/monitora-rio/
 
 > **Idealização e criação: Dimas de Campos.** Desenvolvido em parceria com IA
 > (Claude, da Anthropic).
@@ -20,6 +24,7 @@ Paraitinga, e do Rio Paraibuna, com previsão experimental de cheias, histórico
 
 ## Sumário
 
+0. [Bacias e como adicionar um rio](#bacias-e-como-adicionar-um-rio)
 1. [O que o painel mostra](#o-que-o-painel-mostra)
 2. [Fontes de dados](#fontes-de-dados)
 3. [Cotas e classificação do nível](#cotas-e-classificação-do-nível)
@@ -36,6 +41,38 @@ Paraitinga, e do Rio Paraibuna, com previsão experimental de cheias, histórico
 14. [Créditos](#créditos)
 
 ---
+
+## Bacias e como adicionar um rio
+
+Cada bacia é uma pasta em `public/` listada em `public/bacias.json`. O painel e o modo TV
+são os mesmos para todas (pasta `modelos/`); o que muda é o `config.json` da bacia.
+Cartões sem dados para a bacia (previsão, mapa do que alaga, represamento) somem sozinhos.
+
+| | Paraitinga | Paraibuna |
+|---|---|---|
+| Régua principal | Passarela (SP Águas), cotas oficiais | Fazenda Palmeiras, Natividade (ANA), cotas **provisórias** |
+| Rio acima | Cunha, Lagoinha ×2, Estrada do Ribeira (3 a 20 h) | Ponte Alta, na serra (~4 h, de 3 a 7 h) |
+| Outras réguas | ANA e CESP na cidade, Jacuí, Chapéu ×2 | Represa de Paraibuna (nível do reservatório), abaixo da barragem |
+| Previsão de cheias | sim (modelo próprio) | ainda não |
+| O que alaga / memória | sim | ainda não |
+| Histórico | desde 2018 (Passarela) | desde 2015 (Natividade) |
+
+**Para adicionar um rio:**
+
+1. Crie `public/<id>/config.json` (copie o do Paraibuna, que é o mais simples). Campos
+   principais: `id` (igual ao nome da pasta), `rio`, `cidade`, `principal` (régua de
+   referência), `reguas_cidade`, `rios[].estacoes[]` (código, fonte `spaguas` ou `ana`,
+   `id_nivel`/`id_chuva` da SP Águas, coordenadas, `cotas_cm`, `curto`, `rio_acima` com
+   `ordem` e `horas_ate_cidade`) e `regioes_chuva`. Opcionais: `reserva`, `conversoes`,
+   `previsao`, `impactos`, `represamento`, `estatisticas`, `textos`, `avisos`.
+2. Acrescente a bacia em `public/bacias.json`.
+3. Baixe o histórico: `python scripts/coletar.py --bacia <id> --desde 2024-01`
+   e depois `python scripts/estatisticas.py --bacia <id>`.
+4. Confira com `python scripts/montar_site.py` (aponta erros no config) e
+   `python server.py`. Ao enviar ao GitHub, o site e os avisos passam a incluir a bacia.
+
+Os ids das réguas da SP Águas estão em `https://cth.daee.sp.gov.br/sibh/api/v2/stations`
+(campo `id`; o `station_type` diz se é régua ou pluviômetro).
 
 ## O que o painel mostra
 
@@ -95,7 +132,7 @@ Cotas usadas (em metros, na régua de cada estação):
 | Passarela (SP Águas) | 1,92 | 2,32 | 2,72 | 3,12 | Oficiais (SIBH) |
 | Régua da ANA na cidade | 2,73 | 3,16 | 4,00 | 4,41 | Atenção e alerta oficiais (SIBH); emergência e transbordamento convertidos da Passarela |
 | Régua da CESP | 3,04 | 3,48 | 3,91 | 4,35 | Convertidas da Passarela (aproximadas) |
-| Lagoinha, Cunha, Rio Jacuí, Chapéu, Ponte Alta | — | — | — | — | Oficiais (SIBH), ver `public/config.json` |
+| Lagoinha, Cunha, Rio Jacuí, Chapéu, Ponte Alta | — | — | — | — | Oficiais (SIBH), ver `public/<bacia>/config.json` |
 | Fazenda Palmeiras (ANA) | 2,50 | 3,50 | 4,50 | — | Provisórias, pelo histórico |
 
 As duas tabelas oficiais da cidade não batem entre si: a atenção da régua da ANA
@@ -180,32 +217,32 @@ ou desliga a região.
 
 ## O que alaga, memória e estatísticas
 
-- `public/impactos.json`: níveis da Passarela ligados a impactos registrados (3,95 m:
+- `public/paraitinga/impactos.json`: níveis da Passarela ligados a impactos registrados (3,95 m:
   ruas da beira do rio, 2021; ~4,60 m: ruas do centro, 2024 — aproximado; 5,36 m: Praça
   da Matriz, 2022), pontos no mapa e linha do tempo das cheias desde 1863.
-- `public/estatisticas.json` (gerado por `scripts/estatisticas.py`): frequência de cheias
-  por mês, tempo para baixar depois do pico, e chuva × subida do rio por umidade do solo.
+- `public/<bacia>/estatisticas.json` (gerado por `scripts/estatisticas.py`, para a régua
+  principal de cada bacia): frequência de cheias por mês, tempo para baixar depois do pico
+  e, no Paraitinga, chuva × subida do rio por umidade do solo.
 
 ## Avisos
 
 - **No aparelho:** botão "Avisar neste aparelho" (Notification API); funciona com o painel
   aberto ou instalado como app. Depois de ligado, o cartão some; para desligar, use o
   rodapé.
-- **Telegram:** `scripts/alertas.py` roda a cada ~10 min (`.github/workflows/alertas.yml`).
-  Avisa quando a Passarela muda de cota, a água sobe ≥ 20 cm em 3 h rio acima (com tempo
-  de chegada), há risco de represamento ou a previsão passa de 30%. Cada tipo de aviso se
-  repete no máximo a cada 6–12 h. Para ligar:
-  1. No Telegram, crie um bot com **@BotFather** (`/newbot`) e copie o token.
-  2. Crie um canal público e adicione o bot como administrador.
-  3. No GitHub: *Settings → Secrets and variables → Actions* → `TELEGRAM_TOKEN` e
-     `TELEGRAM_CHAT` (`@nome_do_canal`).
-  4. Em `public/config.json`, preencha `"telegram": "https://t.me/nome_do_canal"`.
-
-  Sem os segredos, o robô roda em modo de teste e só registra as mensagens.
+- **Robô de avisos:** `scripts/alertas.py` roda a cada ~10 min (`.github/workflows/alertas.yml`)
+  para todas as bacias. Avisa quando a régua principal muda de cota, a água sobe ≥ 20 cm
+  em 3 h rio acima (com tempo de chegada), há risco de represamento ou a previsão passa de
+  30%. Cada tipo de aviso se repete no máximo a cada 6–12 h. Sem nenhum canal configurado,
+  roda em modo de teste e só registra as mensagens.
 - **App ntfy (recomendado):** notificação no celular com som de alarme, grátis e sem
-  cadastro. Instale o app **ntfy** (Android/iPhone), toque em **+** e assine o tópico
-  guardado no segredo `NTFY_TOPIC` (nome difícil de adivinhar, pois quem souber o nome
-  recebe os avisos). Para várias pessoas, todas assinam o mesmo tópico.
+  cadastro. Crie no GitHub o segredo `NTFY_TOPIC` com um nome difícil de adivinhar (ex.:
+  `rio-024906fe`); cada bacia avisa no tópico `<NTFY_TOPIC>-<bacia>` (ex.:
+  `rio-024906fe-paraitinga`). Instale o app **ntfy**, toque em **+** e assine os tópicos
+  das bacias que quiser. Quem souber o nome do tópico recebe os avisos.
+- **Telegram:** crie um bot com **@BotFather** e um canal por bacia (o bot como
+  administrador). No GitHub, segredo `TELEGRAM_TOKEN`; no `config.json` da bacia,
+  `"avisos": {"telegram_chat": "@canal", "telegram": "https://t.me/canal"}` (o segundo
+  mostra o botão do canal no painel).
 - **WhatsApp (pessoal, via [CallMeBot](https://www.callmebot.com/blog/free-api-whatsapp-messages/)):**
   os mesmos avisos chegam no seu WhatsApp, de graça. Funciona só para números
   individuais (não para grupos), e cada número precisa ativar o próprio acesso.
@@ -213,47 +250,57 @@ ou desliga a região.
      que aparece lá. A resposta traz sua `apikey`.
   2. No GitHub: *Settings → Secrets and variables → Actions* → `CALLMEBOT_PHONE`
      (ex.: `+5512999999999`) e `CALLMEBOT_KEY`.
-  3. Teste: *Actions → Avisos de cheia → Run workflow*, marque **teste** e rode. Chega
-     uma mensagem com o nível atual.
-- **App instalável:** `public/manifest.webmanifest` e `public/sw.js` (funciona sem internet
-  com a última leitura guardada).
+- **Teste:** *Actions → Avisos de cheia → Run workflow*, marque **teste** e rode. Chega
+  uma mensagem com o nível atual de cada bacia em todos os canais configurados.
+- **App instalável:** cada bacia tem seu `manifest.webmanifest` (gerado) e o `public/sw.js`
+  serve a todas (funciona sem internet com a última leitura guardada).
 
 ## Atualização automática
 
 | Workflow | Quando | O que faz |
 |---|---|---|
-| `site.yml` | todo dia às 06:20 e a cada push | baixa o mês atual e o anterior (ANA e SP Águas), gera os resumos diários (com preenchimento), atualiza as estatísticas e publica o site no GitHub Pages |
-| `alertas.yml` | a cada ~10 min | verifica o rio e envia os avisos do Telegram e do WhatsApp |
+| `site.yml` | todo dia às 06:20 e a cada push | baixa o mês atual e o anterior de todas as bacias (ANA e SP Águas), gera os resumos diários (com preenchimento), atualiza as estatísticas, monta o painel em cada bacia e publica no GitHub Pages |
+| `alertas.yml` | a cada ~10 min | verifica todas as bacias e envia os avisos (ntfy, Telegram, WhatsApp) |
 
 O GitHub pode atrasar tarefas agendadas em alguns minutos.
 
 ## Estrutura do projeto
 
 ```
+modelos/                   painel e modo TV (iguais para todas as bacias)
+  painel.html              painel (HTML + CSS + JS, sem build)
+  tv.html                  modo TV
+  manifest.webmanifest     base do app instalável
 public/                    site publicado no GitHub Pages
-  index.html               painel (HTML + CSS + JS, sem build)
-  config.json              estações, cotas, conversões, regiões de chuva
-  modelo_cheias.json       pesos dos modelos de previsão e resultados dos testes
-  impactos.json            o que alaga, lugares no mapa, memória das cheias
-  estatisticas.json        sazonalidade, recessão, chuva × subida
-  historico/<estação>/     AAAA-MM.json (leituras) e diario.json (resumo diário)
-  manifest.webmanifest, sw.js, icones/   app instalável
+  index.html               página inicial: escolhe o rio
+  bacias.json              lista das bacias
+  sw.js, icones/           app instalável (vale para todas)
+  <bacia>/                 paraitinga/, paraibuna/ …
+    config.json            estações, cotas, conversões, regiões de chuva, o que a bacia tem
+    historico/<estação>/   AAAA-MM.json (leituras) e diario.json (resumo diário)
+    estatisticas.json      sazonalidade, recessão (e chuva × subida, se houver)
+    modelo_cheias.json     só Paraitinga: pesos da previsão e resultados dos testes
+    impactos.json          só Paraitinga: o que alaga, mapa, memória das cheias
+    index.html, tv.html, manifest.webmanifest   gerados por montar_site.py (fora do git)
 scripts/
+  comum.py                 lista de bacias, configuração, consulta à ANA
   coletar.py               coleta ANA + SP Águas, filtros, resumo diário e preenchimento
-  estatisticas.py          gera estatisticas.json
-  alertas.py               robô de avisos do Telegram
-  modelo_cheias/           download de chuva (ERA5, previsões arquivadas), treino e testes
-api/dados.py               consulta à ANA (servidor local / Vercel, opcional)
-server.py                  servidor local para testes
+  estatisticas.py          gera estatisticas.json de cada bacia
+  alertas.py               robô de avisos (ntfy, Telegram, WhatsApp)
+  montar_site.py           copia os modelos para cada bacia e confere as configurações
+  modelo_cheias/           previsão do Paraitinga: chuva (ERA5, previsões arquivadas), treino e testes
+server.py                  servidor local para testes (serve os modelos direto)
 ```
 
 ## Rodar e atualizar
 
 ```bash
-python server.py                                  # painel em http://localhost:8000
-python scripts/coletar.py                         # atualiza o mês atual e o anterior
-python scripts/coletar.py --desde 2018-01 --estacao sp664   # recarrega uma estação
+python server.py                                  # site em http://localhost:8000
+python scripts/coletar.py                         # todas as bacias: mês atual e anterior
+python scripts/coletar.py --bacia paraitinga --desde 2018-01 --estacao sp664   # recarrega uma estação
 python scripts/estatisticas.py                    # recalcula as estatísticas
+python scripts/montar_site.py                     # monta as páginas e confere os config.json
+python scripts/alertas.py --bacia paraibuna       # testa os avisos (sem canais: só mostra)
 ```
 
 Para refazer os modelos, siga a ordem descrita em `scripts/modelo_cheias/exportar.py`
@@ -266,6 +313,8 @@ e depois rode `exportar_passarela.py`. Só usa a biblioteca padrão do Python.
 - Níveis das ruas do centro em 2024 são aproximados; faltam pontos de referência oficiais.
 - Lagoinha (Jusante do Jacuí) e Estrada do Ribeira têm menos de 1 ano de histórico.
 - Cotas oficiais de Ponte Alta (a partir de 5,20 m) nunca foram atingidas desde 2024.
+- Paraibuna: as cotas de Natividade são provisórias (estimadas pelo histórico); a represa e
+  a régua abaixo da barragem não têm cotas, e o nível abaixo da barragem depende da usina.
 - Fontes podem parar de transmitir (ex.: ANA em 26/10/2026, Passarela em set/2026).
 - Horários são exibidos no fuso do aparelho (o painel assume horário de Brasília).
 

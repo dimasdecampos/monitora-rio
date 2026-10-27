@@ -1,0 +1,375 @@
+{
+  "id": "paraitinga",
+  "rio": "Rio Paraitinga",
+  "cidade": "São Luiz do Paraitinga",
+  "titulo": "Rio Paraitinga em São Luiz do Paraitinga",
+  "descricao": "Do alto da serra em Cunha até o centro histórico de São Luiz do Paraitinga.",
+  "_campos": "principal = régua de referência da cidade (avisos, modo TV, o que alaga, estatísticas); reserva = régua usada quando a principal para; reguas_cidade = réguas convertíveis entre si (config.conversoes).",
+  "principal": "sp664",
+  "reserva": "58040000",
+  "estacao_padrao": "sp664",
+  "reguas_cidade": [
+    "sp664",
+    "58040000",
+    "58041000"
+  ],
+  "previsao": {
+    "modelo": "modelo_cheias.json",
+    "rio_acima": "sp818"
+  },
+  "impactos": "impactos.json",
+  "estatisticas": "estatisticas.json",
+  "estatisticas_cortes_cm": [
+    450
+  ],
+  "chuva_era5": [
+    "slp",
+    "lagoinha",
+    "cunha",
+    "cabeceiras",
+    "norte"
+  ],
+  "represamento": {
+    "afluente": "sp489",
+    "nome": "Ribeirão do Chapéu",
+    "historia": "foi o que agravou 1996 e 2010"
+  },
+  "textos": {
+    "rio_acima": "A água leva horas para descer de Cunha e Lagoinha até a cidade",
+    "chuva_bacia": "São Luiz, Lagoinha, Cunha e cabeceiras"
+  },
+  "avisos": {
+    "telegram": null
+  },
+  "atualizar_a_cada_minutos": 5,
+  "_aviso_cotas": "Cotas em cm na régua de cada estação. Nas réguas da SP Águas são as cotas oficiais cadastradas no SIBH (atenção, alerta, emergência e extravasamento). Na régua da ANA na cidade são as mesmas cotas da Passarela convertidas (ANA = 123 + 1,017 × Passarela, erro típico 7 cm). Na CESP e em Natividade são aproximadas.",
+  "rios": [
+    {
+      "nome": "Rio Paraitinga",
+      "estacoes": [
+        {
+          "codigo": "sp664",
+          "fonte": "spaguas",
+          "id_nivel": "664",
+          "id_chuva": "669",
+          "prefixo": "2E-051",
+          "nome": "São Luiz do Paraitinga — Passarela (centro)",
+          "operadora": "SP Águas",
+          "lat": -23.2227,
+          "lon": -45.3121,
+          "atraso_max_horas": 1,
+          "historico_desde": "2018-01",
+          "cotas_oficiais": true,
+          "observacao": "Régua da SP Águas no centro da cidade, com cotas oficiais.",
+          "cotas_cm": {
+            "atencao": 191.9,
+            "alerta": 231.9,
+            "emergencia": 272,
+            "extravasamento": 312,
+            "inundacao": 272
+          },
+          "referencias": [
+            {
+              "cm": 400,
+              "texto": "07/02/2021 — ruas da beira do rio alagadas (≈ 5,23 m na régua da ANA)"
+            },
+            {
+              "cm": 526,
+              "texto": "24/02/2024 — ruas do centro alagadas"
+            },
+            {
+              "cm": 529,
+              "texto": "08/02/2022 — água na Praça da Matriz (≈ 6,52 m na régua da ANA)"
+            }
+          ],
+          "preencher_com": {
+            "codigo": "58040000",
+            "a": -121.34,
+            "b": 0.9833,
+            "_obs": "dias sem leitura completados com a régua da ANA: Passarela = a + b × ANA"
+          },
+          "curto": "Passarela"
+        },
+        {
+          "codigo": "58040000",
+          "fonte": "ana",
+          "nome": "São Luiz do Paraitinga — régua da ANA",
+          "operadora": "SGB/CPRM — ANA",
+          "lat": -23.2386,
+          "lon": -45.3067,
+          "atraso_max_horas": 2,
+          "observacao": "Atenção (2,73 m) e alerta (3,16 m): cotas oficiais desta régua no SIBH. Emergência e transbordamento: os da Passarela convertidos (≈ +1,23 m).",
+          "cotas_cm": {
+            "atencao": 273,
+            "alerta": 316,
+            "emergencia": 400,
+            "extravasamento": 441,
+            "inundacao": 400
+          },
+          "referencias": [
+            {
+              "cm": 523,
+              "texto": "07/02/2021 — ruas da beira do rio alagadas (até 70 cm)"
+            },
+            {
+              "cm": 649,
+              "texto": "24/02/2024 — ruas do centro alagadas"
+            },
+            {
+              "cm": 652,
+              "texto": "08/02/2022 — água na Praça da Matriz"
+            }
+          ],
+          "preencher_com": {
+            "codigo": "sp664",
+            "a": 123.4,
+            "b": 1.017,
+            "_obs": "dias sem leitura completados com a Passarela: ANA = a + b × Passarela"
+          },
+          "curto": "régua da ANA"
+        },
+        {
+          "codigo": "58041000",
+          "fonte": "ana",
+          "nome": "São Luiz do Paraitinga — régua da CESP",
+          "operadora": "CESP",
+          "lat": -23.2375,
+          "lon": -45.3064,
+          "atraso_max_horas": 2,
+          "observacao": "Cotas oficiais da Passarela convertidas (CESP ≈ 95 + 1,09 × Passarela, dados de 2026).",
+          "cotas_cm": {
+            "atencao": 304,
+            "alerta": 348,
+            "emergencia": 391,
+            "extravasamento": 435,
+            "inundacao": 391
+          },
+          "curto": "régua da CESP"
+        },
+        {
+          "codigo": "sp35388",
+          "fonte": "spaguas",
+          "id_nivel": "35388",
+          "id_chuva": "35387",
+          "prefixo": "2E-038",
+          "nome": "Estrada do Ribeira (acima da cidade)",
+          "operadora": "SP Águas",
+          "lat": -23.1792,
+          "lon": -45.2815,
+          "atraso_max_horas": 1,
+          "historico_desde": "2026-01",
+          "rio_acima": {
+            "ordem": 4,
+            "horas_ate_cidade": 3
+          },
+          "cotas_cm": {},
+          "curto": "Estrada do Ribeira"
+        },
+        {
+          "codigo": "sp662",
+          "fonte": "spaguas",
+          "id_nivel": "662",
+          "id_chuva": "661",
+          "prefixo": "2E-050",
+          "nome": "Lagoinha — Barro Vermelho",
+          "operadora": "SP Águas",
+          "lat": -23.1391,
+          "lon": -45.167,
+          "atraso_max_horas": 1,
+          "historico_desde": "2024-01",
+          "cotas_oficiais": true,
+          "rio_acima": {
+            "ordem": 3,
+            "horas_ate_cidade": 9
+          },
+          "cotas_cm": {
+            "atencao": 383.9,
+            "alerta": 424,
+            "emergencia": 463.9,
+            "extravasamento": 504,
+            "inundacao": 463.9
+          },
+          "curto": "Lagoinha · Barro Vermelho"
+        },
+        {
+          "codigo": "sp35402",
+          "fonte": "spaguas",
+          "id_nivel": "35402",
+          "id_chuva": "35401",
+          "prefixo": "2E-039",
+          "nome": "Lagoinha — Jusante do Jacuí",
+          "operadora": "SP Águas",
+          "lat": -23.0873,
+          "lon": -45.134,
+          "atraso_max_horas": 1,
+          "historico_desde": "2026-01",
+          "cotas_oficiais": true,
+          "rio_acima": {
+            "ordem": 2,
+            "horas_ate_cidade": 11
+          },
+          "cotas_cm": {
+            "atencao": 377.4,
+            "alerta": 417.5,
+            "emergencia": 457.4,
+            "extravasamento": 497.5,
+            "inundacao": 457.4
+          },
+          "curto": "Lagoinha · Jacuí"
+        },
+        {
+          "codigo": "sp818",
+          "fonte": "spaguas",
+          "id_nivel": "818",
+          "id_chuva": "817",
+          "prefixo": "2D-066",
+          "nome": "Cunha — Estrada de Cunha",
+          "operadora": "SP Águas",
+          "lat": -22.9951,
+          "lon": -45.0439,
+          "atraso_max_horas": 1,
+          "historico_desde": "2020-01",
+          "cotas_oficiais": true,
+          "rio_acima": {
+            "ordem": 1,
+            "horas_ate_cidade": 20
+          },
+          "cotas_cm": {
+            "atencao": 341,
+            "alerta": 381,
+            "emergencia": 420,
+            "extravasamento": 461,
+            "inundacao": 420
+          },
+          "curto": "Cunha"
+        }
+      ]
+    },
+    {
+      "nome": "Afluentes do Paraitinga",
+      "estacoes": [
+        {
+          "codigo": "sp820",
+          "fonte": "spaguas",
+          "id_nivel": "820",
+          "id_chuva": "819",
+          "prefixo": "2E-040",
+          "nome": "Rio Jacuí — foz (Cunha)",
+          "operadora": "SP Águas",
+          "lat": -23.0884,
+          "lon": -45.0972,
+          "atraso_max_horas": 1,
+          "historico_desde": "2025-01",
+          "cotas_oficiais": true,
+          "rio_acima": {
+            "afluente": true,
+            "horas_ate_cidade": 14
+          },
+          "cotas_cm": {
+            "atencao": 320,
+            "alerta": 360,
+            "emergencia": 400,
+            "extravasamento": 444,
+            "inundacao": 400
+          },
+          "curto": "Rio Jacuí"
+        },
+        {
+          "codigo": "sp489",
+          "fonte": "spaguas",
+          "id_nivel": "489",
+          "id_chuva": "665",
+          "prefixo": "2E-049",
+          "nome": "Ribeirão do Chapéu (São Luiz)",
+          "operadora": "SP Águas",
+          "lat": -23.249,
+          "lon": -45.2853,
+          "atraso_max_horas": 1,
+          "historico_desde": "2024-01",
+          "cotas_oficiais": true,
+          "observacao": "Deságua logo abaixo da cidade; quando enche, represa o Paraitinga.",
+          "rio_acima": {
+            "afluente": true
+          },
+          "cotas_cm": {
+            "atencao": 438.9,
+            "alerta": 488.9,
+            "emergencia": 538.9,
+            "extravasamento": 588.9,
+            "inundacao": 538.9
+          },
+          "curto": "Ribeirão do Chapéu"
+        },
+        {
+          "codigo": "sp35413",
+          "fonte": "spaguas",
+          "id_nivel": "35413",
+          "id_chuva": "35412",
+          "prefixo": "2E-056",
+          "nome": "Ribeirão do Chapéu — Catuçaba",
+          "operadora": "SP Águas",
+          "lat": -23.2059,
+          "lon": -45.1871,
+          "atraso_max_horas": 1,
+          "historico_desde": "2026-01",
+          "rio_acima": {
+            "afluente": true
+          },
+          "cotas_cm": {
+            "extravasamento": 309
+          },
+          "curto": "Chapéu · Catuçaba"
+        }
+      ]
+    }
+  ],
+  "conversoes": {
+    "_explicacao": "nível na régua X = a + b × nível na Passarela (sp664), em cm",
+    "58040000": [
+      123.4,
+      1.017
+    ],
+    "58041000": [
+      95.0,
+      1.09
+    ]
+  },
+  "regioes_chuva": [
+    {
+      "nome": "Cunha (cabeceiras)",
+      "curto": "Cunha",
+      "estacoes": [
+        "sp818",
+        "sp820"
+      ],
+      "chegada": "chega à cidade em ~14–20 h"
+    },
+    {
+      "nome": "Lagoinha",
+      "curto": "Lagoinha",
+      "estacoes": [
+        "sp35402",
+        "sp662"
+      ],
+      "chegada": "chega em ~9–11 h"
+    },
+    {
+      "nome": "Perto da cidade",
+      "curto": "Cidade",
+      "estacoes": [
+        "sp35388",
+        "sp664"
+      ],
+      "chegada": "chega em 0–3 h"
+    },
+    {
+      "nome": "Ribeirão do Chapéu",
+      "curto": "Chapéu",
+      "estacoes": [
+        "sp489",
+        "sp35413"
+      ],
+      "chegada": "cheio, represa o rio"
+    }
+  ]
+}

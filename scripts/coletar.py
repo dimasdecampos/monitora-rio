@@ -1,12 +1,13 @@
-"""Baixa o histórico das estações (ANA e SP Águas) e salva em public/historico/.
+"""Baixa o histórico das estações (ANA e SP Águas) de cada bacia e salva em public/<bacia>/historico/.
 
-Formato: public/historico/<codigo>/<AAAA-MM>.json  (um arquivo por mês)
-         public/historico/index.json               (meses disponíveis por estação)
+Formato: public/<bacia>/historico/<codigo>/<AAAA-MM>.json  (um arquivo por mês)
+         public/<bacia>/historico/<codigo>/diario.json     (resumo por dia)
+         public/<bacia>/historico/index.json               (meses disponíveis por estação)
 
 Uso:
-  python scripts/coletar.py                          # atualiza o mês atual e o anterior (roda todo dia no GitHub)
-  python scripts/coletar.py --desde 2024-01          # baixa tudo desde jan/2024 (carga inicial)
-  python scripts/coletar.py --desde 2018-01 --estacao sp664   # só uma estação
+  python scripts/coletar.py                                   # todas as bacias, mês atual e anterior (roda todo dia no GitHub)
+  python scripts/coletar.py --bacia paraibuna --desde 2024-01 # carga inicial de uma bacia nova
+  python scripts/coletar.py --bacia paraitinga --desde 2018-01 --estacao sp664   # só uma estação
 """
 
 import argparse
@@ -17,11 +18,10 @@ import urllib.request
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-RAIZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(RAIZ))
-from api.dados import buscar_ana  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import comum  # noqa: E402
+from comum import buscar_ana  # noqa: E402
 
-PASTA = RAIZ / "public" / "historico"
 HOJE = datetime.now(timezone(timedelta(hours=-3))).date()
 
 
@@ -140,17 +140,17 @@ def sem_picos_falsos(linhas, salto=100):
     return [l for l in linhas if l[0] not in ruins]
 
 
-def gerar_diario(codigo):
+def gerar_diario(bacia, codigo):
     """Resume os arquivos mensais em um arquivo diário e completa os dias sem leitura
     com uma régua vizinha convertida (config: "preencher_com")."""
-    saida = resumo_diario(codigo)
-    config = json.loads((RAIZ / "public" / "config.json").read_text(encoding="utf-8"))
-    est = next((e for r in config["rios"] for e in r["estacoes"] if e["codigo"] == codigo), {})
+    PASTA = comum.pasta(bacia) / "historico"
+    saida = resumo_diario(PASTA / codigo)
+    est = comum.estacoes(comum.config(bacia)).get(codigo, {})
     preenchidos = []
     if est.get("preencher_com") and (PASTA / est["preencher_com"]["codigo"]).exists():
         pc = est["preencher_com"]; conv = lambda x: None if x is None else round(pc["a"] + pc["b"] * x, 1)
         por_dia = {r[0]: r for r in saida}
-        for r in resumo_diario(pc["codigo"]):
+        for r in resumo_diario(PASTA / pc["codigo"]):
             atual = por_dia.get(r[0])
             if atual is None or atual[7] < 6:          # dia sem leitura (ou quase) nesta régua
                 if r[7] < 6: continue
@@ -166,12 +166,12 @@ def gerar_diario(codigo):
         }, separators=(",", ":")),
         encoding="utf-8",
     )
-    print(f"{codigo}: resumo diário com {len(saida)} dias ({len(preenchidos)} completados)")
+    print(f"{bacia}/{codigo}: resumo diário com {len(saida)} dias ({len(preenchidos)} completados)")
 
 
-def resumo_diario(codigo):
+def resumo_diario(pasta_estacao):
     linhas = []
-    for arquivo in sorted((PASTA / codigo).glob("????-??.json")):
+    for arquivo in sorted(pasta_estacao.glob("????-??.json")):
         linhas += json.loads(arquivo.read_text(encoding="utf-8"))["dados"]
     linhas = sem_picos_falsos(sorted(linhas))
 
@@ -202,6 +202,7 @@ def resumo_diario(codigo):
 
 def main():
     p = argparse.ArgumentParser()
+    p.add_argument("--bacia", help="só esta bacia (id de public/bacias.json); padrão: todas")
     p.add_argument("--desde", help="AAAA-MM: primeiro mês a baixar (padrão: mês anterior)")
     p.add_argument("--estacao", help="baixa só esta estação (código do config.json)")
     args = p.parse_args()
@@ -209,11 +210,19 @@ def main():
         inicio = datetime.strptime(args.desde, "%Y-%m").date()
     else:
         inicio = (HOJE.replace(day=1) - timedelta(days=1)).replace(day=1)
+    falhas = 0
+    for bacia in [args.bacia] if args.bacia else comum.bacias():
+        falhas += coletar_bacia(bacia, inicio, args.estacao)
+    if falhas:
+        sys.exit(1)
 
-    config = json.loads((RAIZ / "public" / "config.json").read_text(encoding="utf-8"))
+
+def coletar_bacia(bacia, inicio, so_estacao=None):
+    PASTA = comum.pasta(bacia) / "historico"
+    config = comum.config(bacia)
     estacoes = [e for rio in config["rios"] for e in rio["estacoes"] if e.get("guardar_historico", True)]
-    if args.estacao:
-        estacoes = [e for e in estacoes if e["codigo"] == args.estacao]
+    if so_estacao:
+        estacoes = [e for e in estacoes if e["codigo"] == so_estacao]
     codigos = [e["codigo"] for e in estacoes]
     falhas = 0
 
@@ -231,12 +240,12 @@ def main():
                 continue
             arquivo = pasta / f"{mes:%Y-%m}.json"
             if not linhas:
-                print(f"{codigo} {mes:%Y-%m}: sem leituras")
+                print(f"{bacia}/{codigo} {mes:%Y-%m}: sem leituras")
                 continue
             antigo = json.loads(arquivo.read_text(encoding="utf-8"))["dados"] if arquivo.exists() else []
             if len(linhas) < len(antigo):
                 # a ANA às vezes responde incompleto; nunca troca dados bons por menos dados
-                print(f"{codigo} {mes:%Y-%m}: resposta menor que a salva ({len(linhas)} < {len(antigo)}), mantendo")
+                print(f"{bacia}/{codigo} {mes:%Y-%m}: resposta menor que a salva ({len(linhas)} < {len(antigo)}), mantendo")
                 continue
             conteudo = json.dumps(
                 {"estacao": codigo, "mes": f"{mes:%Y-%m}", "campos": ["t", "nivel", "vazao", "chuva"], "dados": linhas},
@@ -244,10 +253,11 @@ def main():
             )
             if not arquivo.exists() or arquivo.read_text(encoding="utf-8") != conteudo:
                 arquivo.write_text(conteudo, encoding="utf-8")
-                print(f"{codigo} {mes:%Y-%m}: {len(linhas)} leituras salvas")
+                print(f"{bacia}/{codigo} {mes:%Y-%m}: {len(linhas)} leituras salvas")
 
     for codigo in codigos:
-        gerar_diario(codigo)
+        if (PASTA / codigo).exists():
+            gerar_diario(bacia, codigo)
 
     indice = {
         pasta.name: sorted(f.stem for f in pasta.glob("????-??.json"))
@@ -256,8 +266,7 @@ def main():
     (PASTA / "index.json").write_text(
         json.dumps({"atualizado_em": HOJE.isoformat(), "meses": indice}, separators=(",", ":")), encoding="utf-8"
     )
-    if falhas:
-        sys.exit(1)
+    return falhas
 
 
 if __name__ == "__main__":
