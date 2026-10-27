@@ -7,6 +7,7 @@
 <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
 <title>Monitor dos Rios</title>
 <meta name="description" content="Nível, chuva e avisos de cheia dos rios do Alto Paraíba do Sul em tempo real, com dados da SP Águas e da ANA.">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icones/icone-192.png">
 <link rel="apple-touch-icon" href="icones/apple-touch-icon.png">
 <style>
@@ -70,7 +71,7 @@
   <div class="lista" id="lista"></div>
   <div class="rodape">
     <p><strong>Projeto independente, não validado pela Defesa Civil.</strong> Os dados podem ter erros ou atrasos. Em risco, ligue <strong>199</strong> (Defesa Civil) ou <strong>193</strong> (Bombeiros).</p>
-    <p>Idealizado e criado pelo Luizense <a href="https://www.linkedin.com/in/dimasdecampos" target="_blank" rel="noopener"><strong>Dimas de Campos</strong></a> · e-mail: <a href="mailto:dimasrafting@gmail.com">dimasrafting@gmail.com</a></p>
+    <p>Idealizado e criado pelo Luizense <a href="https://www.linkedin.com/in/dimasdecampos" target="_blank" rel="noopener"><strong>Dimas de Campos</strong></a> · e-mail: <a href="mailto:dimasrafting@gmail.com">dimasrafting@gmail.com</a> · <a href="privacidade.html">Privacidade</a></p>
   </div>
 </main>
 <script>
@@ -154,6 +155,8 @@ function grafico(pts, e) {
     } catch { nv.innerHTML = `<b>—</b><span class="pill"><i></i>sem leitura agora</span>`; }
   })();
 })();
+// app instalável (e o app da Play Store): funciona sem internet com a última leitura
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
 </body>
 </html>

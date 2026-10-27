@@ -5,6 +5,8 @@ historico/. Este script gera, em cada uma:
   index.html            <- modelos/painel.html
   tv.html               <- modelos/tv.html
   manifest.webmanifest  <- modelos/manifest.webmanifest (com o nome do rio)
+e atualiza os atalhos do app (public/manifest.webmanifest, o do app da Play Store) com a
+lista de bacias.
 
 Também confere se cada config.json está coerente (régua principal existe, réguas da
 cidade têm conversão etc.) e para com erro se não estiver.
@@ -66,6 +68,15 @@ def conferir(cfg, pasta):
     return erros
 
 
+def atalhos_do_app():
+    """Atalhos do ícone do app (toque longo): um por bacia, na ordem de bacias.json."""
+    arq = PUBLIC / "manifest.webmanifest"
+    m = json.loads(arq.read_text(encoding="utf-8"))
+    m["shortcuts"] = [{"name": f"{b['rio']} — {b['cidade']}", "short_name": b["rio"].replace("Rio ", ""), "url": f"./{b['id']}/",
+                       "icons": [{"src": "icones/icone-192.png", "sizes": "192x192", "type": "image/png"}]} for b in bacias()]
+    arq.write_text(json.dumps(m, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
 def main():
     problemas = 0
     manifesto = json.loads((MODELOS / "manifest.webmanifest").read_text(encoding="utf-8"))
@@ -82,6 +93,7 @@ def main():
                  description=f"Nível, chuva e avisos de cheia do {cfg['rio']} em {cfg['cidade']}.")
         (pasta / "manifest.webmanifest").write_text(json.dumps(m, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"{b['id']}: painel, modo TV e manifesto prontos")
+    atalhos_do_app()
     if problemas:
         sys.exit(f"{problemas} problema(s) nas configurações")
 

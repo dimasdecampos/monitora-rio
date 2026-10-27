@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.dimasdecampos.monitorario",
+      "sha256_cert_fingerprints": [
+        "85:0C:AA:7A:BB:99:99:EA:4A:9C:95:CC:38:9B:0B:52:CB:14:A1:6E:6E:34:6A:D0:94:9A:A6:54:0D:B4:50:3A"
+      ]
+    }
+  }
+]

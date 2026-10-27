@@ -258,6 +258,15 @@ ou desliga a região.
   em 3 h rio acima (com tempo de chegada), há risco de represamento ou a previsão passa de
   30%. Cada tipo de aviso se repete no máximo a cada 6–12 h. Sem nenhum canal configurado,
   roda em modo de teste e só registra as mensagens.
+- **Régua sem dados:** se a régua principal ficar sem leitura por mais que o atraso
+  aceitável (`atraso_max_horas` + 1 h) em duas rodadas seguidas, sai um aviso "régua sem
+  dados" com a última leitura. Ele se repete a cada 24 h, ou a cada 6 h se o rio estava em
+  alguma cota. Quando a régua volta, sai "voltou a transmitir".
+- **Vigia do robô ([healthchecks.io](https://healthchecks.io), grátis):** avisa por e-mail se
+  o robô parar de rodar ou der erro. Crie uma conta, um *check* com período de 10 min e
+  tolerância (*grace*) de 30 min, e copie o endereço de ping (`https://hc-ping.com/...`)
+  para o segredo `HEALTHCHECK_URL` no GitHub. A cada rodada o robô faz um ping; se alguma
+  bacia der erro, o ping vai para `/fail`.
 - **App ntfy (recomendado):** notificação no celular com som de alarme, grátis e sem
   cadastro. Crie no GitHub o segredo `NTFY_TOPIC` com um nome difícil de adivinhar (ex.:
   `rio-024906fe`); cada bacia avisa no tópico `<NTFY_TOPIC>-<bacia>` (ex.:
@@ -276,6 +285,7 @@ ou desliga a região.
      (ex.: `+5512999999999`) e `CALLMEBOT_KEY`.
 - **Teste:** *Actions → Avisos de cheia → Run workflow*, marque **teste** e rode. Chega
   uma mensagem com o nível atual de cada bacia em todos os canais configurados.
+- **Play Store:** o app é o próprio site em tela cheia; veja [playstore/LEIAME.md](playstore/LEIAME.md).
 - **App instalável:** cada bacia tem seu `manifest.webmanifest` (gerado) e o `public/sw.js`
   serve a todas (funciona sem internet com a última leitura guardada).
 
@@ -297,6 +307,8 @@ modelos/                   painel e modo TV (iguais para todas as bacias)
   manifest.webmanifest     base do app instalável
 public/                    site publicado no GitHub Pages
   index.html               página inicial: escolhe o rio
+  manifest.webmanifest     app da Play Store (atalhos atualizados por montar_site.py)
+  privacidade.html         política de privacidade (site e app)
   bacias.json              lista das bacias
   sw.js, icones/           app instalável (vale para todas)
   <bacia>/                 paraitinga/, paraibuna/ …
@@ -314,6 +326,9 @@ scripts/
   montar_site.py           copia os modelos para cada bacia e confere as configurações
   baixar_chuva_era5.py     chuva estimada (ERA5) nos pontos de uma bacia, para chuva × subida
   modelo_cheias/           previsão do Paraitinga: chuva (ERA5, previsões arquivadas), treino e testes
+android/                   gera o app Android (app.json + gerar.js), usado pelo workflow app-android.yml
+playstore/                 publicar na Play Store: passo a passo (LEIAME.md), textos, imagens
+  dominio/                 arquivos do repositório dimasdecampos.github.io (verificação do app)
 server.py                  servidor local para testes (serve os modelos direto)
 ```
 

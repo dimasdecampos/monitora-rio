@@ -1,0 +1,12 @@
+{
+  "_comentario": "Configuração do app Android. O resto (nome, cores, ícones, atalhos) vem de public/manifest.webmanifest. O packageId NÃO pode mudar depois de publicado.",
+  "packageId": "io.github.dimasdecampos.monitorario",
+  "site": "https://dimasdecampos.github.io/monitora-rio/",
+  "name": "Monitor dos Rios",
+  "launcherName": "Monitor Rios",
+  "appVersion": "1.0.0",
+  "navigationColor": "#F9F9F7",
+  "navigationColorDark": "#0D0D0D",
+  "themeColorDark": "#0D0D0D",
+  "keyAlias": "monitorario"
+}

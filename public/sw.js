@@ -1,9 +1,9 @@
 // Service worker (vale para todas as bacias): deixa o painel instalável e mostra a última leitura mesmo sem internet.
 // Páginas e dados: rede primeiro (sempre o mais novo), cópia guardada só se a rede falhar.
 // Bibliotecas (CDN) e ícones: cópia guardada primeiro (não mudam).
-const VERSAO = "v2";
+const VERSAO = "v3";
 const CACHE = `monitor-${VERSAO}`;
-const BASICO = ["./", "index.html", "bacias.json", "icones/icone-192.png"];   // cada painel é guardado na primeira visita
+const BASICO = ["./", "index.html", "bacias.json", "manifest.webmanifest", "privacidade.html", "icones/icone-192.png"];   // cada painel é guardado na primeira visita
 
 self.addEventListener("install", ev => {
   ev.waitUntil(caches.open(CACHE).then(c => c.addAll(BASICO)).then(() => self.skipWaiting()));

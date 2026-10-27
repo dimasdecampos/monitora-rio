@@ -11,3 +11,14 @@ public/*/manifest.webmanifest
 
 # token do robô do Telegram (só nesta máquina, nunca publicar)
 .telegram_token
+
+# chave de assinatura do app Android (guardar fora do git, em lugar seguro)
+*.keystore
+*.jks
+signing-key-info.txt
+playstore/pacote/
+
+# app Android: dependências e projeto gerado
+android/node_modules/
+android/projeto/
+android/package-lock.json
