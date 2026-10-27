@@ -111,14 +111,22 @@ def probabilidade(modelo, ref, rio_acima):
     p24, p72, api, f48 = S(i - 24, i + 1), S(i - 72, i + 1), S(i - 720, i - 72), S(i + 1, i + 49) * modelo["fator_previsao"]
     dc6, dc12 = variacao(rio_acima, 6), variacao(rio_acima, 12)
     versao = "B" if dc6 is not None and dc12 is not None and rio_acima and (datetime.now(timezone.utc) - rio_acima[-1][0]) < timedelta(hours=2) else "A"
-    def chance(G):
-        if G <= 0: return 1.0
+    def bruta(G, h0=ref):
         f, a, b, s, g = math.log1p(f48), math.log1p(p24), math.log1p(p72), api / 100, G / 100
-        v = [1, g, f, a, b, s, ref / 100, f * s, f * g, a * g, g * g]
+        v = [1, g, f, a, b, s, h0 / 100, f * s, f * g, a * g, g * g]
         if versao == "B":
             dc = max(dc6, 0) / 100; v += [dc, max(dc12, 0) / 100, dc / (g + .3)]
         w = pm["pesos_B"] if versao == "B" else pm["pesos_A"]
         z = sum(x * y for x, y in zip(w, v)); return 1 / (1 + math.exp(-max(-30, min(30, z))))
+    def subir(G, h0=ref):
+        # igual ao painel: o termo g² faz a curva voltar a subir em subidas muito grandes;
+        # a chance de subir G cm nunca pode ser maior que a de subir menos
+        if G <= 0: return 1.0
+        return min([bruta(G, h0)] + [bruta(cm, h0) for cm in range(10, int(G), 10)])
+    def chance(G):
+        # chance de chegar a ref + G: não pode ser maior que a de quem já está mais alto chegar lá
+        alvo = ref + G
+        return min([subir(G)] + [subir(alvo - h, h) for h in range(int(ref) + 10, int(alvo), 10)])
     return chance, f48
 
 

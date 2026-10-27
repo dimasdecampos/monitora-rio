@@ -257,11 +257,14 @@
   .prev-corpo { display: grid; gap: 16px; }
   .probs { display: grid; gap: 10px; }
   .prob { display: grid; grid-template-columns: 124px minmax(0, 1fr) 48px; gap: 10px; align-items: center; font-size: 14px; }
-  .prob .nome { display: inline-flex; align-items: center; gap: 6px; color: var(--tinta-2); }
+  .prob .nome { display: inline-flex; align-items: center; gap: 7px; color: var(--tinta); font-weight: 600; line-height: 1.2; }
+  .prob .nome small { display: block; font-weight: 500; font-size: 12px; color: var(--tinta-3); font-variant-numeric: tabular-nums; }
   .prob .nome i { width: 9px; height: 9px; border-radius: 3px; flex: none; }
-  .prob .trilho { height: 10px; border-radius: 5px; background: var(--superficie-2); overflow: hidden; }
-  .prob .enche { height: 100%; border-radius: 5px; transition: width .6s; }
+  .prob .trilho { display: block; height: 12px; border-radius: 6px; background: var(--superficie-2); overflow: hidden; }
+  .prob .enche { display: block; height: 100%; border-radius: 6px; transition: width .6s; }
   .prob b { text-align: right; font-variant-numeric: tabular-nums; }
+  .prob.ja .enche { opacity: .35; }   /* cota já passada: barra cheia, mais clara */
+  .prob.ja b { font-size: 13px; color: var(--tinta-2); }
   .prev-frase { margin: 0; font-size: 14px; color: var(--tinta-2); }
   .prev-frase strong { color: var(--tinta); }
   .dias-chuva { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; align-items: end; height: 118px; }
@@ -1767,11 +1770,26 @@ const sigmoide = z => 1 / (1 + Math.exp(-Math.max(-30, Math.min(30, z))));
 // Modelo na régua da Passarela (scripts/modelo_cheias/passarela.py). Versão B usa a subida da régua de Cunha.
 function chanceDeSubir(H0, x, f48, G) {
   if (G <= 0) return 1;
-  const f = Math.log1p(f48), a = Math.log1p(x.p24), b = Math.log1p(x.p72), solo = x.api / 100, g = G / 100;
-  const v = [1, g, f, a, b, solo, H0 / 100, f * solo, f * g, a * g, g * g];
-  if (x.versao === "B") { const dc = Math.max(x.dc6, 0) / 100; v.push(dc, Math.max(x.dc12, 0) / 100, dc / (g + .3)); }
+  const f = Math.log1p(f48), a = Math.log1p(x.p24), b = Math.log1p(x.p72), solo = x.api / 100;
   const pesos = x.versao === "B" ? prev.modelo.passarela.pesos_B : prev.modelo.passarela.pesos_A;
-  return sigmoide(pesos.reduce((s, w, i) => s + w * v[i], 0));
+  const bruta = cm => {
+    const g = cm / 100, v = [1, g, f, a, b, solo, H0 / 100, f * solo, f * g, a * g, g * g];
+    if (x.versao === "B") { const dc = Math.max(x.dc6, 0) / 100; v.push(dc, Math.max(x.dc12, 0) / 100, dc / (g + .3)); }
+    return sigmoide(pesos.reduce((s, w, i) => s + w * v[i], 0));
+  };
+  // o termo g² faz a curva voltar a subir em subidas muito grandes (fora do que o modelo viu no treino):
+  // a chance de subir G cm nunca pode ser maior que a de subir menos
+  let p = bruta(G);
+  for (let cm = 10; cm < G; cm += 10) p = Math.min(p, bruta(cm));
+  return p;
+}
+
+// chance de chegar ao nível L (cm na régua principal) em 48 h. Para chegar a L, o rio passa por todos os níveis
+// entre H0 e L; então a chance não pode ser maior que a de quem já está mais alto chegar lá
+function chanceDeChegar(H0, x, f48, L) {
+  let p = chanceDeSubir(H0, x, f48, L - H0);
+  for (let h = H0 + 10; h < L; h += 10) p = Math.min(p, chanceDeSubir(h, x, f48, L - h));
+  return p;
 }
 
 async function buscarPrevisao() {
@@ -1860,10 +1878,11 @@ function renderizarPrevisao(ref) {
   const cenarios = membros.map(mb => { const j = mb.tempo.indexOf(tempo[i]); return j < 0 || j + 49 > mb.serie.length ? null : mb.serie.slice(j + 1, j + 49).reduce((s, v) => s + v, 0) * fator; }).filter(v => v != null);
   const fs = cenarios.length >= 5 ? cenarios : [fDet];
   const chance = G => fs.reduce((s, f) => s + chanceDeSubir(H0, x, f, G), 0) / fs.length;
+  const chanceNivel = L => fs.reduce((s, f) => s + chanceDeChegar(H0, x, f, L), 0) / fs.length;
 
   // cotas da régua principal (onde o modelo trabalha), da mais baixa para a mais alta
   const linhas = cotasDe(estacoes[P]).reverse().map(n => ({ ...n, cesp: n.cm }));   // cotas da régua principal
-  const probs = Object.fromEntries(linhas.map(n => [n.chave, chance(n.cesp - H0)]));
+  const probs = Object.fromEntries(linhas.map(n => [n.chave, chanceNivel(n.cesp)]));
   // pico provável (50%) e cenário pessimista (10%) — em cm acima do nível atual
   const subida = alvo => { for (let G = 5; G <= 700; G += 5) if (chance(G) < alvo) return G - 5; return 700; };
   const g50 = subida(.5), g10 = subida(.1);
@@ -1916,9 +1935,9 @@ function renderizarPrevisao(ref) {
     <div class="probs" role="list" aria-label="Chance de passar de cada cota em 48 horas">
       ${linhas.map(n => {
         const p = probs[n.chave], ja = H0 >= n.cesp;
-        return `<div class="prob" role="listitem"><span class="nome" title="${n.nome}: ${naRegua(n.cesp)} m"><i style="background:${tok(n.cor)}"></i>${n.nome}</span>
-          <span class="trilho"><span class="enche" style="width:${Math.max(1.5, p * 100)}%;background:${tok(n.cor)}"></span></span>
-          <b>${ja ? "já" : p < .01 ? "<1%" : fmt(p * 100, 0) + "%"}</b></div>`;
+        return `<div class="prob${ja ? " ja" : ""}" role="listitem"><span class="nome"><i style="background:${tok(n.cor)}"></i><span>${n.nome}<small>${naRegua(n.cesp)} m</small></span></span>
+          <span class="trilho"><span class="enche" style="width:${ja ? 100 : Math.max(1.5, p * 100)}%;background:${tok(n.cor)}"></span></span>
+          <b>${ja ? "✓ já" : p < .01 ? "<1%" : fmt(p * 100, 0) + "%"}</b></div>`;
       }).join("")}
     </div>
     <p class="prev-frase">${g50 < 10
