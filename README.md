@@ -6,7 +6,7 @@ Um mesmo código atende várias bacias; cada uma tem sua pasta com configuraçã
 | Bacia | Cidade de referência | Painel |
 |---|---|---|
 | Rio Paraitinga (e afluentes) | São Luiz do Paraitinga | https://dimasdecampos.github.io/monitora-rio/paraitinga/ |
-| Rio Paraibuna (e represa) | Natividade da Serra | https://dimasdecampos.github.io/monitora-rio/paraibuna/ |
+| Rio Paraibuna | Natividade da Serra | https://dimasdecampos.github.io/monitora-rio/paraibuna/ |
 
 **Página inicial:** https://dimasdecampos.github.io/monitora-rio/
 
@@ -55,10 +55,10 @@ Os dois se encontram na represa de Paraibuna e formam o Paraíba do Sul.
 |---|---|---|
 | Régua principal | Passarela (SP Águas), cotas oficiais | Fazenda Palmeiras, Natividade (ANA), cotas **provisórias** |
 | Rio acima | Cunha, Lagoinha ×2, Estrada do Ribeira (3 a 20 h) | Ponte Alta, na serra (~4 h, de 3 a 7 h) |
-| Outras réguas | ANA e CESP na cidade, Jacuí, Chapéu ×2 | Represa de Paraibuna (nível do reservatório), abaixo da barragem |
+| Outras réguas | ANA e CESP na cidade, Jacuí, Chapéu ×2 | — (a represa fica muito abaixo de Natividade e não entra) |
 | Previsão de cheias | sim (modelo próprio) | sim (com Ponte Alta; bom só para poucas horas) |
 | O que alaga / memória | sim | ainda não |
-| Chuva na bacia (regiões) | Cunha, Lagoinha, cidade, Chapéu | Cabeceiras em Cunha (só previsão), serra, Natividade, represa |
+| Chuva na bacia (regiões) | Cunha, Lagoinha, cidade, Chapéu | Cabeceiras em Cunha (só previsão), serra, Natividade |
 | Chuva × subida do rio | sim (ERA5 desde 2018) | sim (ERA5 desde 2015) |
 | Modo TV: chuva prevista | Serra da Bocaina e São Luiz | Cunha e Natividade |
 | Histórico | desde 2018 (Passarela) | desde 2015 (Natividade) |
@@ -338,8 +338,7 @@ e depois rode `exportar_passarela.py`. Só usa a biblioteca padrão do Python.
 - Níveis das ruas do centro em 2024 são aproximados; faltam pontos de referência oficiais.
 - Lagoinha (Jusante do Jacuí) e Estrada do Ribeira têm menos de 1 ano de histórico.
 - Cotas oficiais de Ponte Alta (a partir de 5,20 m) nunca foram atingidas desde 2024.
-- Paraibuna: as cotas de Natividade são provisórias (estimadas pelo histórico); a represa e
-  a régua abaixo da barragem não têm cotas, e o nível abaixo da barragem depende da usina.
+- Paraibuna: as cotas de Natividade são provisórias (estimadas pelo histórico).
 - Fontes podem parar de transmitir (ex.: ANA em 26/10/2026, Passarela em set/2026).
 - Horários são exibidos no fuso do aparelho (o painel assume horário de Brasília).
 

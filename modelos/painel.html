@@ -566,7 +566,7 @@
     <div class="corpo" id="corpoRio" hidden>
       <ol class="trecho" id="rTrecho"><li class="prev-carregando">Carregando réguas…</li></ol>
       <div class="represa" id="rChapeu"></div>
-      <div class="rot" style="margin:14px 0 6px">Afluentes</div>
+      <div class="rot" id="rAflRot" style="margin:14px 0 6px">Afluentes</div>
       <ol class="trecho afl" id="rAfl"></ol>
     </div>
   </section>
@@ -1900,6 +1900,7 @@ async function desenharRioAcima() {
   };
   $("#rTrecho").innerHTML = trecho.map(li).join("");
   $("#rAfl").innerHTML = afl.map(li).join("");
+  $("#rAflRot").hidden = !afl.length;
 
   // resumo: a água está subindo em algum ponto rio acima?
   const subindo = trecho.filter(r => !r.cidade && r.dif != null && r.dif >= 10);

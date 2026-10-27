@@ -3,7 +3,7 @@
   "rio": "Rio Paraibuna",
   "cidade": "Natividade da Serra",
   "titulo": "Rio Paraibuna em Natividade da Serra",
-  "descricao": "Da serra em Santa Virgínia até Natividade da Serra e a represa de Paraibuna.",
+  "descricao": "Da serra em Santa Virgínia até Natividade da Serra.",
   "principal": "58068000",
   "reserva": null,
   "estacao_padrao": "58068000",
@@ -25,7 +25,7 @@
     "telegram": null
   },
   "atualizar_a_cada_minutos": 5,
-  "_aviso_cotas": "Cotas em cm. Em Ponte Alta são as oficiais da SP Águas. Em Natividade (Fazenda Palmeiras) o cadastro da SP Águas não tem cotas: as usadas aqui são provisórias, estimadas pelo histórico. A represa e a régua abaixo da barragem também não têm cotas cadastradas.",
+  "_aviso_cotas": "Cotas em cm. Em Ponte Alta são as oficiais da SP Águas. Em Natividade (Fazenda Palmeiras) o cadastro da SP Águas não tem cotas: as usadas aqui são provisórias, estimadas pelo histórico.",
   "rios": [
     {
       "nome": "Rio Paraibuna",
@@ -76,42 +76,6 @@
           "historico_desde": "2015-01"
         }
       ]
-    },
-    {
-      "nome": "Represa e barragem de Paraibuna",
-      "estacoes": [
-        {
-          "codigo": "sp15001",
-          "fonte": "spaguas",
-          "id_nivel": "15001",
-          "prefixo": "58087080",
-          "nome": "Represa de Paraibuna — nível do reservatório",
-          "curto": "Represa",
-          "operadora": "CESP — ANA",
-          "lat": -23.4131,
-          "lon": -45.6025,
-          "atraso_max_horas": 3,
-          "historico_desde": "2024-01",
-          "observacao": "Nível da água na represa, em metros acima do nível do mar.",
-          "cotas_cm": {}
-        },
-        {
-          "codigo": "sp33174",
-          "fonte": "spaguas",
-          "id_nivel": "33174",
-          "id_chuva": "15072",
-          "prefixo": "58087300",
-          "nome": "Paraibuna — abaixo da barragem",
-          "curto": "Abaixo da barragem",
-          "operadora": "CESP — ANA",
-          "lat": -23.4142,
-          "lon": -45.6081,
-          "atraso_max_horas": 3,
-          "historico_desde": "2024-01",
-          "observacao": "Rio logo abaixo da barragem, a montante da cidade de Paraibuna. O nível depende da água liberada pela usina.",
-          "cotas_cm": {}
-        }
-      ]
     }
   ],
   "conversoes": {},
@@ -126,19 +90,6 @@
       "operadora": "Cemaden",
       "lat": -23.377,
       "lon": -45.445,
-      "atraso_max_horas": 2,
-      "historico_desde": "2024-01"
-    },
-    {
-      "codigo": "pl27084",
-      "fonte": "spaguas",
-      "id_chuva": "27084",
-      "prefixo": "353560601A",
-      "nome": "Paraibuna — ETA (pluviômetro)",
-      "curto": "Paraibuna (ETA)",
-      "operadora": "Cemaden",
-      "lat": -23.389,
-      "lon": -45.664,
       "atraso_max_horas": 2,
       "historico_desde": "2024-01"
     }
@@ -168,15 +119,6 @@
         "pl27128"
       ],
       "chegada": "cai perto da cidade"
-    },
-    {
-      "nome": "Represa e Paraibuna",
-      "curto": "Represa",
-      "estacoes": [
-        "sp33174",
-        "pl27084"
-      ],
-      "chegada": "vai para a represa, abaixo de Natividade"
     }
   ],
   "pontos_chuva": [
