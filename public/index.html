@@ -70,7 +70,7 @@
   <div class="lista" id="lista"></div>
   <div class="rodape">
     <p><strong>Projeto independente, não validado pela Defesa Civil.</strong> Os dados podem ter erros ou atrasos. Em risco, ligue <strong>199</strong> (Defesa Civil) ou <strong>193</strong> (Bombeiros).</p>
-    <p>Idealização e criação: <a href="https://www.linkedin.com/in/dimasdecampos" target="_blank" rel="noopener"><strong>Dimas de Campos</strong></a></p>
+    <p>Idealizado e criado pelo Luizense <a href="https://www.linkedin.com/in/dimasdecampos" target="_blank" rel="noopener"><strong>Dimas de Campos</strong></a> · e-mail: <a href="mailto:dimasrafting@gmail.com">dimasrafting@gmail.com</a></p>
   </div>
 </main>
 <script>
@@ -81,13 +81,23 @@ const isoUTC = d => `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.get
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
 // últimas 24 h da régua principal (SP Águas ou ANA): [{v, t}] em ordem de tempo
-async function serie(e) {
+async function serie(e, aoChegar) {
   if (e.fonte === "spaguas") {
     const ini = new Date(Date.now() - 24 * 36e5), fim = new Date(Date.now() + 36e5);
     const r = await fetch(`https://cth.daee.sp.gov.br/sibh/api/v2/measurements?station_prefix_ids[]=${e.id_nivel}&start_date=${isoUTC(ini)}&end_date=${isoUTC(fim)}`);
     return ((await r.json()).measurements || []).filter(m => m.value != null && +m.value >= 0).map(m => {
       const [d, h] = m.date.split(" "); return { v: +m.value, t: Date.parse(`${d.replaceAll("/", "-")}T${h}:00Z`) };
     }).sort((a, b) => a.t - b.t);
+  }
+  // a ANA às vezes demora 10–20 s: com cópia na SP Águas (espelho_sp), espera até 4 s e usa a cópia; a ANA redesenha ao chegar
+  if (e.espelho_sp && !e.so_ana) {
+    const ana = serie({ ...e, so_ana: true });
+    const r = await Promise.race([ana.catch(() => null), new Promise(ok => setTimeout(() => ok("demorou"), 4000))]);
+    if (r && r !== "demorou") return r;
+    const sp = await serie({ ...e, fonte: "spaguas", id_nivel: e.espelho_sp.id_nivel }).catch(() => []);
+    if (!sp.length) return ana;
+    if (r === "demorou") ana.then(pts => aoChegar?.(pts)).catch(() => {});
+    return sp;
   }
   const br = d => d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
   const r = await fetch(`https://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos?codEstacao=${e.codigo}&dataInicio=${br(new Date(Date.now() - 864e5))}&dataFim=${br(new Date(Date.now() + 864e5))}`);
@@ -129,15 +139,18 @@ function grafico(pts, e) {
     try {
       const cfg = await fetch(`${b.id}/config.json`).then(r => r.json());
       const e = cfg.rios.flatMap(r => r.estacoes).find(x => x.codigo === cfg.principal);
-      const pts = await serie(e), u = pts.at(-1);
-      if (!u) throw new Error();
-      const c = COTAS.find(([k]) => e.cotas_cm?.[k] != null && u.v >= e.cotas_cm[k]);
-      const temCotas = COTAS.some(([k]) => e.cotas_cm?.[k] != null);
-      const [nome, cor] = c ? [c[1], c[2]] : temCotas ? ["Normal", "--bom"] : ["Sem cotas", "--neutro"];
-      const velho = Date.now() - u.t > 3 * 36e5;
-      card.style.setProperty("--cor", `var(${velho ? "--neutro" : cor})`);
-      nv.innerHTML = `<b>${fmt(u.v / 100)} m</b><span class="pill"><i></i>${velho ? "leitura atrasada" : nome} · ${esc(e.curto || e.nome)}</span>`;
-      card.querySelector(".mini").innerHTML = grafico(pts, e);
+      const desenhar = pts => {
+        const u = pts.at(-1);
+        if (!u) throw new Error();
+        const c = COTAS.find(([k]) => e.cotas_cm?.[k] != null && u.v >= e.cotas_cm[k]);
+        const temCotas = COTAS.some(([k]) => e.cotas_cm?.[k] != null);
+        const [nome, cor] = c ? [c[1], c[2]] : temCotas ? ["Normal", "--bom"] : ["Sem cotas", "--neutro"];
+        const velho = Date.now() - u.t > 3 * 36e5;
+        card.style.setProperty("--cor", `var(${velho ? "--neutro" : cor})`);
+        nv.innerHTML = `<b>${fmt(u.v / 100)} m</b><span class="pill"><i></i>${velho ? "leitura atrasada" : nome} · ${esc(e.curto || e.nome)}</span>`;
+        card.querySelector(".mini").innerHTML = grafico(pts, e);
+      };
+      desenhar(await serie(e, pts => { if (pts.length) desenhar(pts); }));
     } catch { nv.innerHTML = `<b>—</b><span class="pill"><i></i>sem leitura agora</span>`; }
   })();
 })();

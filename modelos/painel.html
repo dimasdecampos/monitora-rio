@@ -665,7 +665,7 @@
     </ul>
     <div class="creditos">
       <p class="aviso-legal"><strong>Aviso:</strong> projeto independente. Os dados, cotas, impactos e previsões <strong>não foram validados pela Defesa Civil</strong> e podem conter erros ou atrasos. <strong>Qualquer uso é de responsabilidade própria.</strong></p>
-      <p>Idealização e criação: <a href="https://www.linkedin.com/in/dimasdecampos" target="_blank" rel="noopener"><strong>Dimas de Campos</strong></a></p>
+      <p>Idealizado e criado pelo Luizense <a href="https://www.linkedin.com/in/dimasdecampos" target="_blank" rel="noopener"><strong>Dimas de Campos</strong></a> · e-mail: <a href="mailto:dimasrafting@gmail.com">dimasrafting@gmail.com</a></p>
     </div>
   </section>
 </main>
@@ -793,6 +793,18 @@ async function buscarHistorico(cod, dias) {
 async function buscarLeituras(est, dias) {
   return est.fonte === "spaguas" ? (await buscarSibh([est], dias))[est.codigo] : buscarAna(est.codigo, dias);
 }
+// a ANA às vezes leva 10–20 s para responder. Régua com cópia na SP Águas (config: espelho_sp): espera a ANA
+// até 4 s; se não vier, usa a cópia (cerca de 1 h mais atrasada) e junta a ANA quando ela chegar (aoChegar)
+async function buscarComEspelho(est, dias, aoChegar) {
+  const ana = buscarAna(est.codigo, dias);
+  if (est.fonte !== "ana" || !est.espelho_sp) return buscarLeituras(est, dias);
+  const r = await Promise.race([ana.catch(() => null), new Promise(ok => setTimeout(() => ok("demorou"), 4000))]);
+  if (r && r !== "demorou") return r;
+  const sp = (await buscarSibh([{ ...est.espelho_sp, codigo: est.codigo }], dias).catch(() => ({})))[est.codigo] || [];
+  if (!sp.length) return ana;   // sem a cópia: continua esperando a ANA
+  if (r === "demorou") ana.then(aoChegar).catch(() => {});
+  return sp;
+}
 async function buscarDiario(cod) {
   const r = await fetch(`historico/${cod}/diario.json`);
   if (!r.ok) return [];
@@ -817,7 +829,7 @@ const VIVO_H = 30;   // horas buscadas ao vivo ao abrir; o histórico salvo cobr
 async function carregar(cod) {
   if (!cache[cod]) {
     const est = estacoes[cod];
-    const [hist, vivo, diario] = await Promise.all([buscarHistorico(cod, 31), buscarLeituras(est, VIVO_H / 24), buscarDiario(cod)]);
+    const [hist, vivo, diario] = await Promise.all([buscarHistorico(cod, 31), buscarComEspelho(est, VIVO_H / 24, novas => juntarNovas(cod, novas)), buscarDiario(cod)]);
     let leituras = vivo;
     const ultHist = hist.at(-1);
     if (!ultHist || !vivo.length || ms(ultHist) < ms(vivo[0]) - 2 * 36e5) {
@@ -830,16 +842,22 @@ async function carregar(cod) {
   cache[cod].dias = diarioCompleto(cache[cod]);
   return cache[cod];
 }
+// junta leituras novas à régua já carregada e redesenha se ela estiver na tela
+function juntarNovas(cod, novas, tentativas = 30) {
+  const c = cache[cod];
+  if (!c) { if (tentativas) setTimeout(() => juntarNovas(cod, novas, tentativas - 1), 1000); return; }   // ainda carregando
+  c.leituras = juntarLeituras(c.leituras, novas, 31); c.quando = Date.now();
+  c.dias = diarioCompleto(c);
+  if (cod !== estado.estacao) return;
+  desenharHero(); desenharStats();
+  if (estado.modo === "agora") desenharAgora(true);
+}
 async function atualizarAoVivo() {
-  const c = cache[estado.estacao]; if (!c) return;
+  const cod = estado.estacao, c = cache[cod]; if (!c) return;
   try {
     // só as horas desde a última leitura (mín. 3 h, máx. 2 dias), em vez de 2 dias inteiros a cada 5 min
     const ult = c.leituras.findLast(l => l.nivel != null), janela = ult ? (Date.now() - ms(ult)) / 864e5 + 1 / 24 : 2;
-    const novas = await buscarLeituras(estacoes[estado.estacao], Math.min(2, Math.max(3 / 24, janela)));
-    c.leituras = juntarLeituras(c.leituras, novas, 31); c.quando = Date.now();
-    c.dias = diarioCompleto(c);
-    desenharHero(); desenharStats();
-    if (estado.modo === "agora") desenharAgora(true);
+    juntarNovas(cod, await buscarComEspelho(estacoes[cod], Math.min(2, Math.max(3 / 24, janela)), novas => juntarNovas(cod, novas)));
   } catch { marcarVivo("erro"); }
 }
 

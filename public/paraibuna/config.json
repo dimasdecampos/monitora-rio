@@ -60,6 +60,11 @@
         {
           "codigo": "58068000",
           "fonte": "ana",
+          "espelho_sp": {
+            "id_nivel": "14676",
+            "id_chuva": "15075",
+            "_nota": "A mesma régua (e o pluviômetro dela) na SP Águas, cerca de 1 h mais atrasada que a ANA. O painel usa quando a ANA demora mais de 4 s para responder."
+          },
           "nome": "Fazenda Palmeiras — Natividade da Serra",
           "operadora": "CESP",
           "lat": -23.4211,
