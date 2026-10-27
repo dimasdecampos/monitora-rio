@@ -121,7 +121,8 @@ def avaliar(w, versao, casos, rotulo):
     for i in range(1, N):
         if H[i] is not None and H[i - 1] is not None and H[i - 1] < COTA <= H[i] and (not eventos or i - eventos[-1] > 96):
             eventos.append(i)
-    eventos = [e for e in eventos if any(e - L in por_i for L in (6, 12, 24))]
+    # os casos de teste vêm de 3 em 3 h: aceita o caso mais próximo (±1 h), como na contagem abaixo
+    eventos = [e for e in eventos if any(e - L + d in por_i for L in (6, 12, 24) for d in (-1, 0, 1))]
     res = {}
     for L in (3, 6, 12, 24):
         ok = n = 0

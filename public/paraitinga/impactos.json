@@ -2,6 +2,10 @@
   "_sobre": "Níveis em cm na régua da Passarela (SP Águas). Impactos tirados de registros de cheias passadas (notícias e relatório SGB/CPRM 2022); são aproximados e não substituem a Defesa Civil. Coordenadas: OpenStreetMap.",
   "regua": "sp664",
   "nota": "Baseado nas cheias de 2021, 2022 e 2024 (níveis das ruas do centro são aproximados). Não substitui a Defesa Civil (199).",
+  "maior": {
+    "ano": "2010",
+    "texto": "≈ 11 m"
+  },
   "niveis": [
     {
       "cm": 191.9,

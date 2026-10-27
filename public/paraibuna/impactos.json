@@ -1,0 +1,100 @@
+{
+  "_sobre": "Níveis em cm na régua da Fazenda Palmeiras (ANA 58068000), no Bairro das Palmeiras, rio acima do centro de Natividade da Serra. As cotas são provisórias (o cadastro da SP Águas não tem cotas para esta régua). Impactos só onde há registro publicado.",
+  "regua": "58068000",
+  "nota": "Cotas provisórias, estimadas pelo histórico. Só a cheia de 22/02/2026 tem impacto descrito na imprensa; se você souber o que alaga em cada nível (estradas, pontes, bairros), envie para completarmos. Não substitui a Defesa Civil (199).",
+  "niveis": [
+    {
+      "cm": 250,
+      "tipo": "cota",
+      "titulo": "Atenção (provisória)",
+      "texto": "O rio está alto para a época. Acompanhe, principalmente se chover forte na serra."
+    },
+    {
+      "cm": 350,
+      "tipo": "cota",
+      "titulo": "Alerta (provisória)",
+      "texto": "Rio bem acima do normal; cuidado com travessias e estradas à beira do rio."
+    },
+    {
+      "cm": 450,
+      "tipo": "cota",
+      "titulo": "Emergência (provisória)",
+      "texto": "Nível das maiores cheias registradas desde 2015. Evite as margens."
+    },
+    {
+      "cm": 702,
+      "tipo": "registro",
+      "titulo": "Água nos chalés da beira do rio",
+      "texto": "Em 22/2/2026 (pico de 7,02 m, o maior desde 2015) o Paraibuna saiu do leito e atingiu chalés às margens do rio.",
+      "fonte": "https://www.vale360news.com.br/devido-a-fortes-chuvas-buscas-por-homem-que-estaria-soterrado-em-natividade-da-serra-sao-suspensas/"
+    }
+  ],
+  "lugares": [],
+  "historia": [
+    {
+      "data": "1973-08-13",
+      "titulo": "A cidade muda de lugar",
+      "nivel": null,
+      "texto": "Com a represa de Paraibuna, a antiga sede de Natividade da Serra foi coberta pelas águas e a cidade atual foi fundada em 13 de agosto de 1973, à beira do reservatório.",
+      "fonte": "Prefeitura de Natividade da Serra"
+    },
+    {
+      "data": "2018-01-27",
+      "titulo": "Cheia do Paraibuna",
+      "nivel": "5,07 m na Fazenda Palmeiras",
+      "cm": 507,
+      "texto": "Pico medido na régua. Não encontramos registro na imprensa de onde a água chegou.",
+      "fonte": "Régua Fazenda Palmeiras (ANA 58068000)"
+    },
+    {
+      "data": "2020-01-17",
+      "titulo": "Cheia do Paraibuna",
+      "nivel": "4,77 m na Fazenda Palmeiras",
+      "cm": 477,
+      "texto": "Pico medido na régua. Não encontramos registro na imprensa de onde a água chegou.",
+      "fonte": "Régua Fazenda Palmeiras (ANA 58068000)"
+    },
+    {
+      "data": "2022-04-30",
+      "titulo": "Cheia do Paraibuna",
+      "nivel": "5,84 m na Fazenda Palmeiras",
+      "cm": 584,
+      "texto": "Pico medido na régua. Não encontramos registro na imprensa de onde a água chegou.",
+      "fonte": "Régua Fazenda Palmeiras (ANA 58068000)"
+    },
+    {
+      "data": "2024-02-24",
+      "titulo": "Cheia do Paraibuna",
+      "nivel": "6,80 m na Fazenda Palmeiras",
+      "cm": 680,
+      "texto": "Pico medido na régua. Não encontramos registro na imprensa de onde a água chegou.",
+      "fonte": "Régua Fazenda Palmeiras (ANA 58068000)"
+    },
+    {
+      "data": "2024-03-07",
+      "titulo": "Cheia do Paraibuna",
+      "nivel": "5,34 m na Fazenda Palmeiras",
+      "cm": 534,
+      "texto": "Pico medido na régua. Não encontramos registro na imprensa de onde a água chegou.",
+      "fonte": "Régua Fazenda Palmeiras (ANA 58068000)"
+    },
+    {
+      "data": "2025-04-05",
+      "titulo": "Cheia do Paraibuna",
+      "nivel": "5,22 m na Fazenda Palmeiras",
+      "cm": 522,
+      "texto": "Pico medido na régua. Não encontramos registro na imprensa de onde a água chegou.",
+      "fonte": "Régua Fazenda Palmeiras (ANA 58068000)"
+    },
+    {
+      "data": "2026-02-22",
+      "titulo": "Maior cheia registrada",
+      "nivel": "7,02 m na Fazenda Palmeiras",
+      "cm": 702,
+      "destaque": true,
+      "texto": "Temporal na serra: o Rio Paraibuna saiu do leito e atingiu chalés às margens do rio; as águas baixaram no mesmo dia, sem desalojados. Na mesma chuva, deslizamentos na SP-125 entre São Luiz do Paraitinga e Natividade.",
+      "fonte": "Vale360 News (22/02/2026) e régua da ANA"
+    }
+  ],
+  "_definicoes": "Cotas provisórias, sem valor oficial."
+}

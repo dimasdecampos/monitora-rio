@@ -195,9 +195,20 @@ Anos com falhas aparecem como **parciais** e podem subestimar picos.
   últimas 24 h e 72 h, chuva dos 30 dias anteriores (solo encharcado), chuva prevista
   para 48 h (média de 31 cenários GFS) e, quando transmite, a subida da régua de Cunha;
 - treino 2018–2023; teste fev/2024–out/2026 com a previsão do tempo **real** da época:
-  das 8 vezes em que a Passarela passou da atenção, avisou (chance ≥ 30%) 7 com 6 h de
-  antecedência; 44% dos dias com aviso não tiveram cheia (35% com a régua de Cunha);
+  das 20 vezes em que a Passarela passou da atenção, avisou (chance ≥ 30%) 16 com 6 h de
+  antecedência, 12 com 12 h e 14 com 24 h; 44% dos dias com aviso não tiveram cheia (35%
+  com a régua de Cunha). *Correção de 27/10/2026: a contagem anterior ("7 de 8") deixava
+  de fora 2/3 das cheias por um erro no casamento dos horários; o modelo não mudou;*
 - o aviso costuma vir **6 a 12 h antes**; tempestades localizadas na serra podem escapar.
+
+**Paraibuna: sem previsão de 48 h.** O mesmo método, treinado para Natividade
+(`scripts/modelo_cheias/treinar_bacia.py --bacia paraibuna`), avisou só 6 de 20 cheias de
+2024–2026 com 6 h de antecedência e teve 57 dias de aviso falso: a chuva estimada (ERA5)
+quase não vê os temporais da Serra do Mar (no recorde de 22/02/2026 marcou ~30 mm na
+bacia). Por isso o painel não mostra previsão lá. O aviso confiável é a régua de Ponte
+Alta: quando ela sobe 20 cm em 3 h, Natividade passou da atenção em 20 das 22 cheias
+desde 2024, em média 7 h depois (com 38 dias de aviso sem cheia). O robô de avisos já
+manda esse alerta. Com mais anos de pluviômetros na serra, vale treinar de novo.
 
 **Linha de previsão (7 dias)** — uma regressão por prazo (6 h a 7 dias) para a variação
 do nível; a faixa azul é o intervalo de 8 em 10 chances, tirado dos erros do próprio

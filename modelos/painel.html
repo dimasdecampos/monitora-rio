@@ -293,6 +293,7 @@
   ol.escada li.marcador.prev { color: var(--alerta); }
   ol.escada li em { font-style: normal; font-size: 11px; color: var(--tinta-3); }
   .mapa-box { min-width: 0; }
+  .impacto.so-escada { grid-template-columns: minmax(0, 1fr) !important; }
   .mapa { height: 340px; border-radius: 12px; overflow: hidden; background: var(--superficie-2); position: relative; z-index: 0; isolation: isolate; }
   .leg-mapa { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--tinta-2); margin-top: 8px; }
   .leg-mapa span { display: inline-flex; align-items: center; gap: 6px; }
@@ -1705,13 +1706,13 @@ function renderizarPrevisao(ref) {
   const fDet = soma(i + 1, i + 49) * fator;
   const cenarios = membros.map(mb => { const j = mb.tempo.indexOf(tempo[i]); return j < 0 || j + 49 > mb.serie.length ? null : mb.serie.slice(j + 1, j + 49).reduce((s, v) => s + v, 0) * fator; }).filter(v => v != null);
   const fs = cenarios.length >= 5 ? cenarios : [fDet];
-  const P = G => fs.reduce((s, f) => s + chanceDeSubir(H0, x, f, G), 0) / fs.length;
+  const chance = G => fs.reduce((s, f) => s + chanceDeSubir(H0, x, f, G), 0) / fs.length;
 
   // cotas da régua principal (onde o modelo trabalha), da mais baixa para a mais alta
   const linhas = cotasDe(estacoes[P]).reverse().map(n => ({ ...n, cesp: n.cm }));   // cotas da régua principal
-  const probs = Object.fromEntries(linhas.map(n => [n.chave, P(n.cesp - H0)]));
+  const probs = Object.fromEntries(linhas.map(n => [n.chave, chance(n.cesp - H0)]));
   // pico provável (50%) e cenário pessimista (10%) — em cm acima do nível atual
-  const subida = alvo => { for (let G = 5; G <= 700; G += 5) if (P(G) < alvo) return G - 5; return 700; };
+  const subida = alvo => { for (let G = 5; G <= 700; G += 5) if (chance(G) < alvo) return G - 5; return 700; };
   const g50 = subida(.5), g10 = subida(.1);
   // resultado na régua da cidade escolhida; para outras estações, na régua principal
   const reguaCod = REGUAS_CIDADE.includes(estado.estacao) ? estado.estacao : P;
@@ -1903,7 +1904,10 @@ async function desenharImpactos() {
   const cor = !pior ? "--bom" : pior.tipo === "registro" ? "--inundacao" : cotasDe(estacoes[P]).find(c => Math.abs(c.cm - pior.cm) < 1)?.cor || "--atencao";
   $("#iResumo").innerHTML = `<i style="background:${tok(cor)}"></i>${pior ? pior.titulo.replace(" (cota oficial)", "") : "Abaixo da atenção"}`;
   $("#iSub").textContent = `Régua ${apelido(P)} · agora ${agora != null ? fmt(agora / 100, 2) + " m" : "sem leitura"}${provavel != null ? ` · previsão 48 h: provável ${fmt(provavel / 100, 2)} m` : ""}`;
-  if (!window.L) return;   // mapa só quando a biblioteca carregar
+  // sem lugares marcados (bacia nova): só a escada de níveis, sem mapa
+  const semMapa = !impactos.lugares?.length;
+  $("#cardImpacto .mapa-box").hidden = semMapa; $("#cardImpacto .impacto").classList.toggle("so-escada", semMapa);
+  if (semMapa || !window.L) return;   // mapa só quando a biblioteca carregar
   if (!mapa) {
     const p = estacoes[P];
     mapa = L.map("iMapa", { scrollWheelZoom: false, attributionControl: true }).setView([p.lat, p.lon], 15);
@@ -2059,7 +2063,9 @@ async function desenharMemoria() {
   const u = comNivel(cache[P]?.leituras || rioAcima.dados[P] || []).at(-1);
   const recorde = impactos.historia.filter(h => h.cm).reduce((m, h) => h.cm > m.cm ? h : m, { cm: 0 });
   $("#hSub").textContent = `Grandes cheias de ${config.cidade}, de ${impactos.historia[0].data.slice(0, 4)} até hoje`;
-  if (recorde.cm) $("#hResumo").innerHTML = `<i style="background:${tok("--inundacao")}"></i>Maior: ${recorde.data.slice(0, 4)}, ≈ ${fmt(recorde.cm / 100, 0)} m`;
+  // "maior" no impactos.json vale quando a maior cheia não tem nível na régua (ex.: 2010, ≈ 11 m acima do normal)
+  const destaqueMaior = impactos.maior || (recorde.cm ? { ano: recorde.data.slice(0, 4), texto: `${fmt(recorde.cm / 100, 2)} m` } : null);
+  if (destaqueMaior) $("#hResumo").innerHTML = `<i style="background:${tok("--inundacao")}"></i>Maior: ${destaqueMaior.ano}, ${destaqueMaior.texto}`;
   const maior = Math.max(...impactos.historia.filter(h => h.cm).map(h => h.cm), u?.nivel || 0);
   const itens = impactos.historia.slice().reverse();
   const data = d => d.length === 4 ? d : new Date(d + "T12:00").toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" });

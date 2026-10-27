@@ -11,18 +11,18 @@
     "58068000"
   ],
   "previsao": null,
-  "impactos": null,
+  "impactos": "impactos.json",
   "estatisticas": "estatisticas.json",
   "represamento": null,
   "textos": {
-    "rio_acima": "A água leva cerca de 4 h para descer da serra (Ponte Alta) até Natividade",
+    "rio_acima": "Quando Ponte Alta sobe 20 cm em 3 h, Natividade passou da atenção em 20 das 22 cheias desde 2024, em média 7 h depois",
     "chuva_bacia": "cabeceiras em Cunha, serra de Santa Virgínia e Natividade"
   },
   "avisos": {
     "telegram": null
   },
   "atualizar_a_cada_minutos": 5,
-  "_aviso_cotas": "Cotas em cm. Em Ponte Alta são as oficiais da SP Águas. Em Natividade (Fazenda Palmeiras) são provisórias, estimadas pelo histórico. A represa e a régua abaixo da barragem não têm cotas cadastradas.",
+  "_aviso_cotas": "Cotas em cm. Em Ponte Alta são as oficiais da SP Águas. Em Natividade (Fazenda Palmeiras) o cadastro da SP Águas não tem cotas: as usadas aqui são provisórias, estimadas pelo histórico. A represa e a régua abaixo da barragem também não têm cotas cadastradas.",
   "rios": [
     {
       "nome": "Rio Paraibuna",
@@ -69,7 +69,7 @@
             "emergencia": 450,
             "inundacao": 450
           },
-          "curto": "Natividade",
+          "curto": "Palmeiras (Natividade)",
           "historico_desde": "2015-01"
         }
       ]
@@ -219,5 +219,6 @@
   "tv_chuva": [
     "pt-cunha",
     "pt-natividade"
-  ]
+  ],
+  "_previsao": "Sem previsão de 48 h: o modelo testado (scripts/modelo_cheias/treinar_bacia.py) avisou só 6 de 20 cheias de 2024–2026, porque a chuva estimada não capta os temporais da serra. O aviso confiável é a subida de Ponte Alta."
 }
