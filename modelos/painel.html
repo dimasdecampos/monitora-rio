@@ -882,6 +882,12 @@ function desenharHero() {
   } else $("#hFrase").textContent = "";
 }
 
+// chuva prevista (média dos pontos da bacia) nas próximas h horas; null se a previsão ainda não chegou
+function chuvaPrevistaBacia(h) {
+  const d = prev.dados || chuvaPts.dados; if (!d) return null;
+  const i = d.tempo.findIndex(t => t > horaLocal(new Date())); if (i < 0 || i + h > d.media.length) return null;
+  return d.media.slice(i, i + h).reduce((s, v) => s + v, 0) * (prev.modelo?.fator_previsao ?? 1);
+}
 function desenharStats() {
   const est = estacoes[estado.estacao], c = cache[estado.estacao], ls = c.leituras;
   const fim = ls.length ? ms(ls.at(-1)) : Date.now();
@@ -895,9 +901,10 @@ function desenharStats() {
   const picos = new Map();
   for (const r of c.dias) { const y = r.d.slice(0, 4); if (r.nmax != null && (!picos.has(y) || r.nmax > picos.get(y))) picos.set(y, r.nmax); }
   const rank = pico ? [...picos.values()].sort((a, b) => b - a).indexOf(pico.nmax) + 1 : null;
+  const prevTxt = (h, rot) => { const v = chuvaPrevistaBacia(h); return v == null ? "" : `<br><b>Previsto na bacia: ${fmt(v, v < 10 ? 1 : 0)} mm</b> (${rot})`; };
   const cards = [
-    temChuva ? ["Chuva 24 h", `${fmt(soma(24), 1)}<small> mm</small>`, `Última hora: ${fmt(soma(1), 1)} mm`] : null,
-    temChuva ? ["Chuva 7 dias", `${fmt(soma(168), 0)}<small> mm</small>`, `30 dias: ${fmt(soma(720), 0)} mm`] : null,
+    temChuva ? ["Chuva 24 h", `${fmt(soma(24), 1)}<small> mm</small>`, `Última hora: ${fmt(soma(1), 1)} mm` + prevTxt(24, "próx. 24 h")] : null,
+    temChuva ? ["Chuva 7 dias", `${fmt(soma(168), 0)}<small> mm</small>`, `30 dias: ${fmt(soma(720), 0)} mm` + prevTxt(168, "próx. 7 dias")] : null,
     vz ? ["Vazão", `${fmt(vz.vazao, 0)}<small> m³/s</small>`, "Volume de água passando"] : null,
     pico ? [`Pico de ${ano}`, `${fmt(pico.nmax / 100, 2)}<small> m</small>`, `${dataCurta(pico.d)} · ${rank}º maior de ${picos.size} anos`] : null,
     baixa ? [`Dias acima da ${baixa.nome.toLowerCase()}`, `${acima}<small> em ${ano}</small>`, `Cota${est.cotas_oficiais ? " oficial" : ""}: ${fmt(baixa.cm / 100, 2)} m`] : null,
@@ -1731,7 +1738,7 @@ async function desenharPrevisao() {
     const ref = await nivelDeReferencia();
     if (!ref) throw new Error("sem leitura recente do rio");
     prev.ref = ref;
-    renderizarPrevisao(ref);
+    renderizarPrevisao(ref); desenharStats();
     desenharImpactos(); verificarAvisos(); desenharFontes(); if (estado.vista === "graficos") desenharVisoes();
     if (estado.modo === "agora" && cache[estado.estacao]) desenharAgora(true);   // acrescenta a linha de previsão ao gráfico
   } catch (e) {
@@ -1981,7 +1988,7 @@ const chuvaPts = { dados: null, quando: 0 };
 async function carregarChuvaPontos() {
   const pts = config.pontos_chuva || [];
   if (!pts.length || Date.now() - chuvaPts.quando < 30 * 60e3) return;
-  const d = [].concat(await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pts.map(p => p.lat).join(",")}&longitude=${pts.map(p => p.lon).join(",")}&hourly=precipitation&past_days=31&forecast_days=3&timezone=America%2FSao_Paulo`).then(r => r.json()));
+  const d = [].concat(await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pts.map(p => p.lat).join(",")}&longitude=${pts.map(p => p.lon).join(",")}&hourly=precipitation&past_days=31&forecast_days=8&timezone=America%2FSao_Paulo`).then(r => r.json()));
   const tempo = d[0].hourly.time;
   chuvaPts.dados = { tempo, media: tempo.map((_, i) => d.reduce((s, p) => s + (p.hourly.precipitation[i] ?? 0), 0) / d.length) };
   chuvaPts.quando = Date.now();
@@ -2249,6 +2256,7 @@ function desenharTudo() {
   desenharHero(); desenharStats();
   trocarModo(estado.modo);
   desenharPrevisao(); desenharRioAcima(); desenharImpactos(); desenharFontes();
+  if (!config.previsao) carregarChuvaPontos().then(desenharStats).catch(() => {});
   graficosSujos = true; if (estado.vista === "graficos") desenharGraficos();
 }
 // a vista "Mais gráficos" só é montada quando aberta: a home carrega menos
