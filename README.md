@@ -48,6 +48,9 @@ Cada bacia é uma pasta em `public/` listada em `public/bacias.json`. O painel e
 são os mesmos para todas (pasta `modelos/`); o que muda é o `config.json` da bacia.
 Cartões sem dados para a bacia (previsão, mapa do que alaga, represamento) somem sozinhos.
 
+O Paraitinga nasce na Serra da Bocaina (Areias); o Paraibuna, no sul de Cunha (Serra do Mar).
+Os dois se encontram na represa de Paraibuna e formam o Paraíba do Sul.
+
 | | Paraitinga | Paraibuna |
 |---|---|---|
 | Régua principal | Passarela (SP Águas), cotas oficiais | Fazenda Palmeiras, Natividade (ANA), cotas **provisórias** |
@@ -55,6 +58,9 @@ Cartões sem dados para a bacia (previsão, mapa do que alaga, represamento) som
 | Outras réguas | ANA e CESP na cidade, Jacuí, Chapéu ×2 | Represa de Paraibuna (nível do reservatório), abaixo da barragem |
 | Previsão de cheias | sim (modelo próprio) | ainda não |
 | O que alaga / memória | sim | ainda não |
+| Chuva na bacia (regiões) | Cunha, Lagoinha, cidade, Chapéu | Cabeceiras em Cunha (só previsão), serra, Natividade, represa |
+| Chuva × subida do rio | sim (ERA5 desde 2018) | sim (ERA5 desde 2015) |
+| Modo TV: chuva prevista | Serra da Bocaina e São Luiz | Cunha e Natividade |
 | Histórico | desde 2018 (Passarela) | desde 2015 (Natividade) |
 
 **Para adicionar um rio:**
@@ -64,9 +70,13 @@ Cartões sem dados para a bacia (previsão, mapa do que alaga, represamento) som
    referência), `reguas_cidade`, `rios[].estacoes[]` (código, fonte `spaguas` ou `ana`,
    `id_nivel`/`id_chuva` da SP Águas, coordenadas, `cotas_cm`, `curto`, `rio_acima` com
    `ordem` e `horas_ate_cidade`) e `regioes_chuva`. Opcionais: `reserva`, `conversoes`,
-   `previsao`, `impactos`, `represamento`, `estatisticas`, `textos`, `avisos`.
+   `previsao`, `impactos`, `represamento`, `estatisticas`, `textos`, `avisos`,
+   `pluviometros` (estações só de chuva, com `id_chuva`), `pontos_chuva` (lugares sem
+   pluviômetro, com `codigo` `pt-…`: uma região de chuva com esse código mostra só a
+   previsão), `tv_chuva` (até 2 pontos com a chuva prevista no modo TV) e `chuva_era5`.
 2. Acrescente a bacia em `public/bacias.json`.
-3. Baixe o histórico: `python scripts/coletar.py --bacia <id> --desde 2024-01`
+3. Baixe o histórico: `python scripts/coletar.py --bacia <id> --desde 2024-01`,
+   a chuva estimada nos pontos (`python scripts/baixar_chuva_era5.py --bacia <id>`)
    e depois `python scripts/estatisticas.py --bacia <id>`.
 4. Confira com `python scripts/montar_site.py` (aponta erros no config) e
    `python server.py`. Ao enviar ao GitHub, o site e os avisos passam a incluir a bacia.
@@ -288,6 +298,7 @@ scripts/
   estatisticas.py          gera estatisticas.json de cada bacia
   alertas.py               robô de avisos (ntfy, Telegram, WhatsApp)
   montar_site.py           copia os modelos para cada bacia e confere as configurações
+  baixar_chuva_era5.py     chuva estimada (ERA5) nos pontos de uma bacia, para chuva × subida
   modelo_cheias/           previsão do Paraitinga: chuva (ERA5, previsões arquivadas), treino e testes
 server.py                  servidor local para testes (serve os modelos direto)
 ```

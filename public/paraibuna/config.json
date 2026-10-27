@@ -16,7 +16,7 @@
   "represamento": null,
   "textos": {
     "rio_acima": "A água leva cerca de 4 h para descer da serra (Ponte Alta) até Natividade",
-    "chuva_bacia": "Serra do Mar (Santa Virgínia)"
+    "chuva_bacia": "cabeceiras em Cunha, serra de Santa Virgínia e Natividade"
   },
   "avisos": {
     "telegram": null
@@ -112,7 +112,43 @@
     }
   ],
   "conversoes": {},
+  "pluviometros": [
+    {
+      "codigo": "pl27128",
+      "fonte": "spaguas",
+      "id_chuva": "27128",
+      "prefixo": "353230601A",
+      "nome": "Natividade da Serra — Polícia Militar (pluviômetro)",
+      "curto": "Natividade (PM)",
+      "operadora": "Cemaden",
+      "lat": -23.377,
+      "lon": -45.445,
+      "atraso_max_horas": 2,
+      "historico_desde": "2024-01"
+    },
+    {
+      "codigo": "pl27084",
+      "fonte": "spaguas",
+      "id_chuva": "27084",
+      "prefixo": "353560601A",
+      "nome": "Paraibuna — ETA (pluviômetro)",
+      "curto": "Paraibuna (ETA)",
+      "operadora": "Cemaden",
+      "lat": -23.389,
+      "lon": -45.664,
+      "atraso_max_horas": 2,
+      "historico_desde": "2024-01"
+    }
+  ],
   "regioes_chuva": [
+    {
+      "nome": "Cabeceiras (sul de Cunha)",
+      "curto": "Cunha",
+      "estacoes": [
+        "pt-cunha"
+      ],
+      "chegada": "sem pluviômetro: só a previsão · a água passa pela serra antes de Natividade"
+    },
     {
       "nome": "Serra do Mar (Santa Virgínia)",
       "curto": "Serra",
@@ -120,6 +156,68 @@
         "sp792"
       ],
       "chegada": "chega a Natividade em ~4 h"
+    },
+    {
+      "nome": "Natividade da Serra",
+      "curto": "Natividade",
+      "estacoes": [
+        "58068000",
+        "pl27128"
+      ],
+      "chegada": "cai perto da cidade"
+    },
+    {
+      "nome": "Represa e Paraibuna",
+      "curto": "Represa",
+      "estacoes": [
+        "sp33174",
+        "pl27084"
+      ],
+      "chegada": "vai para a represa, abaixo de Natividade"
     }
+  ],
+  "pontos_chuva": [
+    {
+      "codigo": "pt-cunha",
+      "nome": "Cabeceiras (sul de Cunha)",
+      "lat": -23.23,
+      "lon": -45.0,
+      "curto": "Cunha"
+    },
+    {
+      "codigo": "pt-divisa",
+      "nome": "Serra do Mar (divisa com Ubatuba)",
+      "lat": -23.36,
+      "lon": -45.06,
+      "curto": "divisa com Ubatuba"
+    },
+    {
+      "codigo": "pt-santavirginia",
+      "nome": "Santa Virgínia",
+      "lat": -23.33,
+      "lon": -45.14,
+      "curto": "Santa Virgínia"
+    },
+    {
+      "codigo": "pt-natividade",
+      "nome": "Natividade da Serra",
+      "lat": -23.42,
+      "lon": -45.29,
+      "curto": "Natividade"
+    }
+  ],
+  "chuva_era5": {
+    "arquivo": "chuva_era5_paraibuna.json",
+    "pontos": [
+      "pt-cunha",
+      "pt-divisa",
+      "pt-santavirginia",
+      "pt-natividade"
+    ]
+  },
+  "_pontos_chuva": "pontos_chuva: lugares sem pluviômetro onde vale a chuva prevista (e o histórico ERA5). Uma região de chuva pode usar o código do ponto (pt-…): ela mostra só a previsão.",
+  "tv_chuva": [
+    "pt-cunha",
+    "pt-natividade"
   ]
 }

@@ -90,6 +90,8 @@
   .mini b { display: block; font-size: 4vmin; font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1.1; }
   .mini b small { font-size: 2vmin; color: var(--tinta-2); font-weight: 500; }
   .mini span { font-size: 1.6vmin; color: var(--tinta-2); }
+  .mini .depois { display: block; font-size: 1.6vmin; color: var(--tinta-2); }
+  .mini .depois b { display: inline; font-size: 2vmin; font-weight: 700; color: var(--tinta); }
   .acima { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.2vmin; margin-top: 1.2vmin; }
   .est { background: var(--superficie-2); border-radius: 1.2vmin; padding: 1.2vmin 1.4vmin; border-left: .6vmin solid var(--cor, var(--tinta-3)); min-width: 0; }
   .est .n { font-size: 1.6vmin; color: var(--tinta-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -174,8 +176,8 @@
         <span class="rot">Chuva</span>
         <div class="linha">
           <div class="mini"><b id="cMed">—</b><span id="tMed">medida na cidade, últimas 24 h</span></div>
-          <div class="mini"><b id="cP24">—</b><span>prevista na bacia, próximas 24 h</span></div>
-          <div class="mini"><b id="cP48">—</b><span>prevista na bacia, 24 a 48 h</span></div>
+          <div class="mini" id="cPrev1"><b>—</b><span>prevista na bacia, próximas 24 h</span></div>
+          <div class="mini" id="cPrev2"><b>—</b><span>prevista na bacia, 24 a 48 h</span></div>
         </div>
       </section>
     </div>
@@ -271,19 +273,25 @@ function classificar(e, cm) {
   return cl.find(n => cm >= n.cm) || { nome: "Normal", cor: "--bom", chave: "normal" };
 }
 
-async function chuvaPrevista() {
-  // pontos da previsão: os do modelo de cheias (quando há) ou as réguas das regiões de chuva + a principal
-  let pts;
-  if (config.previsao) { modelo ??= await fetch(config.previsao.modelo).then(r => r.json()); pts = modelo.pontos; }
-  else pts = [...new Set([...(config.regioes_chuva || []).flatMap(r => r.estacoes), P])].map(c => estacoes[c]).filter(e => e?.lat);
+// soma da chuva prevista (mm) nas próximas 24 h e de 24 a 48 h, em cada ponto
+async function previsaoNosPontos(pts) {
   const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pts.map(x => x.lat).join(",")}&longitude=${pts.map(x => x.lon).join(",")}&hourly=precipitation&forecast_days=3&timezone=America%2FSao_Paulo`);
   if (!r.ok) throw new Error("Open-Meteo");
   const d = [].concat(await r.json()), tempo = d[0].hourly.time;
   const agora = new Date(), chave = `${agora.getFullYear()}-${p2(agora.getMonth() + 1)}-${p2(agora.getDate())}T${p2(agora.getHours())}:00`;
   const i = tempo.findLastIndex(t => t <= chave);
-  const media = tempo.map((_, k) => d.reduce((s, x) => s + (x.hourly.precipitation[k] ?? 0), 0) / d.length);
-  const soma = (a, b) => media.slice(a, b).reduce((s, v) => s + v, 0);
-  return { p24: soma(i + 1, i + 25), p48: soma(i + 25, i + 49) };
+  return d.map(x => { const v = x.hourly.precipitation, soma = (a, b) => v.slice(a, b).reduce((s, y) => s + (y ?? 0), 0); return { p24: soma(i + 1, i + 25), p48: soma(i + 25, i + 49) }; });
+}
+async function chuvaPrevista() {
+  // config.tv_chuva: pontos mostrados um a um (ex.: cabeceira em Cunha e a cidade); senão, a média da bacia
+  const lugares = (config.tv_chuva || []).map(c => estacoes[c]).filter(e => e?.lat).slice(0, 2);
+  if (lugares.length) return { lugares: (await previsaoNosPontos(lugares)).map((v, k) => ({ ...v, nome: lugares[k].curto || lugares[k].nome })) };
+  let pts;
+  if (config.previsao) { modelo ??= await fetch(config.previsao.modelo).then(r => r.json()); pts = modelo.pontos; }
+  else if (config.pontos_chuva?.length) pts = config.pontos_chuva;
+  else pts = [...new Set([...(config.regioes_chuva || []).flatMap(r => r.estacoes), P])].map(c => estacoes[c]).filter(e => e?.lat);
+  const v = await previsaoNosPontos(pts), media = k => v.reduce((s, x) => s + x[k], 0) / v.length;
+  return { p24: media("p24"), p48: media("p48") };
 }
 
 // ---------- desenho ----------
@@ -414,8 +422,13 @@ async function atualizar() {
   catch (err) { marcarVivo("erro", "Sem conexão com a fonte de dados · tentando de novo"); }
   try {
     const c = await chuvaPrevista();
-    $("#cP24").innerHTML = `${fmt(c.p24, c.p24 < 10 ? 1 : 0)}<small> mm</small>`;
-    $("#cP48").innerHTML = `${fmt(c.p48, c.p48 < 10 ? 1 : 0)}<small> mm</small>`;
+    const mm = v => `${fmt(v, v < 10 ? 1 : 0)}<small> mm</small>`;
+    if (c.lugares) c.lugares.forEach((l, k) => $(`#cPrev${k + 1}`).innerHTML =
+      `<b>${mm(l.p24)}</b><span>prevista em ${l.nome}, próximas 24 h</span><span class="depois">e mais <b>${fmt(l.p48, l.p48 < 10 ? 1 : 0)} mm</b> de 24 a 48 h</span>`);
+    else {
+      $("#cPrev1").innerHTML = `<b>${mm(c.p24)}</b><span>prevista na bacia, próximas 24 h</span>`;
+      $("#cPrev2").innerHTML = `<b>${mm(c.p48)}</b><span>prevista na bacia, 24 a 48 h</span>`;
+    }
   } catch {}
 }
 function relogio() {
@@ -442,6 +455,7 @@ let redim; addEventListener("resize", () => { clearTimeout(redim); redim = setTi
   relogio(); setInterval(relogio, 10e3); acordar(); manterAcesa();
   config = await fetch("config.json").then(r => r.json());
   for (const r of config.rios) for (const e of r.estacoes) estacoes[e.codigo] = e;
+  for (const e of [...(config.pluviometros || []), ...(config.pontos_chuva || [])]) if (e.codigo) estacoes[e.codigo] = e;
   P = config.principal;
   // rio acima: réguas do rio principal, da mais longe para a mais perto (afluentes ficam de fora)
   ACIMA = Object.values(estacoes).filter(e => e.rio_acima && !e.rio_acima.afluente && e.fonte === "spaguas")

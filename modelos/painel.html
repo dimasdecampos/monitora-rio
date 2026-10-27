@@ -1118,9 +1118,12 @@ function carregarChuvaBacia() {
     const hoje = new Date(), meses = [0, 1].map(k => { const d = new Date(hoje.getFullYear(), hoje.getMonth() - k, 1); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}`; });
     const [hist, vivo, previsto] = await Promise.all([
       // histórico de hora em hora (dos dois últimos meses), atualizado todo dia
-      Promise.all(cods.map(c => Promise.all(meses.map(m => fetch(`historico/${c}/${m}.json`).then(r => r.ok ? r.json() : { dados: [] }).catch(() => ({ dados: [] })))))),
-      // últimas 48 h ao vivo (SP Águas)
-      buscarSibh(ests, 2).catch(() => ({})),
+      Promise.all(cods.map(c => estacoes[c].so_previsao ? [] : Promise.all(meses.map(m => fetch(`historico/${c}/${m}.json`).then(r => r.ok ? r.json() : { dados: [] }).catch(() => ({ dados: [] })))))),
+      // últimas 48 h ao vivo (SP Águas numa chamada; ANA uma por estação)
+      Promise.all([
+        buscarSibh(ests.filter(e => e.fonte === "spaguas"), 2).catch(() => ({})),
+        ...ests.filter(e => e.fonte === "ana").map(e => (cache[e.codigo] ? Promise.resolve(cache[e.codigo].leituras) : buscarAna(e.codigo, 2)).then(ls => ({ [e.codigo]: ls })).catch(() => ({}))),
+      ]).then(partes => Object.assign({}, ...partes)),
       // previsão nos mesmos pontos (Open-Meteo)
       fetch(`https://api.open-meteo.com/v1/forecast?latitude=${ests.map(e => e.lat).join(",")}&longitude=${ests.map(e => e.lon).join(",")}&hourly=precipitation&forecast_days=8&timezone=America%2FSao_Paulo`)
         .then(r => r.ok ? r.json() : null).catch(() => null),
@@ -1246,7 +1249,9 @@ function desenharAgora(manterJanela) {
   const fimObs = vazio ? Date.now() : Math.max(nivel.at(-1).x, Date.now() - 36e5), min = fimObs - 30 * 864e5;
   const previsto = vazio ? null : linhaPrevista(nivel.at(-1));
   const tipica = faixaTipica(c.dias, Date.now());
-  const max = Math.max(fimObs, previsto ? previsto.pts.at(-1).x : 0);   // o gráfico vai só até o fim da previsão
+  // o gráfico vai até o fim da previsão do rio ou, sem ela, até o fim da chuva prevista na bacia (no máximo 7 dias)
+  const fimChuvaBacia = temRegioes() && estado.chuvaBacia && bacia.regioes ? Math.min(Date.now() + 7 * 864e5, Math.max(0, ...bacia.regioes.flatMap(r => r.prv.map(p => p.x)))) : 0;
+  const max = Math.max(fimObs, previsto ? previsto.pts.at(-1).x : 0, fimChuvaBacia);
   graficos.limite = [min, max];
   const chuvaHora = seriesChuva(ls, false), chuvaDia = seriesChuva(ls, true), temChuva = ls.some(l => l.chuva != null) || !!previsto;
   const chuvaPrevHora = previsto ? previsto.chuva : [];
@@ -1924,9 +1929,19 @@ const carregarEstat = async () => estat ??= config.estatisticas ? await fetch(co
 const cardAberto = id => !$("#c" + id).hidden;
 const NOMES_SOLO = ["solo seco", "solo úmido", "solo encharcado"], CORES_SOLO = ["--r250", "--r450", "--r650"];
 
+// bacias sem modelo de previsão: chuva dos últimos 31 dias + 3 dias previstos nos pontos da bacia (config.pontos_chuva)
+const chuvaPts = { dados: null, quando: 0 };
+async function carregarChuvaPontos() {
+  const pts = config.pontos_chuva || [];
+  if (!pts.length || Date.now() - chuvaPts.quando < 30 * 60e3) return;
+  const d = [].concat(await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pts.map(p => p.lat).join(",")}&longitude=${pts.map(p => p.lon).join(",")}&hourly=precipitation&past_days=31&forecast_days=3&timezone=America%2FSao_Paulo`).then(r => r.json()));
+  const tempo = d[0].hourly.time;
+  chuvaPts.dados = { tempo, media: tempo.map((_, i) => d.reduce((s, p) => s + (p.hourly.precipitation[i] ?? 0), 0) / d.length) };
+  chuvaPts.quando = Date.now();
+}
 function situacaoAtualChuva() {
   // mesma janela do histórico: 24 h passadas + 48 h previstas; solo pela chuva dos 30 dias anteriores
-  const d = prev.dados, m = prev.modelo; if (!d || !m || !estat?.resposta) return null;
+  const d = prev.dados || chuvaPts.dados, m = prev.modelo || { fator_previsao: 1 }; if (!d || !estat?.resposta) return null;
   let i = d.tempo.indexOf(horaLocal(new Date())); if (i < 0) i = d.tempo.findLastIndex(t => t <= horaLocal(new Date()));
   const soma = (a, b) => d.media.slice(Math.max(0, a), Math.max(0, b)).reduce((s, v) => s + v, 0);
   const x = soma(i - 24, i + 1) + soma(i + 1, i + 49) * m.fator_previsao, solo = soma(i - 24 - 720, i - 24);
@@ -1942,6 +1957,8 @@ function parecidos(sit) {
 }
 async function desenharResposta() {
   await carregarEstat(); if (!estat?.resposta) { $("#cardResposta").hidden = true; return; }
+  $("#cardResposta").hidden = false;
+  if (!config.previsao) await carregarChuvaPontos().catch(() => {});
   const sit = situacaoAtualChuva(), viz = sit && parecidos(sit);
   const u = comNivel(cache[P]?.leituras || rioAcima.dados[P] || []).at(-1);
   $("#scardResposta").textContent = `Cada ponto é um dia: chuva na bacia × quanto a régua ${apelido(P)} subiu`;
@@ -2204,6 +2221,9 @@ async function trocarEstacao(cod) {
 async function iniciar() {
   config = await (await fetch("config.json")).json();
   config.rios.forEach(r => r.estacoes.forEach(e => estacoes[e.codigo] = { ...e, rio: r.nome }));
+  // pluviômetros avulsos (só chuva) e pontos sem pluviômetro (só previsão), usados nas regiões de chuva
+  (config.pluviometros || []).forEach(e => estacoes[e.codigo] = { ...e, rio: "Pluviômetros", so_chuva: true });
+  (config.pontos_chuva || []).filter(p => p.codigo).forEach(p => estacoes[p.codigo] = { ...p, rio: "Pontos de previsão", so_previsao: true });
   P = config.principal; REGUAS_CIDADE = config.reguas_cidade || [P];
   document.title = `${config.rio} · ${config.cidade}`;
   document.querySelector('meta[name="description"]').content = `Nível, chuva e avisos de cheia do ${config.rio} em ${config.cidade}, com dados da SP Águas e da ANA.`;

@@ -8,3 +8,6 @@ scripts/modelo_cheias/dados/
 public/*/index.html
 public/*/tv.html
 public/*/manifest.webmanifest
+
+# token do robô do Telegram (só nesta máquina, nunca publicar)
+.telegram_token

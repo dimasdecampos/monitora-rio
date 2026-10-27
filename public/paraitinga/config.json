@@ -3,7 +3,7 @@
   "rio": "Rio Paraitinga",
   "cidade": "São Luiz do Paraitinga",
   "titulo": "Rio Paraitinga em São Luiz do Paraitinga",
-  "descricao": "Do alto da serra em Cunha até o centro histórico de São Luiz do Paraitinga.",
+  "descricao": "Da Serra da Bocaina (Areias), passando por Cunha e Lagoinha, até o centro histórico de São Luiz do Paraitinga.",
   "_campos": "principal = régua de referência da cidade (avisos, modo TV, o que alaga, estatísticas); reserva = régua usada quando a principal para; reguas_cidade = réguas convertíveis entre si (config.conversoes).",
   "principal": "sp664",
   "reserva": "58040000",
@@ -371,5 +371,32 @@
       ],
       "chegada": "cheio, represa o rio"
     }
+  ],
+  "pontos_chuva": [
+    {
+      "codigo": "pt-bocaina",
+      "nome": "Cabeceiras (Serra da Bocaina, Areias)",
+      "curto": "Serra da Bocaina",
+      "lat": -22.85,
+      "lon": -44.85
+    },
+    {
+      "codigo": "pt-cunha",
+      "nome": "Cunha",
+      "curto": "Cunha",
+      "lat": -23.07,
+      "lon": -44.96
+    },
+    {
+      "codigo": "pt-slp",
+      "nome": "São Luiz do Paraitinga",
+      "curto": "São Luiz",
+      "lat": -23.22,
+      "lon": -45.31
+    }
+  ],
+  "tv_chuva": [
+    "pt-bocaina",
+    "pt-slp"
   ]
 }

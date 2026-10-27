@@ -32,6 +32,8 @@ def conferir(cfg, pasta):
     """Lista de problemas encontrados no config.json de uma bacia."""
     erros = []
     est = {e["codigo"]: e for r in cfg.get("rios", []) for e in r["estacoes"]}
+    est.update({e["codigo"]: dict(e, so_chuva=True) for e in cfg.get("pluviometros", [])})
+    est.update({p["codigo"]: dict(p, so_previsao=True) for p in cfg.get("pontos_chuva", []) if p.get("codigo")})
     for campo in ("id", "rio", "cidade", "principal", "rios"):
         if not cfg.get(campo):
             erros.append(f"falta o campo '{campo}'")
@@ -57,8 +59,8 @@ def conferir(cfg, pasta):
     if cfg.get("previsao") and not (pasta / cfg["previsao"]["modelo"]).exists():
         erros.append(f"modelo de previsão '{cfg['previsao']['modelo']}' não encontrado")
     for e in est.values():
-        if e.get("fonte") == "spaguas" and not e.get("id_nivel"):
-            erros.append(f"{e['codigo']}: régua da SP Águas sem 'id_nivel'")
+        if e.get("fonte") == "spaguas" and not e.get("id_nivel") and not (e.get("so_chuva") and e.get("id_chuva")):
+            erros.append(f"{e['codigo']}: estação da SP Águas sem 'id_nivel' (ou pluviômetro sem 'id_chuva')")
         if not e.get("lat") or not e.get("lon"):
             erros.append(f"{e['codigo']}: sem coordenadas")
     return erros

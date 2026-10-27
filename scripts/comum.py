@@ -30,6 +30,11 @@ def estacoes(cfg):
     return {e["codigo"]: dict(e, grupo=r["nome"]) for r in cfg["rios"] for e in r["estacoes"]}
 
 
+def pluviometros(cfg):
+    """{codigo: pluviômetro} — estações só de chuva (sem régua), usadas nas regiões de chuva."""
+    return {e["codigo"]: dict(e, grupo="Pluviômetros", so_chuva=True) for e in cfg.get("pluviometros", [])}
+
+
 def _numero(texto):
     try:
         return float(texto) if texto and texto.strip() else None

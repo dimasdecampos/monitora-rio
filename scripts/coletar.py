@@ -60,7 +60,7 @@ def baixar_mes_sibh(est, mes, tentativas=3):
     nível = leitura da hora cheia (ou a mais próxima dentro da hora); chuva = soma da hora."""
     ini = datetime(mes.year, mes.month, 1) + timedelta(hours=3)          # 00h de Brasília em UTC
     fim = datetime.combine(ultimo_dia(mes), datetime.min.time()) + timedelta(days=1, hours=3)
-    ids = [est["id_nivel"]] + ([est["id_chuva"]] if est.get("id_chuva") else [])
+    ids = [i for i in (est.get("id_nivel"), est.get("id_chuva")) if i]   # pluviômetro avulso não tem régua
     q = "&".join(f"station_prefix_ids[]={i}" for i in ids)
     url = f"{SIBH}?{q}&start_date={ini:%Y-%m-%dT%H:%M}&end_date={fim:%Y-%m-%dT%H:%M}"
     for n in range(tentativas):
@@ -81,7 +81,7 @@ def baixar_mes_sibh(est, mes, tentativas=3):
             continue
         k = t.strftime("%Y-%m-%dT%H:00")
         h = horas.setdefault(k, {"nivel": None, "min": 99, "chuva": None})
-        if m["station_prefix_id"] == est["id_nivel"]:
+        if est.get("id_nivel") and str(m["station_prefix_id"]) == str(est["id_nivel"]):
             if t.minute < h["min"]:
                 h["nivel"], h["min"] = round(float(m["value"]), 1), t.minute
         elif 0 <= float(m["value"]) <= 50:   # mais de 50 mm em 10 min é erro do pluviômetro
@@ -221,6 +221,7 @@ def coletar_bacia(bacia, inicio, so_estacao=None):
     PASTA = comum.pasta(bacia) / "historico"
     config = comum.config(bacia)
     estacoes = [e for rio in config["rios"] for e in rio["estacoes"] if e.get("guardar_historico", True)]
+    estacoes += config.get("pluviometros", [])   # só chuva: entram nas regiões de chuva do painel
     if so_estacao:
         estacoes = [e for e in estacoes if e["codigo"] == so_estacao]
     codigos = [e["codigo"] for e in estacoes]

@@ -103,9 +103,12 @@ def estatisticas(bacia):
     # ---------- resposta à chuva (só com chuva ERA5 da bacia) ----------
     saida_antiga = json.loads(DESTINO.read_text(encoding="utf-8")) if DESTINO.exists() else {}
     resposta = saida_antiga.get("resposta")
-    pts = cfg.get("chuva_era5")
-    if pts and ERA5.exists():
-        d = json.load(open(ERA5))
+    # "chuva_era5": lista de pontos de dados/chuva_era5.json (Paraitinga) ou {"arquivo", "pontos"} (outras bacias)
+    era5 = cfg.get("chuva_era5")
+    arq = ERA5.parent / era5["arquivo"] if isinstance(era5, dict) else ERA5
+    pts = era5["pontos"] if isinstance(era5, dict) else era5
+    if pts and arq.exists():
+        d = json.load(open(arq))
         chuva = {datetime.strptime(t[:13], "%Y-%m-%dT%H"): sum((d[p]["p"][i] or 0) for p in pts) / len(pts) for i, t in enumerate(d[pts[0]]["t"])}
         S = lambda a, h: sum(chuva.get(a + timedelta(hours=k), 0) for k in range(h))
         pontos, solos = [], []
