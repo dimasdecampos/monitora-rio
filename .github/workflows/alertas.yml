@@ -45,6 +45,7 @@ jobs:
           CALLMEBOT_PHONE: ${{ secrets.CALLMEBOT_PHONE }}
           CALLMEBOT_KEY: ${{ secrets.CALLMEBOT_KEY }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL }}
           TESTE: ${{ inputs.teste && '1' || '0' }}
         run: python scripts/alertas.py
       - uses: actions/cache/save@v4

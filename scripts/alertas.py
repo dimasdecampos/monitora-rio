@@ -4,13 +4,15 @@ Avisa, em cada bacia, quando:
   - a régua principal passa para uma cota mais alta (e quando baixa de cota ou volta ao normal);
   - a água sobe rápido numa régua rio acima (≥ 20 cm em 3 h), com o tempo de chegada à cidade;
   - o afluente de "represamento" está cheio junto com o rio alto (se a bacia tiver);
-  - a previsão dá 30% ou mais de chance de chegar à próxima cota em 48 h (se a bacia tiver modelo).
+  - a previsão dá 30% ou mais de chance de chegar à próxima cota em 48 h (se a bacia tiver modelo);
+  - a régua principal para de transmitir (repete a cada 24 h, ou 6 h se o rio estava em cota) e quando volta.
 Cada tipo de aviso se repete no máximo a cada 6–12 h.
 
 Variáveis de ambiente:
   NTFY_TOPIC                      prefixo dos tópicos do app ntfy: cada bacia avisa em <NTFY_TOPIC>-<bacia>
   TELEGRAM_TOKEN                  bot do Telegram; o canal de cada bacia fica em config.json → avisos.telegram_chat
   CALLMEBOT_PHONE, CALLMEBOT_KEY  WhatsApp pessoal via CallMeBot (número com DDI, ex. +5512999999999)
+  HEALTHCHECK_URL                 endereço de ping do healthchecks.io (vigia: avisa por e-mail se o robô parar)
   TESTE=1                         envia já uma mensagem de teste com o nível atual de cada bacia
   ESTADO                          pasta onde guarda o que já foi avisado (padrão .alertas/)
 Sem nenhum canal configurado, só mostra as mensagens (modo de teste).
@@ -145,12 +147,39 @@ def verificar(bacia):
 
     msgs = []
     cid = s[P]; cot_p = {k: v for k, v in EST[P].get("cotas_cm", {}).items() if k in dict(COTAS)}
-    if not cid or (datetime.now(timezone.utc) - cid[-1][0]) > timedelta(hours=EST[P].get("atraso_max_horas", 1) + 1):
-        print(f"{bacia}: {nome(P)} sem leitura recente; nada a avisar."); gravar(); return []
+    # 0) régua principal sem dados: avisa (sem isso, quem segue o canal acharia que está tudo calmo)
+    rio = cfg["rio"]
+    if cid and cid[-1][0].timestamp() >= estado.get("ultima_leitura", 0):
+        estado["ultima_leitura"] = cid[-1][0].timestamp(); estado["ultimo_nivel"] = cid[-1][1]
+    ult = estado.get("ultima_leitura")
+    if ult is None or agora - ult > (EST[P].get("atraso_max_horas", 1) + 1) * 3600:
+        # conta as rodadas seguidas sem dados: uma falha passageira da API não dispara aviso
+        estado["sem_dados_rodadas"] = estado.get("sem_dados_rodadas", 0) + 1
+        print(f"{bacia}: {nome(P)} sem leitura recente ({estado['sem_dados_rodadas']}ª rodada); nada a avisar sobre o nível.")
+        cota = estado.get("cota")
+        if estado["sem_dados_rodadas"] >= 2 and pode("sem-dados", 6 if cota else 24):
+            if ult:
+                desde = f"Última leitura: {br(estado['ultimo_nivel'])} m em {datetime.fromtimestamp(ult, BRT):%d/%m às %H:%M}."
+            else:
+                desde = "Nenhuma leitura nas últimas 14 h."
+            if cota:
+                titulo = f"⚠️ *{rio}: régua sem dados durante {dict(COTAS)[cota].lower()}*"
+            else:
+                titulo = f"📡 *{rio}: régua sem dados*"
+            msgs = [f"{titulo}\n{nome(P)} parou de transmitir. {desde}\n"
+                    f"Enquanto isso, os avisos de nível ficam parados. Em caso de risco, Defesa Civil: 199."]
+            estado["sem_dados_avisado"] = True
+            gravar(); return [(cfg, m) for m in msgs]
+        gravar(); return []
+    if not cid:   # a API falhou agora, mas a última leitura ainda é recente: espera a próxima rodada
+        print(f"{bacia}: {nome(P)} sem resposta agora; última leitura ainda recente."); gravar(); return []
+    estado["sem_dados_rodadas"] = 0
+    estado["avisos"].pop("sem-dados", None)   # uma nova queda avisa logo, sem esperar 24 h
     nivel = cid[-1][1]; hora = cid[-1][0].astimezone(BRT).strftime("%H:%M")
+    if estado.pop("sem_dados_avisado", False):
+        msgs.append(f"✅ *{rio}: régua voltou a transmitir*\n{nome(P)} em {br(nivel)} m às {hora}.")
     d3 = variacao(cid, 3)
     tend = "" if d3 is None else f", {'subindo' if d3 >= 5 else 'baixando' if d3 <= -5 else 'estável'} ({d3:+.0f} cm em 3 h)"
-    rio = cfg["rio"]
 
     # 1) cota da cidade (sobe na hora; desce só 5 cm abaixo, para não ficar avisando)
     atual = cota_de(nivel, cot_p) if cot_p else None
@@ -210,7 +239,7 @@ def enviar(cfg, m):
     if prefixo:
         # notificação no app ntfy: primeira linha vira título; vermelho/onda/represa tocam como urgentes
         titulo, _, corpo = m.replace("*", "").partition("\n")
-        prio = "5" if m[:1] in "🔴🌊⚠" else "3" if m[:1] in "🟢🧪" else "4"
+        prio = "5" if m[:1] in "🔴🌊⚠" else "3" if m[:1] in "🟢🧪✅" else "4"
         req = urllib.request.Request(f"https://ntfy.sh/{prefixo}-{cfg['id']}", data=corpo.encode("utf-8"), method="POST",
                                      headers={"Title": titulo.encode("utf-8").decode("latin-1"), "Priority": prio, "Click": link})
         try:
@@ -243,12 +272,24 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--bacia", help="só esta bacia; padrão: todas")
     a = p.parse_args()
+    erros = 0
     for bacia in [a.bacia] if a.bacia else comum.bacias():
         try:
             for cfg, m in verificar(bacia):
                 enviar(cfg, m)
         except Exception as e:   # uma bacia com problema não impede as outras
-            print(f"{bacia}: erro {e!r}")
+            print(f"{bacia}: erro {e!r}"); erros += 1
+    vigia(erros)
+
+
+def vigia(erros):
+    """Avisa o healthchecks.io que o robô rodou. Se ele parar de rodar (ou der erro), o site manda e-mail."""
+    url = os.environ.get("HEALTHCHECK_URL")
+    if not url: return
+    try:
+        urllib.request.urlopen(url.rstrip("/") + ("/fail" if erros else ""), timeout=15)
+    except Exception as e:
+        print("falha ao avisar o vigia:", e)
 
 
 if __name__ == "__main__":
