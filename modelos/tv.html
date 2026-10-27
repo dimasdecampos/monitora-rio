@@ -255,11 +255,19 @@ function limpar(ls) {
   for (const l of ls) { const u = out.at(-1); if (u && Math.abs(l.v - u.v) > 300 && l.t - u.t <= 6 * 36e5) continue; if (u && u.t === l.t) continue; out.push(l); }
   return out;
 }
+// a TV fica ligada o dia todo: 2 dias na 1ª vez, depois só as horas novas, juntadas ao que já tem
+let buscouEm = 0;
 async function buscarTudo() {
   const princ = estacoes[P], sp = [princ, ...ACIMA.map(c => estacoes[c])].filter(e => e.fonte === "spaguas");
-  const dados = await buscarSibh(sp, 2);
-  if (princ.fonte !== "spaguas") { const a = await buscarAna(P, 2); dados[P] = a.nivel; dados.chuva = a.chuva; }
-  return dados;
+  const dias = ultimo ? Math.min(2, (Date.now() - buscouEm) / 864e5 + 1 / 24) : 2;
+  const novos = await buscarSibh(sp, dias);
+  if (princ.fonte !== "spaguas") { const a = await buscarAna(P, ultimo ? 1 : 2); novos[P] = a.nivel; novos.chuva = a.chuva; }
+  buscouEm = Date.now();
+  if (!ultimo) return novos;
+  const corte = Date.now() - 2 * 864e5, out = {};
+  const juntar = (a = [], b = []) => { const m = new Map(a.map(l => [l.t, l])); for (const l of b) m.set(l.t, l); return [...m.values()].filter(l => l.t >= corte).sort((x, y) => x.t - y.t); };
+  for (const k of new Set([...Object.keys(ultimo), ...Object.keys(novos)])) out[k] = k === "chuva" ? juntar(ultimo[k], novos[k]) : limpar(juntar(ultimo[k], novos[k]));
+  return out;
 }
 function variacao(ls, horas) {
   const u = ls.at(-1); if (!u) return null;

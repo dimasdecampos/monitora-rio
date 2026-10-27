@@ -741,8 +741,8 @@ const URL_SIBH = "https://cth.daee.sp.gov.br/sibh/api/v2/measurements";
 const p2 = n => String(n).padStart(2, "0");
 const isoUTC = d => `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}T${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}`;
 const isoLocal = d => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}:00`;
-async function buscarSibh(ests, dias) {
-  const ids = ests.flatMap(e => [e.id_nivel, e.id_chuva].filter(Boolean));
+async function buscarSibh(ests, dias, soNivel = false) {
+  const ids = ests.flatMap(e => [e.id_nivel, soNivel ? null : e.id_chuva].filter(Boolean));
   const ini = new Date(Date.now() - dias * 864e5), fim = new Date(Date.now() + 36e5);
   const lotes = [];   // a API aceita no máximo 10 estações por chamada
   for (let k = 0; k < ids.length; k += 10) lotes.push(ids.slice(k, k + 10));
@@ -759,17 +759,36 @@ async function buscarSibh(ests, dias) {
     const mapa = new Map();
     for (const m of porId[e.id_nivel] || []) { const t = hora(m); mapa.set(t, { t, nivel: +m.value >= 0 ? +m.value : null, vazao: null, chuva: null }); }
     for (const m of porId[e.id_chuva] || []) { const t = hora(m), l = mapa.get(t) || { t, nivel: null, vazao: null, chuva: null }; l.chuva = +m.value >= 0 && +m.value <= 50 ? +m.value : null; mapa.set(t, l); }
-    const ls = [...mapa.values()].sort((a, b) => a.t < b.t ? -1 : 1);
-    // régua voltando de falha às vezes manda valor absurdo e travado (ex.: 10,31 m): salto > 3 m em até 6 h é descartado
-    let bom = null;
-    for (const l of ls) {
-      if (l.nivel == null) continue;
-      if (bom && Math.abs(l.nivel - bom.nivel) > 300 && ms(l) - ms(bom) <= 6 * 36e5) { l.nivel = null; l.suspeita = true; continue; }
-      bom = l;
-    }
-    out[e.codigo] = ls;
+    out[e.codigo] = semSaltos([...mapa.values()].sort((a, b) => a.t < b.t ? -1 : 1));
   }
   return out;
+}
+// régua voltando de falha às vezes manda valor absurdo e travado (ex.: 10,31 m): salto > 3 m em até 6 h é descartado
+function semSaltos(ls) {
+  let bom = null;
+  for (const l of ls) {
+    if (l.nivel == null) continue;
+    if (bom && Math.abs(l.nivel - bom.nivel) > 300 && ms(l) - ms(bom) <= 6 * 36e5) { l.nivel = null; l.suspeita = true; continue; }
+    bom = l;
+  }
+  return ls;
+}
+// junta leituras novas às que já temos (as novas valem) e guarda só os últimos `dias`
+function juntarLeituras(antigas, novas, dias) {
+  const mapa = new Map((antigas || []).map(l => [l.t, l]));
+  for (const l of novas || []) mapa.set(l.t, l);
+  const corte = Date.now() - dias * 864e5;
+  return [...mapa.values()].filter(l => ms(l) >= corte).sort((a, b) => a.t < b.t ? -1 : 1);
+}
+// leituras já salvas no site (historico/<código>/<mês>.json, atualizado todo dia às 06:20): muito mais leve que a API
+async function buscarHistorico(cod, dias) {
+  const ini = new Date(Date.now() - dias * 864e5), meses = [];
+  for (const d = new Date(ini.getFullYear(), ini.getMonth(), 1); d <= new Date(); d.setMonth(d.getMonth() + 1)) meses.push(`${d.getFullYear()}-${p2(d.getMonth() + 1)}`);
+  const arqs = await Promise.all(meses.map(m => fetch(`historico/${cod}/${m}.json`).then(r => r.ok ? r.json() : null).catch(() => null)));
+  const corte = isoLocal(ini), ok = (v, max) => v != null && v >= 0 && v < max ? v : null;
+  return arqs.flatMap(a => a?.dados || [])
+    .map(([t, nivel, vazao, chuva]) => ({ t: t.length === 16 ? t + ":00" : t, nivel: ok(nivel, 1e5), vazao: ok(vazao, 9000), chuva: ok(chuva, 150) }))
+    .filter(l => l.t >= corte);
 }
 async function buscarLeituras(est, dias) {
   return est.fonte === "spaguas" ? (await buscarSibh([est], dias))[est.codigo] : buscarAna(est.codigo, dias);
@@ -794,10 +813,19 @@ function diarioCompleto(c) {
   }
   return [...dias.values()].sort((a, b) => a.d < b.d ? -1 : 1);
 }
+const VIVO_H = 30;   // horas buscadas ao vivo ao abrir; o histórico salvo cobre o resto dos 30 dias
 async function carregar(cod) {
   if (!cache[cod]) {
-    const [leituras, diario] = await Promise.all([buscarLeituras(estacoes[cod], 30), buscarDiario(cod)]);
-    cache[cod] = { leituras, diario, quando: Date.now() };
+    const est = estacoes[cod];
+    const [hist, vivo, diario] = await Promise.all([buscarHistorico(cod, 31), buscarLeituras(est, VIVO_H / 24), buscarDiario(cod)]);
+    let leituras = vivo;
+    const ultHist = hist.at(-1);
+    if (!ultHist || !vivo.length || ms(ultHist) < ms(vivo[0]) - 2 * 36e5) {
+      // histórico atrasado (atualização do dia falhou) ou régua sem leitura recente: busca ao vivo tudo o que falta
+      leituras = await buscarLeituras(est, ultHist ? Math.min(30, (Date.now() - ms(ultHist)) / 864e5 + .1) : 30);
+    }
+    const ini = leituras[0]?.t ?? "9999";
+    cache[cod] = { leituras: semSaltos([...hist.filter(l => l.t < ini), ...leituras]), diario, quando: Date.now() };
   }
   cache[cod].dias = diarioCompleto(cache[cod]);
   return cache[cod];
@@ -805,10 +833,10 @@ async function carregar(cod) {
 async function atualizarAoVivo() {
   const c = cache[estado.estacao]; if (!c) return;
   try {
-    const novas = await buscarLeituras(estacoes[estado.estacao], 2), mapa = new Map(c.leituras.map(l => [l.t, l]));
-    for (const l of novas) mapa.set(l.t, l);
-    const corte = Date.now() - 31 * 864e5;
-    c.leituras = [...mapa.values()].filter(l => ms(l) >= corte).sort((a, b) => a.t < b.t ? -1 : 1);
+    // só as horas desde a última leitura (mín. 3 h, máx. 2 dias), em vez de 2 dias inteiros a cada 5 min
+    const ult = c.leituras.findLast(l => l.nivel != null), janela = ult ? (Date.now() - ms(ult)) / 864e5 + 1 / 24 : 2;
+    const novas = await buscarLeituras(estacoes[estado.estacao], Math.min(2, Math.max(3 / 24, janela)));
+    c.leituras = juntarLeituras(c.leituras, novas, 31); c.quando = Date.now();
     c.dias = diarioCompleto(c);
     desenharHero(); desenharStats();
     if (estado.modo === "agora") desenharAgora(true);
@@ -1170,10 +1198,10 @@ function carregarChuvaBacia() {
     const [hist, vivo, previsto] = await Promise.all([
       // histórico de hora em hora (dos dois últimos meses), atualizado todo dia
       Promise.all(cods.map(c => estacoes[c].so_previsao ? [] : Promise.all(meses.map(m => fetch(`historico/${c}/${m}.json`).then(r => r.ok ? r.json() : { dados: [] }).catch(() => ({ dados: [] })))))),
-      // últimas 48 h ao vivo (SP Águas numa chamada; ANA uma por estação)
+      // últimas horas ao vivo (SP Águas numa chamada; ANA uma por estação); o histórico salvo cobre o resto
       Promise.all([
-        buscarSibh(ests.filter(e => e.fonte === "spaguas"), 2).catch(() => ({})),
-        ...ests.filter(e => e.fonte === "ana").map(e => (cache[e.codigo] ? Promise.resolve(cache[e.codigo].leituras) : buscarAna(e.codigo, 2)).then(ls => ({ [e.codigo]: ls })).catch(() => ({}))),
+        buscarSibh(ests.filter(e => e.fonte === "spaguas"), VIVO_H / 24).catch(() => ({})),
+        ...ests.filter(e => e.fonte === "ana").map(e => (cache[e.codigo] ? Promise.resolve(cache[e.codigo].leituras.filter(l => ms(l) >= Date.now() - 2 * 864e5)) : buscarAna(e.codigo, 2)).then(ls => ({ [e.codigo]: ls })).catch(() => ({}))),
       ]).then(partes => Object.assign({}, ...partes)),
       // previsão nos mesmos pontos (Open-Meteo)
       fetch(`https://api.open-meteo.com/v1/forecast?latitude=${ests.map(e => e.lat).join(",")}&longitude=${ests.map(e => e.lon).join(",")}&hourly=precipitation&forecast_days=8&timezone=America%2FSao_Paulo`)
@@ -1868,8 +1896,21 @@ async function desenharRioAcima() {
   card.hidden = false;
   try {
     if (Date.now() - rioAcima.quando > 4 * 60e3) {
-      rioAcima.dados = await buscarSibh([...lista, ...(cidade.fonte === "spaguas" ? [cidade] : [])], 2);
-      if (cidade.fonte !== "spaguas") rioAcima.dados[P] = await buscarLeituras(cidade, 2).catch(() => []);
+      const doCache = cache[P] && Date.now() - cache[P].quando < 10 * 60e3;   // régua da cidade já carregada pelo painel
+      const sp = [...lista, ...(cidade.fonte === "spaguas" && !doCache ? [cidade] : [])];
+      let janela;
+      if (rioAcima.quando) janela = Math.min(2, (Date.now() - rioAcima.quando) / 864e5 + 2 / 24);   // depois da 1ª vez, só as horas novas
+      else {
+        // 1ª vez: o histórico salvo (de hora em hora) cobre o passado; ao vivo só as horas depois dele
+        const hist = await Promise.all(sp.map(e => buscarHistorico(e.codigo, 2)));
+        sp.forEach((e, k) => rioAcima.dados[e.codigo] = hist[k]);
+        const ult = Math.max(0, ...hist.map(h => h.length ? ms(h.at(-1)) : 0));
+        janela = ult ? Math.min(2, (Date.now() - ult) / 864e5 + 1 / 24) : 2;
+      }
+      const novos = await buscarSibh(sp, janela, true);
+      for (const e of sp) rioAcima.dados[e.codigo] = juntarLeituras(rioAcima.dados[e.codigo], novos[e.codigo], 2);
+      if (doCache) rioAcima.dados[P] = cache[P].leituras.filter(l => ms(l) >= Date.now() - 2 * 864e5);
+      else if (cidade.fonte !== "spaguas") rioAcima.dados[P] = await buscarLeituras(cidade, 2).catch(() => []);
       rioAcima.quando = Date.now();
     }
   } catch {
@@ -2138,7 +2179,9 @@ async function desenharFontes() {
   const todas = Object.values(estacoes), daRede = f => [P, config.reserva].map(c => estacoes[c]).find(e => e?.fonte === f) || todas.find(e => e.fonte === f);
   const refAna = daRede("ana"), refSp = daRede("spaguas");
   if (refAna && Date.now() - fontes.ana_quando > 10 * 60e3) {
-    fontes.ana = comNivel(await buscarAna(refAna.codigo, 1).catch(() => [])).at(-1) || null; fontes.ana_quando = Date.now();
+    fontes.ana_quando = Date.now();   // marca antes de buscar: o cartão é redesenhado por várias rotinas ao mesmo tempo
+    const c = cache[refAna.codigo], recente = c && Date.now() - c.quando < 10 * 60e3;   // reaproveita a régua já carregada pelo painel
+    fontes.ana = comNivel(recente ? c.leituras : await buscarAna(refAna.codigo, 1).catch(() => [])).at(-1) || null;
   }
   fontes.hist ??= await fetch("historico/index.json").then(r => r.json()).catch(() => null);
   if (refSp && !rioAcima.dados[refSp.codigo] && !cache[refSp.codigo] && !fontes.spTentou) {
