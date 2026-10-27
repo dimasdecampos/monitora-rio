@@ -32,10 +32,11 @@
 <main>
   <a class="voltar" href="./">← Monitor dos Rios</a>
   <h1>Política de privacidade</h1>
-  <p class="data">Vale para o site e para o app Monitor dos Rios. Atualizada em 27 de outubro de 2026.</p>
+  <p class="data">Vale para o site e para o app Monitor dos Rios. Atualizada em 28 de outubro de 2026.</p>
 
-  <p><strong>Resumo: o Monitor dos Rios não pede cadastro, não coleta dados pessoais, não tem anúncios e não usa
-  ferramentas de rastreamento ou estatística de acesso.</strong></p>
+  <p><strong>Resumo: o Monitor dos Rios não pede cadastro, não coleta dados pessoais (nome, e-mail, telefone ou
+  localização), não tem anúncios e não usa ferramentas de rastreamento ou estatística de acesso. Só se você ligar os
+  avisos, guardamos um endereço técnico de notificação do aparelho, para mandar os avisos de cheia.</strong></p>
 
   <h2>Quem é o responsável</h2>
   <p>O Monitor dos Rios é um projeto independente e sem fins lucrativos, criado por Dimas de Campos
@@ -47,9 +48,16 @@
     <li><strong>Preferências</strong> (rio e régua escolhidos, tema claro ou escuro, se os avisos estão ligados):
       ficam só no armazenamento do navegador/app no seu aparelho e nunca são enviadas a nós.</li>
     <li><strong>Última leitura dos rios</strong>: uma cópia fica guardada para o painel abrir sem internet.</li>
-    <li><strong>Permissão de notificação</strong>: se você ligar "Avisar neste aparelho", o próprio aparelho mostra os
-      avisos. Nenhum identificador do aparelho é enviado a nós.</li>
   </ul>
+
+  <h2>Avisos de cheia no aparelho</h2>
+  <p>Se você tocar em "Avisar neste aparelho", o navegador/app cria um <strong>endereço de notificação</strong>
+  (um link técnico do serviço de notificações do Google, Apple ou Mozilla, com chaves de criptografia). Guardamos esse
+  endereço e o rio escolhido num banco de dados (Supabase), só para mandar os avisos de cheia daquele rio. Ele não
+  contém nome, e-mail, telefone nem localização, e não é compartilhado nem usado para mais nada. O conteúdo dos avisos
+  vai criptografado.</p>
+  <p>Para apagar: toque em "desligar" no rodapé do painel (ou desinstale o app, ou bloqueie as notificações; o
+  endereço deixa de funcionar e é apagado automaticamente no próximo aviso).</p>
   <p>Para apagar tudo, limpe os dados do app (ou do site, no navegador) ou desinstale o app.</p>
 
   <h2>Serviços consultados pelo app</h2>
@@ -62,7 +70,8 @@
     <li>Open-Meteo (open-meteo.com): previsão e estimativa de chuva;</li>
     <li>OpenStreetMap (tile.openstreetmap.org): imagens do mapa;</li>
     <li>cdnjs / Cloudflare (cdnjs.cloudflare.com): bibliotecas de gráficos e mapa;</li>
-    <li>GitHub Pages (github.io): hospedagem do site e do histórico.</li>
+    <li>GitHub Pages (github.io): hospedagem do site e do histórico;</li>
+    <li>Supabase (supabase.co): guarda os endereços de notificação de quem ligou os avisos.</li>
   </ul>
   <p>Nenhum desses serviços recebe de nós dados pessoais seus.</p>
 
@@ -74,8 +83,7 @@
   <p>O app não é dirigido a crianças e não coleta dados de ninguém, de nenhuma idade.</p>
 
   <h2>Mudanças</h2>
-  <p>Se o app passar a guardar algum dado (por exemplo, para enviar notificações com o app fechado), esta página
-  será atualizada antes, explicando o quê e por quê.</p>
+  <p>Se o app passar a guardar algum outro dado, esta página será atualizada antes, explicando o quê e por quê.</p>
 
   <h2>Contato</h2>
   <p>Dúvidas ou pedidos: <a href="mailto:dimasrafting@gmail.com">dimasrafting@gmail.com</a>.</p>

@@ -685,7 +685,7 @@
       <li>Leituras com erro de sensor são descartadas do histórico. Anos <em>parciais</em> têm falhas e podem subestimar picos.</li>
       <li>Em emergência ligue <strong>199</strong> (Defesa Civil) ou <strong>193</strong> (Bombeiros).</li>
       <li><a href="tv.html">Modo TV</a>: tela cheia para televisão ou monitor, com letras grandes e atualização automática.</li>
-      <li id="avisosRodape" hidden>Avisos ligados neste aparelho · <button class="link" id="btnDesligarAvisos">desligar</button></li>
+      <li id="avisosRodape" hidden><span id="avisosRodapeTxt">Avisos ligados neste aparelho</span> · <button class="link" id="btnDesligarAvisos">desligar</button></li>
       <li>Quando uma régua da cidade fica sem transmitir, os dias que faltam no histórico são completados com uma régua vizinha convertida (quando há).</li>
       <li>Definição das cotas (Manual das Salas de Situação de SP): <strong>atenção</strong> = risco significativo, mas incerto; <strong>alerta</strong> = perigo iminente, Defesa Civil de prontidão; <strong>emergência</strong> = situação crítica, ação imediata; <strong>transbordamento</strong> (extravasamento) = rio acima das margens.</li>
     </ul>
@@ -2297,7 +2297,31 @@ async function desenharFontes() {
 }
 
 // ================= avisos no aparelho =================
-// Funcionam com o painel aberto (ou instalado e aberto em segundo plano). O canal do Telegram avisa sempre.
+// Com Web Push, o robô (GitHub Actions) manda o aviso mesmo com o app fechado. Sem ele (navegador sem suporte,
+// iPhone sem o app instalado), o próprio painel avisa enquanto estiver aberto.
+const PUSH = {
+  url: "https://smlhkifwlbqsvfsixkvo.supabase.co",
+  chave: "sb_publishable_FvMdZ86fu1QYZ1HLEfMmwg_awn-6rhu",
+  vapid: "BIvON6oMBg8JdPZKjByFb0tfuTc4vE8g8209sDomf8NKy85R-pkXbyViTZkwFRnWnR-6VS0G_10b-DjVH43Gcfg",
+};
+const pushSuportado = () => "serviceWorker" in navigator && "PushManager" in window;
+async function pushRpc(funcao, dados) {
+  const r = await fetch(`${PUSH.url}/rest/v1/rpc/${funcao}`, { method: "POST", headers: { apikey: PUSH.chave, "Content-Type": "application/json" }, body: JSON.stringify(dados) });
+  if (!r.ok) throw new Error(`inscrição ${r.status}`);
+}
+async function inscreverPush() {
+  const reg = await navigator.serviceWorker.ready;
+  const b64 = PUSH.vapid.replace(/-/g, "+").replace(/_/g, "/"), chave = Uint8Array.from(atob(b64 + "=".repeat((4 - b64.length % 4) % 4)), c => c.charCodeAt(0));
+  const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chave });
+  const j = sub.toJSON();
+  await pushRpc("monitora_inscrever", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth, p_bacia: BACIA });
+  guardar("push", true); guardar("push-sync", Date.now());
+}
+async function cancelarPush() {
+  guardar("push", false);
+  const sub = await (await navigator.serviceWorker?.getRegistration?.())?.pushManager?.getSubscription?.().catch(() => null);
+  if (sub) await pushRpc("monitora_cancelar", { p_endpoint: sub.endpoint, p_bacia: BACIA }).catch(() => {});
+}
 function avisoJaDado(chave, horas) {
   const v = ler("aviso-" + chave, 0);
   if (Date.now() - v < horas * 36e5) return true;
@@ -2305,6 +2329,7 @@ function avisoJaDado(chave, horas) {
 }
 async function notificar(titulo, corpo, chave, horas) {
   if (!ler("avisos", false) || typeof Notification === "undefined" || Notification.permission !== "granted") return;
+  if (ler("push", false) && !chave.startsWith("teste-")) return;   // o robô já avisa por Web Push
   if (avisoJaDado(chave, horas)) return;
   const reg = await navigator.serviceWorker?.getRegistration?.().catch(() => null);
   const op = { body: corpo, icon: "../icones/icone-192.png", badge: "../icones/icone-192.png", tag: `${BACIA}-${chave}` };
@@ -2333,16 +2358,26 @@ function configurarAvisos() {
     $("#cardAvisos").hidden = ativo && $("#btnInstalar").hidden && $("#lnkTelegram").hidden;
     btn.hidden = ativo;
     $("#avisosRodape").hidden = !ativo;
+    $("#avisosRodapeTxt").textContent = ler("push", false) ? "Avisos ligados neste aparelho (chegam mesmo com o app fechado)" : "Avisos ligados neste aparelho (com o painel aberto)";
   };
-  $("#btnDesligarAvisos").onclick = () => { guardar("avisos", false); atualizar(); };
+  $("#btnDesligarAvisos").onclick = async () => { guardar("avisos", false); atualizar(); await cancelarPush(); atualizar(); };
   if (typeof Notification === "undefined") { btn.disabled = true; btn.textContent = "Este navegador não mostra avisos"; }
   else btn.onclick = async () => {
-    if (ler("avisos", false) && Notification.permission === "granted") { guardar("avisos", false); atualizar(); return; }
+    if (ler("avisos", false) && Notification.permission === "granted") { guardar("avisos", false); atualizar(); await cancelarPush(); return; }
     const p = await Notification.requestPermission();
     guardar("avisos", p === "granted"); atualizar();
-    if (p === "granted") notificar("Avisos ligados", "Você será avisado quando o rio passar de uma cota, a água subir rio acima ou a previsão indicar cheia.", "teste-" + Date.now(), 0);
+    if (p !== "granted") return;
+    let fechado = false;
+    if (pushSuportado()) try { await inscreverPush(); fechado = true; } catch (e) { console.warn("Web Push indisponível:", e); guardar("push", false); }
+    atualizar();
+    notificar("Avisos ligados", fechado
+      ? `Você será avisado sobre o ${config.rio} mesmo com o app fechado: cota, água subindo rio acima e previsão de cheia.`
+      : "Você será avisado enquanto o painel estiver aberto. Para receber com o app fechado, instale o app.", "teste-" + Date.now(), 0);
   };
   atualizar();
+  // mantém a inscrição em dia (o navegador às vezes troca as chaves); uma vez por dia
+  if (ler("avisos", false) && ler("push", false) && Notification.permission === "granted" && Date.now() - ler("push-sync", 0) > 864e5)
+    inscreverPush().catch(() => {});
   if (config.avisos?.telegram) { $("#lnkTelegram").href = config.avisos.telegram; $("#lnkTelegram").hidden = false; }
   let pedido = null;
   addEventListener("beforeinstallprompt", ev => { ev.preventDefault(); pedido = ev; $("#btnInstalar").hidden = false; atualizar(); });

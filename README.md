@@ -250,9 +250,11 @@ ou desliga a região.
 
 ## Avisos
 
-- **No aparelho:** botão "Avisar neste aparelho" (Notification API); funciona com o painel
-  aberto ou instalado como app. Depois de ligado, o cartão some; para desligar, use o
-  rodapé.
+- **No aparelho (Web Push):** botão "Avisar neste aparelho". O celular se inscreve na bacia
+  (tabela `monitora_push` no Supabase, projeto estoura; SQL em `scripts/supabase/monitora_push.sql`)
+  e o robô manda a notificação mesmo com o app fechado. Precisa dos segredos `VAPID_PRIVATE_KEY`
+  e `MONITORA_PUSH_TOKEN` no GitHub. Sem suporte a push (ex.: iPhone sem o app instalado), o
+  painel avisa enquanto estiver aberto. Para desligar, use o rodapé.
 - **Robô de avisos:** `scripts/alertas.py` roda a cada ~10 min (`.github/workflows/alertas.yml`)
   para todas as bacias. Avisa quando a régua principal muda de cota, a água sobe ≥ 20 cm
   em 3 h rio acima (com tempo de chegada), há risco de represamento ou a previsão passa de

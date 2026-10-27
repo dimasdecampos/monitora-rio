@@ -1,7 +1,7 @@
 // Service worker (vale para todas as bacias): deixa o painel instalável e mostra a última leitura mesmo sem internet.
 // Páginas e dados: rede primeiro (sempre o mais novo), cópia guardada só se a rede falhar.
 // Bibliotecas (CDN) e ícones: cópia guardada primeiro (não mudam).
-const VERSAO = "v3";
+const VERSAO = "v4";
 const CACHE = `monitor-${VERSAO}`;
 const BASICO = ["./", "index.html", "bacias.json", "manifest.webmanifest", "privacidade.html", "icones/icone-192.png"];   // cada painel é guardado na primeira visita
 
@@ -31,8 +31,23 @@ self.addEventListener("fetch", ev => {
   );
 });
 
-// toque num aviso abre o painel
+// aviso de cheia enviado pelo robô (Web Push): chega mesmo com o app fechado
+self.addEventListener("push", ev => {
+  let d = {};
+  try { d = ev.data ? ev.data.json() : {}; } catch { d = { corpo: ev.data ? ev.data.text() : "" }; }
+  ev.waitUntil(self.registration.showNotification(d.titulo || "Monitor dos Rios", {
+    body: d.corpo || "", icon: "icones/icone-192.png", badge: "icones/icone-192.png",
+    tag: d.tag || "monitor", renotify: true, requireInteraction: !!d.urgente,
+    vibrate: d.urgente ? [400, 150, 400, 150, 800] : [200], data: { url: d.url || "./" },
+  }));
+});
+
+// toque num aviso abre o painel do rio
 self.addEventListener("notificationclick", ev => {
   ev.notification.close();
-  ev.waitUntil(self.clients.matchAll({ type: "window" }).then(ws => ws.length ? ws[0].focus() : self.clients.openWindow("./")));
+  const url = new URL(ev.notification.data?.url || "./", self.registration.scope).href;
+  ev.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(ws => {
+    const mesma = ws.find(w => w.url.split("?")[0] === url.split("?")[0]);
+    return mesma ? mesma.focus() : self.clients.openWindow(url);
+  }));
 });

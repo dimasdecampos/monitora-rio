@@ -10,6 +10,8 @@ Cada tipo de aviso se repete no máximo a cada 6–12 h.
 
 Variáveis de ambiente:
   NTFY_TOPIC                      prefixo dos tópicos do app ntfy: cada bacia avisa em <NTFY_TOPIC>-<bacia>
+  VAPID_PRIVATE_KEY, MONITORA_PUSH_TOKEN
+                                  notificação no app/painel (Web Push): chave VAPID (PEM) e senha do robô no Supabase
   TELEGRAM_TOKEN                  bot do Telegram; o canal de cada bacia fica em config.json → avisos.telegram_chat
   CALLMEBOT_PHONE, CALLMEBOT_KEY  WhatsApp pessoal via CallMeBot (número com DDI, ex. +5512999999999)
   HEALTHCHECK_URL                 endereço de ping do healthchecks.io (vigia: avisa por e-mail se o robô parar)
@@ -31,6 +33,9 @@ SIBH = "https://cth.daee.sp.gov.br/sibh/api/v2/measurements"
 BRT = timezone(timedelta(hours=-3))
 COTAS = [("extravasamento", "Transbordamento"), ("emergencia", "Emergência"), ("alerta", "Alerta"), ("atencao", "Atenção")]
 PASTA_ESTADO = Path(os.environ.get("ESTADO", comum.RAIZ / ".alertas"))
+# inscrições do Web Push (públicas por natureza: a tabela só é lida com MONITORA_PUSH_TOKEN)
+SUPABASE = "https://smlhkifwlbqsvfsixkvo.supabase.co"
+SUPABASE_CHAVE = "sb_publishable_FvMdZ86fu1QYZ1HLEfMmwg_awn-6rhu"
 
 
 def br(cm):
@@ -248,6 +253,52 @@ def verificar(bacia, mandar):
     return falhas
 
 
+def supabase_rpc(funcao, dados):
+    req = urllib.request.Request(f"{SUPABASE}/rest/v1/rpc/{funcao}", data=json.dumps(dados).encode(), method="POST",
+                                 headers={"apikey": SUPABASE_CHAVE, "Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        corpo = r.read()
+    return json.loads(corpo) if corpo else None
+
+
+def enviar_push(cfg, m, link):
+    """Notificação no celular de quem ligou os avisos no painel/app (Web Push), mesmo com o app fechado.
+    None se o canal não está configurado ou não há inscritos; True/False se chegou a alguém."""
+    token, pem = os.environ.get("MONITORA_PUSH_TOKEN"), os.environ.get("VAPID_PRIVATE_KEY")
+    if not (token and pem): return None
+    try:
+        from pywebpush import webpush, WebPushException
+        from py_vapid import Vapid
+    except ImportError:
+        print("Web Push: falta instalar pywebpush"); return False
+    try:
+        inscritos = supabase_rpc("monitora_listar", {"p_token": token, "p_bacia": cfg["id"]}) or []
+    except Exception as e:
+        print("Web Push: falha ao ler os inscritos:", e); return False
+    if not inscritos: return None
+    titulo, _, corpo = m.replace("*", "").partition("\n")
+    urgente = m[:1] in "🔴🌊⚠"
+    dados = json.dumps({"titulo": titulo, "corpo": corpo, "url": link, "tag": f"{cfg['id']}-{ord(m[0])}", "urgente": urgente}, ensure_ascii=False)
+    vapid = Vapid.from_pem(pem.encode())
+    ok = removidos = 0
+    for s in inscritos:
+        try:
+            webpush({"endpoint": s["endpoint"], "keys": {"p256dh": s["p256dh"], "auth": s["auth"]}}, dados,
+                    vapid_private_key=vapid, vapid_claims={"sub": "mailto:dimasrafting@gmail.com"},
+                    ttl=6 * 3600, timeout=20, headers={"Urgency": "high" if urgente else "normal"})
+            ok += 1
+        except WebPushException as e:
+            if e.response is not None and e.response.status_code in (404, 410):   # desinstalou ou bloqueou
+                try: supabase_rpc("monitora_remover", {"p_token": token, "p_endpoint": s["endpoint"]}); removidos += 1
+                except Exception as e2: print("Web Push: falha ao remover inscrição:", e2)
+            else:
+                print("Web Push: falha num aparelho:", str(e)[:200])
+        except Exception as e:
+            print("Web Push: falha num aparelho:", str(e)[:200])
+    print(f"Web Push ({cfg['id']}): {ok} de {len(inscritos)} aparelho(s); {removidos} inscrição(ões) vencida(s) removida(s)")
+    return ok > 0 or (removidos == len(inscritos))
+
+
 def telegram_html(m, link):
     """*negrito* -> <b>negrito</b>, com o resto escapado (nomes com _ ou * não quebram a mensagem)."""
     t = re.sub(r"\*([^*\n]+)\*", r"<b>\1</b>", html.escape(m, quote=False))
@@ -291,7 +342,9 @@ def enviar(cfg, m):
                 print("falha no WhatsApp:", e)
             time.sleep(10 * (n + 1))
         time.sleep(5)   # o CallMeBot recusa mensagens muito seguidas
-    if not prefixo and not (token and chat) and not (fone and chave):
+    push = enviar_push(cfg, m, link)
+    if push: ok = True
+    if not prefixo and not (token and chat) and not (fone and chave) and push is None:
         print("--- (teste, sem canal configurado) ---\n" + m)
         return True
     return ok

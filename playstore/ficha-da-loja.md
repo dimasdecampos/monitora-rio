@@ -34,7 +34,7 @@ O QUE O APP MOSTRA
 • Situação das fontes de dados: o app avisa quando uma régua para de transmitir
 
 AVISOS
-Ligue "Avisar neste aparelho" no painel do rio para ser avisado quando o rio mudar de cota, a água subir rio acima ou a previsão indicar cheia (com o app aberto ou em segundo plano).
+Ligue "Avisar neste aparelho" no painel do rio e receba a notificação mesmo com o app fechado quando o rio mudar de cota, a água subir rio acima, a régua parar de transmitir ou a previsão indicar cheia.
 
 FONTES DOS DADOS
 Os dados vêm de fontes públicas: SP Águas / DAEE (cth.daee.sp.gov.br), ANA – Agência Nacional de Águas (telemetriaws1.ana.gov.br) e Open-Meteo (open-meteo.com). Mapas © OpenStreetMap.
@@ -42,7 +42,7 @@ Os dados vêm de fontes públicas: SP Águas / DAEE (cth.daee.sp.gov.br), ANA �
 AVISO IMPORTANTE
 Este é um projeto independente e sem fins lucrativos. NÃO é um app do governo e não tem ligação com a Defesa Civil, a ANA ou a SP Águas. Os dados, cotas e previsões não foram validados pela Defesa Civil e podem ter erros ou atrasos. Em situação de risco, siga sempre as orientações da Defesa Civil (199) e dos Bombeiros (193).
 
-Sem cadastro, sem anúncios e sem coleta de dados pessoais.
+Sem cadastro, sem anúncios e sem coleta de dados pessoais (para os avisos, só um endereço técnico de notificação do aparelho).
 
 Idealizado e criado por Dimas de Campos, de São Luiz do Paraitinga.
 ```

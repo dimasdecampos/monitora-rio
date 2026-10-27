@@ -104,7 +104,7 @@ e a raiz `dimasdecampos.github.io` só redireciona para ele.
    | Acesso ao app | Todas as funções estão disponíveis sem restrições (não tem login) |
    | Classificação do conteúdo | Categoria "Referência, notícias ou educacional". Responda "não" a violência, sexo, drogas, jogos de azar e interação entre usuários. Deve sair **Livre** |
    | Público-alvo | 18 anos ou mais (evita as regras de apps infantis; o app não é para crianças) |
-   | Segurança dos dados | **Não coleta nem compartilha dados**. As preferências ficam só no aparelho |
+   | Segurança dos dados | Coleta: **"IDs do dispositivo ou outros IDs"** (endereço de notificação, só se a pessoa ligar os avisos). Finalidade: **funcionalidade do app**. Não compartilhado, criptografado em trânsito, a pessoa pode pedir exclusão (botão "desligar"). Opcional. Nada mais é coletado |
    | App de notícias | Não |
    | App do governo | Não. A descrição já diz que é independente e cita as fontes |
    | Saúde / finanças / ID de publicidade | Não / Não / Não usa |
@@ -126,6 +126,5 @@ endereço no topo. Isso é normal.
 - **Painel, dados, bacias novas**: só publique o site. O app atualiza sozinho.
 - **Nome, ícone, cores**: mude `public/manifest.webmanifest` ou `android/app.json`, publique o
   site, rode de novo o workflow **Gerar app Android** e envie o novo `.aab` na Play Console.
-- **Notificações com o app fechado (Web Push)**: se forem implementadas, atualize a política
-  de privacidade e o formulário de segurança dos dados, porque passará a existir um
-  identificador do aparelho guardado.
+- **Notificações com o app fechado (Web Push)**: já implementadas; a política de privacidade e a
+  resposta de "Segurança dos dados" acima já consideram o endereço de notificação guardado.
