@@ -1267,12 +1267,12 @@ function linhaPrevista(ultimo) {
   const chuva = d.tempo.map((t, j) => ({ x: new Date(t + ":00").getTime() + 18e5, y: d.media[j] * f, j })).filter(p => p.j > agoraH && p.y > 0);
   return { pts, chuva };
 }
-function faixaTipica(dias, inicio) {
+function faixaTipica(dias, inicio, fim) {
   const ano = new Date().getFullYear(), out = [];
   const doAno = d => Date.UTC(2024, +d.slice(5, 7) - 1, +d.slice(8, 10));
   const hist = dias.filter(r => +r.d.slice(0, 4) < ano && r.nmed != null);
   if (new Set(hist.map(r => r.d.slice(0, 4))).size < 3) return [];
-  for (let k = 0; k <= 30; k++) {
+  for (let k = 0; inicio + k * 864e5 <= fim; k++) {   // cobre toda a janela do gráfico, não só os próximos dias
     const dia = new Date(inicio + k * 864e5); dia.setHours(12, 0, 0, 0);
     const alvo = Date.UTC(2024, dia.getMonth(), dia.getDate());
     const v = hist.filter(r => { const dd = Math.abs(doAno(r.d) - alvo); return Math.min(dd, 366 * 864e5 - dd) <= 3 * 864e5; }).map(r => r.nmed / 100).sort((a, b) => a - b);
@@ -1292,11 +1292,11 @@ function desenharAgora(manterJanela) {
   const vazio = !nivel.length;
   const fimObs = vazio ? Date.now() : Math.max(nivel.at(-1).x, Date.now() - 36e5), min = fimObs - 30 * 864e5;
   const previsto = vazio ? null : linhaPrevista(nivel.at(-1));
-  const tipica = faixaTipica(c.dias, Date.now());
   // o gráfico vai até o fim da previsão do rio ou, sem ela, até o fim da chuva prevista na bacia (no máximo 7 dias)
   const fimChuvaBacia = temRegioes() && estado.chuvaBacia && bacia.regioes ? Math.min(Date.now() + 7 * 864e5, Math.max(0, ...bacia.regioes.flatMap(r => r.prv.map(p => p.x)))) : 0;
   const max = Math.max(fimObs, previsto ? previsto.pts.at(-1).x : 0, fimChuvaBacia);
   graficos.limite = [min, max];
+  const tipica = faixaTipica(c.dias, min - 864e5, max + 864e5);
   const chuvaHora = seriesChuva(ls, false), chuvaDia = seriesChuva(ls, true), temChuva = ls.some(l => l.chuva != null) || !!previsto;
   const chuvaPrevHora = previsto ? previsto.chuva : [];
   const chuvaPrevDia = (() => { const m = new Map(); for (const p of chuvaPrevHora) { const d = new Date(p.x); d.setHours(12, 0, 0, 0); m.set(+d, (m.get(+d) || 0) + p.y); } return [...m].map(([x, y]) => ({ x, y })); })();
