@@ -6,8 +6,10 @@ e grava public/<bacia>/<config.previsao.modelo> no mesmo formato usado pelo pain
   - chuva média na bacia (ERA5) nos config.pontos_chuva  -> dados/<config.chuva_era5.arquivo>;
   - previsões de chuva arquivadas (feitas 1 a 7 dias antes), 2024 → hoje -> dados/chuva_prevista7_<bacia>.json
     (baixadas na primeira vez; --baixar força de novo).
-Só a versão A (nível + chuva). Treino até 2023 com a chuva que de fato caiu; teste de fev/2024
-em diante com a previsão do tempo real da época. O modelo gravado é treinado com todos os dados.
+Versão A: nível + chuva. Versão B (com config.previsao.rio_acima): A + subida da régua rio acima
+em 6 h e 12 h, usada pelo painel quando essa régua está transmitindo. Treino até 2023 com a chuva
+que de fato caiu; teste de fev/2024 em diante com a previsão do tempo real da época. O modelo
+gravado é treinado com todos os dados.
 
 Uso: python scripts/modelo_cheias/treinar_bacia.py --bacia paraibuna [--baixar]
 """
@@ -64,13 +66,19 @@ acum = [0.0]
 for x in bacia: acum.append(acum[-1] + x)
 S = lambda a, b: acum[min(N, max(0, b))] - acum[min(N, max(0, a))]
 
-linhas = []
-for f in sorted((comum.pasta(ARGS.bacia) / "historico" / P).glob("????-??.json")):
-    linhas += json.load(open(f, encoding="utf-8"))["dados"]
-nivel = {}
-for tt_, n, _, _ in coletar.sem_picos_falsos(sorted(linhas)):
-    if n is not None: nivel[tt_[:13]] = n          # última leitura de cada hora
-H = [nivel.get(k) for k in t]
+def serie_nivel(cod):
+    linhas = []
+    for f in sorted((comum.pasta(ARGS.bacia) / "historico" / cod).glob("????-??.json")):
+        linhas += json.load(open(f, encoding="utf-8"))["dados"]
+    nivel = {}
+    for tt_, n, _, _ in coletar.sem_picos_falsos(sorted(linhas)):
+        if n is not None: nivel[tt_[:13]] = n          # última leitura de cada hora
+    return [nivel.get(k) for k in t]
+
+
+H = serie_nivel(P)
+RA = CFG["previsao"].get("rio_acima")
+HR = serie_nivel(RA) if RA else [None] * N   # régua rio acima (versão B)
 
 arq_prev = DADOS / f"chuva_prevista7_{ARGS.bacia}.json"
 if ARGS.baixar or not arq_prev.exists(): baixar_previsoes(arq_prev)
@@ -97,14 +105,22 @@ def f48_real(i):
     return s * FATOR
 
 
-# ---------------- probabilidade de subir G cm em 48 h (versão A) ----------------
-def vars_(c, G):
+def dif(serie, i, h):
+    a, b = serie[i], serie[i - h] if i >= h else None
+    return None if a is None or b is None else a - b
+
+
+# ---------------- probabilidade de subir G cm em 48 h (versões A e B, iguais às do painel) ----------------
+def vars_(c, G, versao="A"):
     f, a, b, s, g = math.log1p(c["f48"]), math.log1p(c["p24"]), math.log1p(c["p72"]), c["api"] / 100, G / 100
-    return [1.0, g, f, a, b, s, c["H0"] / 100, f * s, f * g, a * g, g * g]
+    x = [1.0, g, f, a, b, s, c["H0"] / 100, f * s, f * g, a * g, g * g]
+    if versao == "B":
+        dc = max(c["dc6"], 0) / 100; x += [dc, max(c["dc12"], 0) / 100, dc / (g + .3)]
+    return x
 
 
-def treinar(casos, epocas=50, lr=.05, l2=1e-4):
-    random.seed(1); dados = [(vars_(c, G), 1.0 if c["y"] >= G else 0.0) for c in casos for G in GAPS]
+def treinar(casos, versao="A", epocas=50, lr=.05, l2=1e-4):
+    random.seed(1); dados = [(vars_(c, G, versao), 1.0 if c["y"] >= G else 0.0) for c in casos for G in GAPS]
     w = [0.0] * len(dados[0][0]); m = [0.0] * len(w); v = [0.0] * len(w); passo = 0
     for _ in range(epocas):
         random.shuffle(dados)
@@ -121,24 +137,26 @@ def treinar(casos, epocas=50, lr=.05, l2=1e-4):
     return w
 
 
-def prob(w, c, G):
-    return 1 / (1 + math.exp(-max(-30, min(30, sum(p * q for p, q in zip(w, vars_(c, G)))))))
+def prob(w, c, G, versao="A"):
+    return 1 / (1 + math.exp(-max(-30, min(30, sum(p * q for p, q in zip(w, vars_(c, G, versao)))))))
 
 
-def montar(ini, fim, passo, chuva):
+def montar(ini, fim, passo, chuva, so_com_rio_acima=False):
     out = []
     for i in range(max(720, idx.get(ini, 720)), min(idx.get(fim, N - 49), N - 49), passo):
         if H[i] is None: continue
+        dc6, dc12 = dif(HR, i, 6), dif(HR, i, 12)
+        if so_com_rio_acima and (dc6 is None or dc12 is None): continue
         fut = [H[i + h] for h in range(1, 49) if H[i + h] is not None]
         if len(fut) < 40: continue
         f = S(i + 1, i + 49) if chuva == "perfeita" else f48_real(i)
         if f is None: continue
         out.append(dict(i=i, H0=H[i], p24=S(i - 24, i + 1), p72=S(i - 72, i + 1), api=S(i - 720, i - 72), f48=f,
-                        y=max(fut) - H[i], pico=max(fut)))
+                        dc6=dc6, dc12=dc12, y=max(fut) - H[i], pico=max(fut)))
     return out
 
 
-def avaliar(w, casos):
+def avaliar(w, casos, versao="A"):
     """Das vezes em que passou da atenção, quantas foram avisadas (chance ≥ 30%) 3/6/12/24 h antes."""
     por_i = {c["i"]: c for c in casos}
     eventos = []
@@ -154,24 +172,28 @@ def avaliar(w, casos):
             c = por_i.get(e - L) or por_i.get(e - L - 1) or por_i.get(e - L + 1)
             if c is None: continue
             n += 1
-            if c["H0"] >= COTA or prob(w, c, COTA - c["H0"]) >= .3: ok += 1
+            if c["H0"] >= COTA or prob(w, c, COTA - c["H0"], versao) >= .3: ok += 1
         res[L] = (ok, n)
     dias, falsos = set(), set()
     for c in casos:
-        if c["H0"] < COTA and prob(w, c, COTA - c["H0"]) >= .3:
+        if c["H0"] < COTA and prob(w, c, COTA - c["H0"], versao) >= .3:
             dias.add(t[c["i"]][:10])
             if c["pico"] < COTA: falsos.add(t[c["i"]][:10])
-    print("  " + " | ".join(f"{L:2d} h antes: {ok}/{n}" for L, (ok, n) in res.items()) + f" | dias com aviso {len(dias)}, sem cheia {len(falsos)}")
+    print(f"  {versao}: " + " | ".join(f"{L:2d} h antes: {ok}/{n}" for L, (ok, n) in res.items()) + f" | dias com aviso {len(dias)}, sem cheia {len(falsos)}")
     return res, len(dias), len(falsos)
 
 
 inicio = next(t[i] for i in range(720, N) if H[i] is not None)
 inicio = max(inicio, "2015-01-01T00")
 w_teste = treinar(montar(inicio, "2024-01-01T00", 6, "perfeita"))
-teste = montar("2024-02-01T00", t[-60], 3, "real")
+teste = montar("2024-02-01T00", t[-60], 3, "real", so_com_rio_acima=bool(RA))
 print(f"teste fev/2024 → {t[-60][:10]} com a previsão do tempo real ({len(teste)} casos), cota de atenção {COTA / 100:.2f} m:")
 res, dias, falsos = avaliar(w_teste, teste)
 w_final = treinar(montar(inicio, t[-60], 6, "perfeita"))
+if RA:
+    inicio_b = next(t[i] for i in range(720, N) if HR[i] is not None and H[i] is not None)
+    res_b, dias_b, falsos_b = avaliar(treinar(montar(inicio_b, "2024-01-01T00", 6, "perfeita", True), "B"), teste, "B")
+    w_final_b = treinar(montar(inicio_b, t[-60], 6, "perfeita", True), "B")
 
 
 # ---------------- linha de previsão por prazo ----------------
@@ -192,10 +214,10 @@ def resolver(A, y, ridge=1e-3):
     return [Mx[i][k] / Mx[i][i] for i in range(k)]
 
 
-def variaveis(H0, p24, p72, api, ra, rf, h):
+def variaveis(H0, p24, p72, api, ra, rf, h, dc6=None):
     a_, b_, s = math.log1p(p24), math.log1p(p72), api / 100
     ra, rf, n = math.log1p(ra), math.log1p(rf), H0 / 100
-    return [1.0, n, n * n, a_, b_, s, ra, rf, ra * s, rf * s, ra * n, a_ * (24 / (h + 24)), 0.0]   # último termo: régua rio acima (não usada)
+    return [1.0, n, n * n, a_, b_, s, ra, rf, ra * s, rf * s, ra * n, a_ * (24 / (h + 24)), max(dc6 or 0, 0) / 100 * (24 / (h + 24))]
 
 
 def amostras(ini, fim, h, passo, real):
@@ -214,7 +236,7 @@ def amostras(ini, fim, h, passo, real):
             ra, rf = sum(serie), sum(serie[-24:])
         else:
             ra, rf = S(i + 1, i + h + 1), S(i + h - 23, i + h + 1)
-        yield variaveis(H[i], S(i - 24, i + 1), S(i - 72, i + 1), S(i - 720, i - 72), ra, rf, h), H[i + h] - H[i]
+        yield variaveis(H[i], S(i - 24, i + 1), S(i - 72, i + 1), S(i - 720, i - 72), ra, rf, h, dif(HR, i, 6)), H[i + h] - H[i]
 
 
 def quantil(v, q): s = sorted(v); return s[min(len(s) - 1, int(q * (len(s) - 1)))]
@@ -222,8 +244,8 @@ def quantil(v, q): s = sorted(v); return s[min(len(s) - 1, int(q * (len(s) - 1))
 
 def ajustar(ini, fim, h):
     tr = list(amostras(ini, fim, h, 3, False))
-    A = [x[:-1] for x, _ in tr]   # sem a coluna da régua rio acima (sempre 0)
-    w = resolver(A, [y for _, y in tr]) + [0.0]
+    if RA: w = resolver([x for x, _ in tr], [y for _, y in tr])
+    else: w = resolver([x[:-1] for x, _ in tr], [y for _, y in tr]) + [0.0]   # sem régua rio acima: coluna sempre 0
     pred = lambda x: sum(p * q for p, q in zip(w, x))
     pares = sorted((pred(x), y - pred(x)) for x, y in tr); faixas = []
     for b in range(6):
@@ -260,11 +282,14 @@ saida = {
     "cotas_cm": comum.estacoes(CFG)[P]["cotas_cm"],
     "passarela": {   # nome da chave mantido por compatibilidade com o painel
         "versao": datetime.now().date().isoformat(), "estacao": P,
-        "descricao": f"Probabilidade de a régua {P} subir pelo menos G cm em 48 h: nível + chuva na bacia (passada e prevista).",
+        "descricao": f"Probabilidade de a régua {P} subir pelo menos G cm em 48 h. A: nível + chuva na bacia (passada e prevista)"
+                     + (f"; B: A + subida da régua {RA} (6 h e 12 h)." if RA else "."),
         "pesos_A": [round(x, 5) for x in w_final],
+        **({"pesos_B": [round(x, 5) for x in w_final_b]} if RA else {}),
         "teste": {"periodo": f"fev/2024 a {MESES[fim_teste.month - 1]}/{fim_teste.year}", "cheias": res[6][1],
                   "avisadas": {str(L): ok for L, (ok, n) in res.items()},
-                  "dias_com_aviso": dias, "dias_sem_cheia": falsos, "limiar_aviso": 0.3},
+                  "dias_com_aviso": dias, "dias_sem_cheia": falsos, "limiar_aviso": 0.3,
+                  **({"B_avisadas": {str(L): ok for L, (ok, n) in res_b.items()}, "B_dias_com_aviso": dias_b, "B_dias_sem_cheia": falsos_b} if RA else {})},
         "trajetoria": traj,
     },
 }

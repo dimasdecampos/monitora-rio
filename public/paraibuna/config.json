@@ -10,7 +10,10 @@
   "reguas_cidade": [
     "58068000"
   ],
-  "previsao": null,
+  "previsao": {
+    "modelo": "modelo_cheias.json",
+    "rio_acima": "sp792"
+  },
   "impactos": "impactos.json",
   "estatisticas": "estatisticas.json",
   "represamento": null,
@@ -38,7 +41,7 @@
           "lat": -23.3301,
           "lon": -45.1437,
           "atraso_max_horas": 1,
-          "historico_desde": "2024-01",
+          "historico_desde": "2015-12",
           "cotas_oficiais": true,
           "cotas_cm": {
             "atencao": 520,
@@ -220,5 +223,5 @@
     "pt-cunha",
     "pt-natividade"
   ],
-  "_previsao": "Sem previsão de 48 h: o modelo testado (scripts/modelo_cheias/treinar_bacia.py) avisou só 6 de 20 cheias de 2024–2026, porque a chuva estimada não capta os temporais da serra. O aviso confiável é a subida de Ponte Alta."
+  "_previsao": "Previsão de 48 h com a subida de Ponte Alta (versão B de scripts/modelo_cheias/treinar_bacia.py, histórico de Ponte Alta desde 2015). Só com nível e chuva o modelo avisava 6 de 20 cheias 3 h antes; com Ponte Alta, 15 de 20. Com 12 a 24 h de antecedência continua fraco: a chuva prevista não capta os temporais da serra. Testados sem ganho: chuva por região, pluviômetros, chuva de Ubatuba e Paraty."
 }

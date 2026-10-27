@@ -56,7 +56,7 @@ Os dois se encontram na represa de Paraibuna e formam o Paraíba do Sul.
 | Régua principal | Passarela (SP Águas), cotas oficiais | Fazenda Palmeiras, Natividade (ANA), cotas **provisórias** |
 | Rio acima | Cunha, Lagoinha ×2, Estrada do Ribeira (3 a 20 h) | Ponte Alta, na serra (~4 h, de 3 a 7 h) |
 | Outras réguas | ANA e CESP na cidade, Jacuí, Chapéu ×2 | Represa de Paraibuna (nível do reservatório), abaixo da barragem |
-| Previsão de cheias | sim (modelo próprio) | ainda não |
+| Previsão de cheias | sim (modelo próprio) | sim (com Ponte Alta; bom só para poucas horas) |
 | O que alaga / memória | sim | ainda não |
 | Chuva na bacia (regiões) | Cunha, Lagoinha, cidade, Chapéu | Cabeceiras em Cunha (só previsão), serra, Natividade, represa |
 | Chuva × subida do rio | sim (ERA5 desde 2018) | sim (ERA5 desde 2015) |
@@ -201,14 +201,17 @@ Anos com falhas aparecem como **parciais** e podem subestimar picos.
   de fora 2/3 das cheias por um erro no casamento dos horários; o modelo não mudou;*
 - o aviso costuma vir **6 a 12 h antes**; tempestades localizadas na serra podem escapar.
 
-**Paraibuna: sem previsão de 48 h.** O mesmo método, treinado para Natividade
-(`scripts/modelo_cheias/treinar_bacia.py --bacia paraibuna`), avisou só 6 de 20 cheias de
-2024–2026 com 6 h de antecedência e teve 57 dias de aviso falso: a chuva estimada (ERA5)
-quase não vê os temporais da Serra do Mar (no recorde de 22/02/2026 marcou ~30 mm na
-bacia). Por isso o painel não mostra previsão lá. O aviso confiável é a régua de Ponte
-Alta: quando ela sobe 20 cm em 3 h, Natividade passou da atenção em 20 das 22 cheias
-desde 2024, em média 7 h depois (com 38 dias de aviso sem cheia). O robô de avisos já
-manda esse alerta. Com mais anos de pluviômetros na serra, vale treinar de novo.
+**Paraibuna: previsão de 48 h com a régua de Ponte Alta.** O mesmo método, treinado para
+Natividade (`scripts/modelo_cheias/treinar_bacia.py --bacia paraibuna`), com a subida de
+Ponte Alta em 6 h e 12 h (histórico dela desde dez/2015). Teste fev/2024–out/2026 com a
+previsão do tempo real: das 20 vezes em que Natividade passou da atenção, avisou 13 com
+3 h de antecedência, 8 com 6 h, 5 com 12 h e 5 com 24 h; 32 dos 58 dias com aviso não
+tiveram cheia. Só com nível e chuva eram 7, 6, 7 e 8, com 56 de 76 dias sem cheia.
+O ganho é nas primeiras horas (a água leva de 4 a 7 h da serra até Natividade); com mais
+antecedência tudo depende da chuva prevista, que quase não vê os temporais da Serra do
+Mar (em 21–22/02/2026, 118 mm no pluviômetro de Natividade e ~11 mm na ERA5).
+Testados em out/2026, sem ganho que valesse: chuva separada por região, pluviômetros
+(Natividade e Ubatuba) no lugar da ERA5 e chuva estimada e prevista em Ubatuba e Paraty.
 
 **Linha de previsão (7 dias)** — uma regressão por prazo (6 h a 7 dias) para a variação
 do nível; a faixa azul é o intervalo de 8 em 10 chances, tirado dos erros do próprio
