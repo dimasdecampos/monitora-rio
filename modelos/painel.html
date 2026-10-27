@@ -2422,6 +2422,7 @@ async function iniciar() {
   (config.pluviometros || []).forEach(e => estacoes[e.codigo] = { ...e, rio: "Pluviômetros", so_chuva: true });
   (config.pontos_chuva || []).filter(p => p.codigo).forEach(p => estacoes[p.codigo] = { ...p, rio: "Pontos de previsão", so_previsao: true });
   P = config.principal; REGUAS_CIDADE = config.reguas_cidade || [P];
+  try { localStorage.setItem("monitor-ultima-bacia", BACIA); } catch {}   // o app abre direto neste rio da próxima vez
   document.title = `${config.rio} · ${config.cidade}`;
   document.querySelector('meta[name="description"]').content = `Nível, chuva e avisos de cheia do ${config.rio} em ${config.cidade}, com dados da SP Águas e da ANA.`;
   document.querySelector('meta[name="apple-mobile-web-app-title"]').content = config.rio;

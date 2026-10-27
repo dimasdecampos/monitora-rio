@@ -258,6 +258,9 @@ ou desliga a região.
   em 3 h rio acima (com tempo de chegada), há risco de represamento ou a previsão passa de
   30%. Cada tipo de aviso se repete no máximo a cada 6–12 h. Sem nenhum canal configurado,
   roda em modo de teste e só registra as mensagens.
+  Um aviso só conta como dado quando chega por pelo menos um canal: se todos falharem, ele
+  é tentado de novo na próxima rodada, e a rodada fica vermelha no GitHub (que manda e-mail).
+  No Telegram, as mensagens vão em HTML (nomes com `_` ou `*` não quebram o envio).
 - **Régua sem dados:** se a régua principal ficar sem leitura por mais que o atraso
   aceitável (`atraso_max_horas` + 1 h) em duas rodadas seguidas, sai um aviso "régua sem
   dados" com a última leitura. Ele se repete a cada 24 h, ou a cada 6 h se o rio estava em
@@ -286,6 +289,7 @@ ou desliga a região.
 - **Teste:** *Actions → Avisos de cheia → Run workflow*, marque **teste** e rode. Chega
   uma mensagem com o nível atual de cada bacia em todos os canais configurados.
 - **Play Store:** o app é o próprio site em tela cheia; veja [playstore/LEIAME.md](playstore/LEIAME.md).
+  No app, a abertura é animada e ele abre direto no último rio visto (a seta de voltar mostra a lista).
 - **App instalável:** cada bacia tem seu `manifest.webmanifest` (gerado) e o `public/sw.js`
   serve a todas (funciona sem internet com a última leitura guardada).
 

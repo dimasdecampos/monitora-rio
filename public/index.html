@@ -17,6 +17,15 @@
       (app && !sessionStorage.getItem("abertura") && !matchMedia("(prefers-reduced-motion: reduce)").matches))) {
     document.documentElement.classList.add("abertura"); sessionStorage.setItem("abertura", "1");
   }
+  // no app, abre direto no último rio visto (uma vez por sessão). Voltando do painel pela seta, mostra a lista.
+  const ultimo = localStorage.getItem("monitor-ultima-bacia");
+  const deDentro = document.referrer && new URL(document.referrer).origin === location.origin;
+  if (app && ultimo && /^[\w-]+$/.test(ultimo) && !deDentro && !sessionStorage.getItem("seguiu") && !/[?&]lista=1/.test(location.search)) {
+    sessionStorage.setItem("seguiu", "1");
+    window.DESTINO = ultimo + "/";
+    if (document.documentElement.classList.contains("abertura")) document.documentElement.classList.add("segue");
+    else location.replace(window.DESTINO);
+  }
 } catch {} })();
 </script>
 <link rel="icon" type="image/png" href="icones/icone-192.png">
@@ -90,6 +99,7 @@
   html.abertura body { overflow: hidden; }
   html.abertura #abertura { display: flex; position: fixed; inset: 0; z-index: 1000; align-items: center; justify-content: center;
     background: var(--plano); overflow: hidden; animation: ab-sai .42s cubic-bezier(.4,0,.2,1) 1.35s forwards; }
+  html.segue #abertura { animation: none; }   /* vai direto para o painel: a abertura não some antes */
   #abertura.pular { animation: ab-sai .2s ease forwards !important; }
   .ab-centro { position: relative; display: flex; flex-direction: column; align-items: center; margin-top: -40px; }
   .ab-icone { position: relative; width: 104px; height: 104px; }
@@ -186,6 +196,7 @@ function grafico(pts, e) {
 }
 
 (async () => {
+  if (window.DESTINO) return;   // indo direto para o painel: não precisa montar a lista
   const { bacias } = await fetch("bacias.json").then(r => r.json());
   const lista = document.getElementById("lista");
   lista.innerHTML = bacias.map(b => `
@@ -221,6 +232,10 @@ function grafico(pts, e) {
 (() => {
   const ab = document.getElementById("abertura");
   if (!document.documentElement.classList.contains("abertura")) { ab.remove(); return; }
+  if (window.DESTINO) {   // abertura e depois direto para o painel do último rio (sem mostrar a lista)
+    const ir = () => location.replace(window.DESTINO);
+    ab.addEventListener("click", ir); setTimeout(ir, 1300); return;
+  }
   const fim = () => { document.documentElement.classList.remove("abertura"); ab.remove(); };
   ab.addEventListener("click", () => { ab.classList.add("pular"); setTimeout(fim, 220); });
   ab.addEventListener("animationend", ev => { if (ev.target === ab) fim(); });
