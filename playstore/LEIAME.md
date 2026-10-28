@@ -20,7 +20,7 @@ formato usado por apps como o do Twitter Lite). Por isso:
 | Gerador do app Android | `android/` (configuração em `app.json`) e `.github/workflows/app-android.yml` |
 
 **Identificador do app (não dá para mudar depois de publicado):**
-`io.github.dimasdecampos.monitorario`
+`com.monitora_rios`
 
 ---
 
