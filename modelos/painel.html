@@ -2570,6 +2570,11 @@ async function iniciar() {
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("../sw.js").catch(() => {});
   $("#cardRio").addEventListener("click", ev => { const li = ev.target.closest("li[data-cod]"); if (li && li.dataset.cod !== estado.estacao) trocarEstacao(li.dataset.cod); });
   document.addEventListener("visibilitychange", () => { if (!document.hidden) { atualizarAoVivo(); desenharPrevisao(); } });
+  // se a 1ª leitura ao vivo falhar (rede instável, ANA lenta), tenta de novo em 10 s, 30 s e 1 min, e assim que a internet voltar
+  const vivoFalhou = () => [estado.estacao, P].some(cod => cache[cod]?.erroVivo);
+  const retentarVivo = () => { if (vivoFalhou()) atualizarAoVivo(); };
+  for (const s of [10, 30, 60]) setTimeout(retentarVivo, s * 1000);
+  addEventListener("online", retentarVivo);
 }
 iniciar();
 </script>
