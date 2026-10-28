@@ -75,6 +75,11 @@
   .grafico path.linha { fill: none; stroke: var(--cor, var(--neutro)); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
   .grafico path.area { fill: var(--cor, var(--neutro)); opacity: .14; }
   .grafico line { stroke: var(--tinta-3); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; opacity: .6; }
+  .periodos { display: flex; gap: 6px; margin-top: 10px; position: relative; z-index: 1; }   /* acima do toque do cartão */
+  .periodos button { font: inherit; font-size: 12px; font-weight: 650; line-height: 1; padding: 5px 10px; border-radius: 999px; cursor: pointer;
+                     border: 1px solid var(--borda); background: transparent; color: var(--tinta-2); }
+  .periodos button[aria-pressed="true"] { background: color-mix(in srgb, var(--cor, var(--neutro)) 16%, transparent); border-color: color-mix(in srgb, var(--cor, var(--neutro)) 55%, transparent); color: var(--tinta); }
+  .escala { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--tinta-3); margin-top: 2px; }
   .rodacard { display: flex; justify-content: space-between; gap: 12px; margin-top: 4px; font-size: 12.5px; color: var(--tinta-3); }
   .rodacard .ir { color: var(--acento); font-weight: 600; font-size: 13.5px; }
   .rodacard a { color: var(--acento); text-decoration: none; font-weight: 600; font-size: 13.5px; position: relative; z-index: 1; }
@@ -148,15 +153,19 @@
 </main>
 <script>
 const COTAS = [["extravasamento", "Transbordamento", "--extravasa"], ["emergencia", "Emergência", "--inundacao"], ["alerta", "Alerta", "--alerta"], ["atencao", "Atenção", "--atencao"]];
+const DIAS_MAX = 7;
+const PERIODOS = [["24 h", 1], ["3 dias", 3], ["7 dias", 7]];
+const lerPeriodo = () => { try { const v = +localStorage.getItem("monitor-inicio-periodo"); return PERIODOS.some(p => p[1] === v) ? v : 3; } catch { return 3; } };
+let periodo = lerPeriodo();
 const fmt = (v, c = 2) => v.toLocaleString("pt-BR", { minimumFractionDigits: c, maximumFractionDigits: c });
 const p2 = n => String(n).padStart(2, "0");
 const isoUTC = d => `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}T${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}`;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
-// últimas 24 h da régua principal (SP Águas ou ANA): [{v, t}] em ordem de tempo
+// últimos 7 dias da régua principal (SP Águas ou ANA): [{v, t}] em ordem de tempo
 async function serie(e, aoChegar) {
   if (e.fonte === "spaguas") {
-    const ini = new Date(Date.now() - 24 * 36e5), fim = new Date(Date.now() + 36e5);
+    const ini = new Date(Date.now() - DIAS_MAX * 864e5), fim = new Date(Date.now() + 36e5);
     const r = await fetch(`https://cth.daee.sp.gov.br/sibh/api/v2/measurements?station_prefix_ids[]=${e.id_nivel}&start_date=${isoUTC(ini)}&end_date=${isoUTC(fim)}`);
     return ((await r.json()).measurements || []).filter(m => m.value != null && +m.value >= 0).map(m => {
       const [d, h] = m.date.split(" "); return { v: +m.value, t: Date.parse(`${d.replaceAll("/", "-")}T${h}:00Z`) };
@@ -173,13 +182,13 @@ async function serie(e, aoChegar) {
     return sp;
   }
   const br = d => d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
-  const r = await fetch(`https://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos?codEstacao=${e.codigo}&dataInicio=${br(new Date(Date.now() - 864e5))}&dataFim=${br(new Date(Date.now() + 864e5))}`);
+  const r = await fetch(`https://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos?codEstacao=${e.codigo}&dataInicio=${br(new Date(Date.now() - DIAS_MAX * 864e5))}&dataFim=${br(new Date(Date.now() + 864e5))}`);
   const xml = new DOMParser().parseFromString(await r.text(), "text/xml"), out = [];
   for (const n of xml.getElementsByTagName("DadosHidrometereologicos")) {
     const t = n.getElementsByTagName("DataHora")[0]?.textContent.trim(), v = n.getElementsByTagName("Nivel")[0]?.textContent.trim();
     if (t && v && +v >= 0) out.push({ v: +v, t: Date.parse(t.replace(" ", "T") + "-03:00") });
   }
-  return out.sort((a, b) => a.t - b.t).filter(p => p.t >= Date.now() - 24 * 36e5);
+  return out.sort((a, b) => a.t - b.t).filter(p => p.t >= Date.now() - DIAS_MAX * 864e5);
 }
 
 function grafico(pts, e) {
@@ -195,6 +204,13 @@ function grafico(pts, e) {
     <path class="area" d="${d}L300,60L0,60Z"/><path class="linha" d="${d}"/></svg>`;
 }
 
+function mostrarGrafico(card) {
+  if (!card._pts) return;
+  const corte = Date.now() - periodo * 864e5, pts = card._pts.filter(p => p.t >= corte);
+  card.querySelector(".mini").innerHTML = grafico(pts.length > 1 ? pts : card._pts.slice(-2), card._e);
+  card.querySelector(".escala span").textContent = periodo === 1 ? "24 h atrás" : `${periodo} dias atrás`;
+}
+
 (async () => {
   if (window.DESTINO) return;   // indo direto para o painel: não precisa montar a lista
   const { bacias } = await fetch("bacias.json").then(r => r.json());
@@ -205,9 +221,18 @@ function grafico(pts, e) {
         <h2><a class="abrir" href="${b.id}/">${esc(b.rio)}</a><small>${esc(b.cidade)}</small></h2>
         <div class="nivel"><b>…</b><span class="pill"><i></i>carregando</span></div>
       </div>
+      <div class="periodos" role="group" aria-label="Período do gráfico">${PERIODOS.map(([n, d]) => `<button type="button" data-d="${d}" aria-pressed="${d === periodo}">${n}</button>`).join("")}</div>
       <div class="mini"></div>
+      <div class="escala"><span></span><span>agora</span></div>
       <div class="rodacard"><span class="ir">Abrir painel →</span><a href="${b.id}/tv.html">Modo TV</a></div>
     </div>`).join("");
+  lista.addEventListener("click", ev => {   // o período vale para os dois cartões e fica lembrado
+    const b = ev.target.closest(".periodos button"); if (!b) return;
+    periodo = +b.dataset.d;
+    try { localStorage.setItem("monitor-inicio-periodo", periodo); } catch {}
+    lista.querySelectorAll(".periodos button").forEach(x => x.setAttribute("aria-pressed", +x.dataset.d === periodo));
+    lista.querySelectorAll(".bacia").forEach(mostrarGrafico);
+  });
   for (const b of bacias) (async () => {
     const card = document.getElementById("b-" + b.id), nv = card.querySelector(".nivel");
     try {
@@ -222,7 +247,8 @@ function grafico(pts, e) {
         const velho = Date.now() - u.t > 3 * 36e5;
         card.style.setProperty("--cor", `var(${velho ? "--neutro" : cor})`);
         nv.innerHTML = `<b>${fmt(u.v / 100)} m</b><span class="pill"><i></i>${velho ? "leitura atrasada" : nome} · ${esc(e.curto || e.nome)}</span>`;
-        card.querySelector(".mini").innerHTML = grafico(pts, e);
+        card._pts = pts; card._e = e;
+        mostrarGrafico(card);
       };
       desenhar(await serie(e, pts => { if (pts.length) desenhar(pts); }));
     } catch { nv.innerHTML = `<b>—</b><span class="pill"><i></i>sem leitura agora</span>`; }
