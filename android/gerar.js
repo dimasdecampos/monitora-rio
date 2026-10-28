@@ -24,6 +24,7 @@ const { TwaManifest, TwaGenerator, ConsoleLog } = require("@bubblewrap/core");
     appVersion: process.env.VERSAO || app.appVersion,
     appVersionCode: Number(process.argv[2] || 1),
     enableNotifications: true,
+    minSdkVersion: 24,   // a Proteção Automática do Google Play exige 24 ou mais (Android 7.0)
     fallbackType: "customtabs",
     splashScreenFadeOutDuration: 300,
     themeColor: app.themeColor || base.themeColor,   // barra de status da cor do painel
