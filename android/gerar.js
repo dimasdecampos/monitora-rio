@@ -44,6 +44,11 @@ const { TwaManifest, TwaGenerator, ConsoleLog } = require("@bubblewrap/core");
   const erro = twa.validate?.();
   if (erro) throw new Error(erro);
   await new TwaGenerator().createTwaProject(destino, twa, log);
+  // o modelo do Bubblewrap fixa targetSdkVersion 35; a Play Console exige 36 ou mais
+  const gradle = path.join(destino, "app", "build.gradle");
+  const g = fs.readFileSync(gradle, "utf8");
+  if (!/targetSdkVersion 35/.test(g)) throw new Error("targetSdkVersion 35 não encontrado em app/build.gradle (o modelo do Bubblewrap mudou?)");
+  fs.writeFileSync(gradle, g.replace(/targetSdkVersion 35/, "targetSdkVersion 36"));
   fs.writeFileSync(path.join(destino, "twa-manifest.json"), JSON.stringify(twa.toJson(), null, 2));
   console.log(`Projeto gerado em ${destino} (versão ${twa.appVersionName}, código ${twa.appVersionCode})`);
 })().catch(e => { console.error(e); process.exit(1); });
