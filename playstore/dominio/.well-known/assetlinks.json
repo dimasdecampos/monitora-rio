@@ -19,7 +19,8 @@
       "namespace": "android_app",
       "package_name": "com.monitora_rios",
       "sha256_cert_fingerprints": [
-        "85:0C:AA:7A:BB:99:99:EA:4A:9C:95:CC:38:9B:0B:52:CB:14:A1:6E:6E:34:6A:D0:94:9A:A6:54:0D:B4:50:3A"
+        "85:0C:AA:7A:BB:99:99:EA:4A:9C:95:CC:38:9B:0B:52:CB:14:A1:6E:6E:34:6A:D0:94:9A:A6:54:0D:B4:50:3A",
+        "85:BC:91:09:A3:6C:29:9E:5A:CC:18:31:1C:3B:61:1E:63:5E:9F:FF:23:CD:B5:F8:A7:EF:2C:AF:6C:E9:E4:61"
       ]
     }
   }
