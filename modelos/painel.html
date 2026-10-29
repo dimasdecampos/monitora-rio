@@ -2386,8 +2386,13 @@ function verificarAvisos() {
   if (pr && pr.p >= .3) notificar(`Previsão: ${fmt(pr.p * 100, 0)}% de chance de ${pr.nome.toLowerCase()}`, `Nas próximas 48 h, a régua ${apelido(P)} pode chegar a ${fmt(pr.cm / 100, 2)} m.`, "prev-" + pr.chave, 12);
 }
 function configurarAvisos() {
-  const btn = $("#btnNotif");
+  const btn = $("#btnNotif"), textoPadrao = $("#avisoTexto").textContent;
   const atualizar = () => {
+    // permissão recusada (ou desligada nas configurações do Android): explica como liberar, em vez de não fazer nada
+    const bloqueado = typeof Notification !== "undefined" && Notification.permission === "denied";
+    $("#avisoTexto").textContent = bloqueado
+      ? "As notificações estão bloqueadas neste aparelho. No Android: Configurações → Apps → Monitor Rios → Notificações → ligar. Depois volte aqui e toque em “Avisar neste aparelho”."
+      : textoPadrao;
     const ativo = ler("avisos", false) && typeof Notification !== "undefined" && Notification.permission === "granted";
     // depois de ligado, o cartão some; dá para desligar pelo rodapé
     $("#cardAvisos").hidden = ativo && $("#btnInstalar").hidden && $("#lnkTelegram").hidden;
@@ -2410,6 +2415,7 @@ function configurarAvisos() {
       : "Você será avisado enquanto o painel estiver aberto. Para receber com o app fechado, instale o app.", "teste-" + Date.now(), 0);
   };
   atualizar();
+  addEventListener("visibilitychange", () => { if (!document.hidden) atualizar(); });   // volta das configurações do Android
   // mantém a inscrição em dia (o navegador às vezes troca as chaves); uma vez por dia
   if (ler("avisos", false) && ler("push", false) && Notification.permission === "granted" && Date.now() - ler("push-sync", 0) > 864e5)
     inscreverPush().catch(() => {});
