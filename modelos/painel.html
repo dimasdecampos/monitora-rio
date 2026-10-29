@@ -59,6 +59,9 @@
 
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   [hidden] { display: none !important; }
+  /* previsão de 48 h, "o que alaga" e avisos são da cidade: em outra estação (rio acima, afluente) não aparecem,
+     para não parecer que aquele ponto está sendo analisado */
+  body[data-oficial="0"] :is(#cardPrev, #cardImpacto, #cardAvisos) { display: none !important; }
   html { -webkit-text-size-adjust: 100%; }
   body { margin: 0; background: var(--plano); color: var(--tinta); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   button, select { font: inherit; color: inherit; }
@@ -708,6 +711,7 @@ const COTAS = [   // da mais alta para a mais baixa (nomes das cotas oficiais da
   { chave: "atencao", nome: "Atenção", cor: "--atencao" },
 ];
 // cotas que a estação tem, da mais alta para a mais baixa, com o valor em cm
+const marcarOficial = () => { document.body.dataset.oficial = REGUAS_CIDADE.includes(estado.estacao) ? "1" : "0"; };
 let P, REGUAS_CIDADE = [];   // régua principal da cidade e réguas convertíveis entre si (vêm do config.json)
 const apelido = cod => estacoes[cod]?.curto || estacoes[cod]?.nome || cod;
 const temRegioes = () => !!config.regioes_chuva?.length;
@@ -1768,14 +1772,16 @@ const prev = { modelo: null, dados: null, sazonal: null };
 const pad = n => String(n).padStart(2, "0");
 const horaLocal = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:00`;
 const sigmoide = z => 1 / (1 + Math.exp(-Math.max(-30, Math.min(30, z))));
-// Modelo na régua da Passarela (scripts/modelo_cheias/passarela.py). Versão B usa a subida da régua de Cunha.
+// Modelo na régua da Passarela (scripts/modelo_cheias/passarela.py). Versão B usa a subida da régua de Cunha;
+// P, a chuva medida no pluviômetro de Barro Vermelho (rio acima); BP, as duas. Mesma ordem de variáveis do treino.
 function chanceDeSubir(H0, x, f48, G) {
   if (G <= 0) return 1;
   const f = Math.log1p(f48), a = Math.log1p(x.p24), b = Math.log1p(x.p72), solo = x.api / 100;
-  const pesos = x.versao === "B" ? prev.modelo.passarela.pesos_B : prev.modelo.passarela.pesos_A;
+  const pesos = prev.modelo.passarela["pesos_" + x.versao] || prev.modelo.passarela.pesos_A;
   const bruta = cm => {
     const g = cm / 100, v = [1, g, f, a, b, solo, H0 / 100, f * solo, f * g, a * g, g * g];
-    if (x.versao === "B") { const dc = Math.max(x.dc6, 0) / 100; v.push(dc, Math.max(x.dc12, 0) / 100, dc / (g + .3)); }
+    if (x.versao.includes("B")) { const dc = Math.max(x.dc6, 0) / 100; v.push(dc, Math.max(x.dc12, 0) / 100, dc / (g + .3)); }
+    if (x.versao.includes("P")) { const L = Math.log1p, pl = x.pluv; v.push(L(pl.l6), L(pl.l24), L(pl.l72), L(pl.l24) * g, L(pl.l12) * g); }
     return sigmoide(pesos.reduce((s, w, i) => s + w * v[i], 0));
   };
   // o termo g² faz a curva voltar a subir em subidas muito grandes (fora do que o modelo viu no treino):
@@ -1820,6 +1826,27 @@ async function buscarPrevisao() {
   }
 }
 
+// chuva medida no pluviômetro (config do modelo: "pluviometro") nas últimas 6, 12, 24 e 72 h, contadas
+// como no treino: da hora cheia de h horas atrás até agora. Sem leituras suficientes (falha, atraso), devolve null
+async function chuvaDoPluviometro() {
+  const cod = prev.modelo?.passarela?.pluviometro, est = cod && estacoes[cod];
+  if (!est || est.fonte !== "spaguas" || !est.id_chuva) return null;
+  if (prev.pluv && Date.now() - prev.pluv.quando < 10 * 60e3) return prev.pluv.valor;
+  const ls = ((await buscarSibh([est], 4, false, true).catch(() => ({})))[cod] || []).filter(l => l.chuva != null);
+  let valor = null;
+  if (ls.length && Date.now() - ms(ls.at(-1)) < 2 * 36e5) {
+    const hora = new Date(); hora.setMinutes(0, 0, 0);
+    const soma = h => {
+      const ini = hora.getTime() - h * 36e5, js = ls.filter(l => ms(l) >= ini);
+      return js.length >= 0.8 * (Date.now() - ini) / 6e5 ? js.reduce((s, l) => s + l.chuva, 0) : null;   // leitura a cada 10 min
+    };
+    const v = { l6: soma(6), l12: soma(12), l24: soma(24), l72: soma(72) };
+    if (Object.values(v).every(x => x != null)) valor = v;
+  }
+  prev.pluv = { quando: Date.now(), valor };
+  return valor;
+}
+
 async function nivelDeReferencia() {
   // o modelo trabalha na régua principal; a subida de uma régua rio acima (config.previsao.rio_acima) melhora a previsão
   const ler = async cod => {
@@ -1829,7 +1856,7 @@ async function nivelDeReferencia() {
       : r && Date.now() - rioAcima.quando < 10 * 60e3 ? r : await buscarLeituras(estacoes[cod], 2).catch(() => []);
     return comNivel(ls || []);
   };
-  const [pas, cunha] = await Promise.all([ler(P), config.previsao.rio_acima ? ler(config.previsao.rio_acima) : []]);
+  const [pas, cunha, pluv] = await Promise.all([ler(P), config.previsao.rio_acima ? ler(config.previsao.rio_acima) : [], chuvaDoPluviometro()]);
   const u = pas.at(-1);
   if ((!u || Date.now() - ms(u) > 3 * 36e5) && config.reserva) {   // reserva: outra régua da cidade, convertida
     const ana = comNivel(await buscarLeituras(estacoes[config.reserva], 2).catch(() => [])).at(-1);
@@ -1847,6 +1874,9 @@ async function nivelDeReferencia() {
     const a6 = antes(6), a12 = antes(12);
     if (a6 != null && a12 != null) Object.assign(ref, { versao: "B", dc6: cu.nivel - a6, dc12: cu.nivel - a12, fonte: `${apelido(P)} + ${apelido(config.previsao.rio_acima)}` });
   }
+  const pm = prev.modelo.passarela;
+  const comPluv = ref.versao === "A" ? "P" : ref.versao + "P";   // A → P, B → BP
+  if (pluv && pm["pesos_" + comPluv]) Object.assign(ref, { versao: comPluv, pluv, fonte: `${ref.fonte} + chuva em ${apelido(pm.pluviometro)}` });
   return ref;
 }
 
@@ -1874,7 +1904,7 @@ function renderizarPrevisao(ref) {
   let i = tempo.indexOf(horaLocal(new Date()));
   if (i < 0) i = tempo.findLastIndex(t => t <= horaLocal(new Date()));
   const soma = (a, b) => media.slice(Math.max(0, a), Math.max(0, b)).reduce((s, v) => s + v, 0);
-  const x = { p24: soma(i - 24, i + 1), p72: soma(i - 72, i + 1), api: soma(i - 720, i - 72), versao: ref.versao, dc6: ref.dc6 || 0, dc12: ref.dc12 || 0 };
+  const x = { p24: soma(i - 24, i + 1), p72: soma(i - 72, i + 1), api: soma(i - 720, i - 72), versao: ref.versao, dc6: ref.dc6 || 0, dc12: ref.dc12 || 0, pluv: ref.pluv };
   const fDet = soma(i + 1, i + 49) * fator;
   const cenarios = membros.map(mb => { const j = mb.tempo.indexOf(tempo[i]); return j < 0 || j + 49 > mb.serie.length ? null : mb.serie.slice(j + 1, j + 49).reduce((s, v) => s + v, 0) * fator; }).filter(v => v != null);
   const fs = cenarios.length >= 5 ? cenarios : [fDet];
@@ -1954,6 +1984,7 @@ function renderizarPrevisao(ref) {
     </div>
     <div class="prev-info">
       <span>Últimas 24 h: <b>${fmt(x.p24, 0)} mm</b> · 72 h: <b>${fmt(x.p72, 0)} mm</b></span>
+      ${x.pluv ? `<span>Medida em ${apelido(prev.modelo.passarela.pluviometro)}: <b>${fmt(x.pluv.l24, 0)} mm</b> em 24 h · <b>${fmt(x.pluv.l72, 0)} mm</b> em 72 h</span>` : ""}
       <span>Prevista 48 h: <b>${fmt(fDet, 0)} mm</b>${cenarios.length >= 5 ? ` (cenários ${fmt(f10, 0)}–${fmt(f90, 0)})` : ""}</span>
       <span>Solo: <b>${estadoSolo}</b> (${fmt(solo, 0)} mm em 30 dias)</span>
       ${anosMes.length ? `<span>Em ${MESES[mes - 1]}, passou da atenção em <b>${comCheia} de ${anosMes.length} anos</b></span>` : ""}
@@ -1961,9 +1992,13 @@ function renderizarPrevisao(ref) {
     ${depois.length ? `<p class="prev-frase">⚠ Chuva forte prevista depois das 48 h: ${depois.map(c => `<strong>${fmt(c.mm, 0)} mm ${["sábado", "domingo"].includes(new Date(c.d + "T12:00").toLocaleDateString("pt-BR", { weekday: "long" })) ? "no" : "na"} ${new Date(c.d + "T12:00").toLocaleDateString("pt-BR", { weekday: "long" })}</strong>`).join(", ")}. Ainda fora do alcance do modelo — acompanhe a atualização.</p>` : ""}
     <details class="confianca">
       <summary>Como funciona e quão confiável é</summary>
-      <p>Um modelo estatístico treinado com o nível da régua ${apelido(P)}, a chuva na bacia (${config.textos?.chuva_bacia || "pontos da bacia"}) e, quando está transmitindo, a subida da régua ${apelido(config.previsao.rio_acima)}, rio acima. Ele combina o nível atual, a chuva dos últimos dias, o quanto o solo está encharcado e a chuva prevista, e calcula a chance de o rio chegar a cada cota em 48 h.</p>
+      <p>Um modelo estatístico treinado com o nível da régua ${apelido(P)}, a chuva na bacia (${config.textos?.chuva_bacia || "pontos da bacia"}) e, quando está transmitindo, a subida da régua ${apelido(config.previsao.rio_acima)}, rio acima${t.P_avisadas ? ` e a chuva medida no pluviômetro de ${apelido(m.passarela.pluviometro)}` : ""}. Ele combina o nível atual, a chuva dos últimos dias, o quanto o solo está encharcado e a chuva prevista, e calcula a chance de o rio chegar a cada cota em 48 h.</p>
       <ul>
-        ${t.B_avisadas   // modelo que guarda o teste da versão com a régua rio acima: mostra essa, que é a usada quando ela transmite
+        ${t.P_avisadas   // modelo com o pluviômetro rio acima: mostra o ganho dele
+          ? `<li>Testado de ${t.periodo.replace(" a ", " até ")} com a previsão do tempo real da época: das <b>${t.cheias}</b> vezes em que o rio passou da atenção, com o pluviômetro de ${apelido(m.passarela.pluviometro)} avisou (chance ≥ ${t.limiar_aviso * 100}%) <b>${t.P_avisadas["6"]}</b> com 6 h de antecedência, ${t.P_avisadas["12"]} com 12 h e ${t.P_avisadas["24"]} com 24 h. Sem ele: ${t.avisadas["6"]}, ${t.avisadas["12"]} e ${t.avisadas["24"]}.</li>
+        <li>Em ${t.P_dias_sem_cheia} dos ${t.P_dias_com_aviso} dias com aviso, a cheia não veio (sem o pluviômetro, ${t.dias_sem_cheia} de ${t.dias_com_aviso}).</li>
+        ${t.BP_avisadas ? `<li>Com a régua ${apelido(config.previsao.rio_acima)} e o pluviômetro transmitindo juntos, das ${t.cheias_cunha} cheias desse período avisou <b>${t.BP_avisadas["6"]}</b> com 6 h, ${t.BP_avisadas["12"]} com 12 h e ${t.BP_avisadas["24"]} com 24 h (só com a régua: ${t.B_cunha_avisadas["6"]}, ${t.B_cunha_avisadas["12"]} e ${t.B_cunha_avisadas["24"]}); dias com aviso sem cheia: ${t.BP_dias_sem_cheia} de ${t.BP_dias_com_aviso}.</li>` : ""}`
+          : t.B_avisadas   // modelo que guarda o teste da versão com a régua rio acima: mostra essa, que é a usada quando ela transmite
           ? `<li>Testado de ${t.periodo.replace(" a ", " até ")} com a previsão do tempo real da época: das <b>${t.cheias}</b> vezes em que o rio passou da atenção, com a régua ${apelido(config.previsao.rio_acima)} transmitindo avisou (chance ≥ ${t.limiar_aviso * 100}%) <b>${t.B_avisadas["3"]}</b> com 3 h de antecedência, ${t.B_avisadas["6"]} com 6 h, ${t.B_avisadas["12"]} com 12 h e ${t.B_avisadas["24"]} com 24 h. Sem ela: ${t.avisadas["3"]}, ${t.avisadas["6"]}, ${t.avisadas["12"]} e ${t.avisadas["24"]}.</li>
         <li>Em ${t.B_dias_sem_cheia} dos ${t.B_dias_com_aviso} dias com aviso, a cheia não veio.</li>`
           : `<li>Testado de ${t.periodo.replace(" a ", " até ")} com a previsão do tempo real da época: das <b>${t.cheias}</b> vezes em que o rio passou da atenção, avisou (chance ≥ ${t.limiar_aviso * 100}%) <b>${t.avisadas["6"]}</b> com 6 h de antecedência, ${t.avisadas["12"]} com 12 h e ${t.avisadas["24"]} com 24 h.</li>
@@ -2456,6 +2491,7 @@ function mostrarVista(v) {
 }
 async function trocarEstacao(cod) {
   estado.estacao = cod; estado.destaques = new Map(); estado.janela = null;
+  marcarOficial();
   const est = estacoes[cod];
   $("#selRio").textContent = est.rio; $("#selNome").textContent = est.nome;
   $("#principal").classList.add("carregando");
@@ -2485,6 +2521,7 @@ async function iniciar() {
   const p = new URLSearchParams(location.search);
   estado.estacao = config.estacao_padrao || P;
   if (estacoes[p.get("estacao")]) estado.estacao = p.get("estacao");
+  marcarOficial();
   if (p.get("modo") === "comparar") estado.modo = "comparar";
   if (+p.get("de") >= 1 && +p.get("de") <= 12 && +p.get("ate") >= 1 && +p.get("ate") <= 12) { estado.de = +p.get("de"); estado.ate = +p.get("ate"); }
   if (METRICAS[p.get("medida")]) estado.metrica = p.get("medida");

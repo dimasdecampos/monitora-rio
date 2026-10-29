@@ -193,12 +193,25 @@ Anos com falhas aparecem como **parciais** e podem subestimar picos.
 
 - entradas: nível atual, chuva média na bacia (São Luiz, Lagoinha, Cunha, cabeceiras) nas
   últimas 24 h e 72 h, chuva dos 30 dias anteriores (solo encharcado), chuva prevista
-  para 48 h (média de 31 cenários GFS) e, quando transmite, a subida da régua de Cunha;
+  para 48 h (média de 31 cenários GFS) e, quando transmitem, a subida da régua de Cunha e
+  a **chuva medida no pluviômetro de Barro Vermelho** (Lagoinha, 2E-050) nas últimas 6, 12,
+  24 e 72 h. O painel usa a versão mais completa que estiver transmitindo (BP: Cunha +
+  pluviômetro; B; P; A: só nível e chuva estimada);
+- o modelo final é a média de 5 treinos (um treino só variava muito, de 7 a 12 cheias
+  avisadas com 12 h, só pelo sorteio);
 - treino 2018–2023; teste fev/2024–out/2026 com a previsão do tempo **real** da época:
   das 20 vezes em que a Passarela passou da atenção, avisou (chance ≥ 30%) 16 com 6 h de
-  antecedência, 12 com 12 h e 14 com 24 h; 44% dos dias com aviso não tiveram cheia (35%
-  com a régua de Cunha). *Correção de 27/10/2026: a contagem anterior ("7 de 8") deixava
-  de fora 2/3 das cheias por um erro no casamento dos horários; o modelo não mudou;*
+  antecedência, 12 com 12 h e 14 com 24 h (com o pluviômetro: 17, 12 e 14). Com Cunha e o
+  pluviômetro transmitindo juntos, avisou 14 de 15 com 6 h, 14 com 12 h e 11 com 24 h
+  (só com Cunha: 13, 11 e 9), com o mesmo número de dias com aviso sem cheia (22 de 56).
+  *Correção de 27/10/2026: a contagem anterior ("7 de 8") deixava de fora 2/3 das cheias
+  por um erro no casamento dos horários;*
+- **por que o pluviômetro:** a chuva estimada da ERA5 (quadrados de ~30 km) vê metade ou
+  menos dos temporais: em 26/01/2026 Cunha mediu 146 mm em 48 h e a ERA5 deu 24 mm. Testados
+  em out/2026, sem ganho: mais anos (régua da CESP desde 2015), chuva da ERA5 separada por
+  região com o tempo de viagem e chuva da ERA5 em Areias e na nascente. O pluviômetro de
+  Barro Vermelho tem dados desde 2011 (com falhas: 2015 zerado, partes de 2018–2020);
+  o histórico antigo vem de `scripts/modelo_cheias/baixar_pluviometro.py`;
 - o aviso costuma vir **6 a 12 h antes**; tempestades localizadas na serra podem escapar.
 
 **Paraibuna: previsão de 48 h com a régua de Ponte Alta.** O mesmo método, treinado para
@@ -350,7 +363,8 @@ python scripts/alertas.py --bacia paraibuna       # testa os avisos (sem canais:
 ```
 
 Para refazer os modelos, siga a ordem descrita em `scripts/modelo_cheias/exportar.py`
-e depois rode `exportar_passarela.py`. Só usa a biblioteca padrão do Python.
+e depois rode `baixar_pluviometro.py` (uma vez) e `exportar_passarela.py` (~15 min).
+Só usa a biblioteca padrão do Python.
 
 ## Limitações conhecidas
 

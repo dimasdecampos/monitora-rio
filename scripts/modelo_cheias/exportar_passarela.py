@@ -1,6 +1,7 @@
 """Treina os modelos finais na régua da Passarela e grava em public/paraitinga/modelo_cheias.json (chave "passarela").
 
-- Probabilidade de subir G cm em 48 h: versão A (Passarela + chuva) e B (+ subida da régua de Cunha).
+- Probabilidade de subir G cm em 48 h: versão A (Passarela + chuva), B (+ subida da régua de Cunha),
+  P (A + pluviômetro de Barro Vermelho) e BP (B + pluviômetro). O painel usa a mais completa que estiver transmitindo.
 - Linha de previsão por prazo (6 h a 7 dias) na Passarela.
 O desempenho mostrado no site vem de modelos treinados só até 2023 e testados em 2024–2026
 com a previsão do tempo real; os modelos gravados são treinados com todos os dados.
@@ -31,18 +32,19 @@ def resolver(A, y, ridge=1e-3):
     return [Mx[i][k] / Mx[i][i] for i in range(k)]
 
 # ---------------- probabilidade ----------------
-treino_A = M.montar("2018-01-01T00", "2024-01-01T00", 6, "perfeita", [])
-treino_B = M.montar("2020-01-01T00", "2024-01-01T00", 6, "perfeita", ["dc6", "dc12"])
-wA, wB = M.treinar(treino_A, "A"), M.treinar(treino_B, "B")
+CUNHA, PLUV = ["dc6", "dc12"], M.PLUV
+INICIO = {"A": "2018-01-01T00", "P": "2018-01-01T00", "B": "2020-01-01T00", "BP": "2020-01-01T00"}
+EXIGE = {"A": [], "P": PLUV, "B": CUNHA, "BP": CUNHA + PLUV}
+w = {v: M.treinar_media(M.montar(INICIO[v], "2024-01-01T00", 6, "perfeita", EXIGE[v]), v) for v in INICIO}
 teste = M.montar("2024-02-01T00", "2026-10-24T00", 3, "real", [])
-teste_B = [c for c in teste if c["dc6"] is not None and c["dc12"] is not None]
-print("teste (modelos treinados até 2023, previsão real):")
-resA, diasA, falsosA = M.avaliar(wA, "A", teste, "A")
-resB, diasB, falsosB = M.avaliar(wB, "B", teste_B, "B")
+teste_P = [c for c in teste if all(c[k] is not None for k in PLUV)]
+teste_BP = [c for c in teste_P if all(c[k] is not None for k in CUNHA)]
+print(f"teste (modelos treinados até 2023, previsão real; {len(teste_P)} casos com o pluviômetro, {len(teste_BP)} também com Cunha):")
+res = {v: M.avaliar(w[v], v, teste_P, v) for v in ("A", "P")}
+res.update({v + "_cunha": M.avaliar(w[v], v, teste_BP, v + " (com Cunha)") for v in ("B", "BP")})
 
 fim = M.t[-60][:13]
-wA_final = M.treinar(M.montar("2018-01-01T00", fim, 6, "perfeita", []), "A")
-wB_final = M.treinar(M.montar("2020-01-01T00", fim, 6, "perfeita", ["dc6", "dc12"]), "B")
+w_final = {v: M.treinar_media(M.montar(INICIO[v], fim, 6, "perfeita", EXIGE[v]), v) for v in INICIO}
 
 # ---------------- linha de previsão por prazo ----------------
 H, S, N, t = M.H, M.S, M.N, M.t
@@ -102,14 +104,20 @@ site = json.load(open(destino, encoding="utf-8"))
 site["passarela"] = {
     "versao": datetime.now().date().isoformat(),
     "estacao": "sp664",
-    "descricao": "Probabilidade de a Passarela subir pelo menos G cm em 48 h. A: nível + chuva na bacia; B: A + subida da régua de Cunha (6 h e 12 h).",
-    "pesos_A": [round(x, 5) for x in wA_final],
-    "pesos_B": [round(x, 5) for x in wB_final],
+    "descricao": "Probabilidade de a Passarela subir pelo menos G cm em 48 h. A: nível + chuva na bacia; B: A + subida da régua de Cunha (6 h e 12 h); P: A + chuva medida no pluviômetro de Barro Vermelho (6 a 72 h); BP: B + pluviômetro.",
+    "pluviometro": "sp662",
+    **{f"pesos_{v}": [round(x, 5) for x in w_final[v]] for v in w_final},
     "teste": {
-        "periodo": "fev/2024 a out/2026", "cheias": resA[6][1],
-        "avisadas": {str(L): ok for L, (ok, n) in resA.items()},
-        "dias_com_aviso": diasA, "dias_sem_cheia": falsosA,
-        "B_dias_com_aviso": diasB, "B_dias_sem_cheia": falsosB, "limiar_aviso": 0.3,
+        "periodo": "fev/2024 a out/2026", "cheias": res["A"][0][6][1], "limiar_aviso": 0.3,
+        "avisadas": {str(L): ok for L, (ok, n) in res["A"][0].items()},
+        "dias_com_aviso": res["A"][1], "dias_sem_cheia": res["A"][2],
+        "P_avisadas": {str(L): ok for L, (ok, n) in res["P"][0].items()},
+        "P_dias_com_aviso": res["P"][1], "P_dias_sem_cheia": res["P"][2],
+        "cheias_cunha": res["BP_cunha"][0][6][1],
+        "B_cunha_avisadas": {str(L): ok for L, (ok, n) in res["B_cunha"][0].items()},
+        "BP_avisadas": {str(L): ok for L, (ok, n) in res["BP_cunha"][0].items()},
+        "B_dias_com_aviso": res["B_cunha"][1], "B_dias_sem_cheia": res["B_cunha"][2],
+        "BP_dias_com_aviso": res["BP_cunha"][1], "BP_dias_sem_cheia": res["BP_cunha"][2],
     },
     "trajetoria": traj,
 }

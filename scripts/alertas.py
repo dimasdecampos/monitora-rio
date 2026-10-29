@@ -78,6 +78,24 @@ def leituras_sibh(ests, horas=14):
     return {c: limpar(s) for c, s in out.items()}
 
 
+def chuva_pluviometro(est):
+    """Chuva medida (mm) nas últimas 6, 12, 24 e 72 h no pluviômetro da SP Águas, contada como no treino
+    (scripts/modelo_cheias/passarela.py) e no painel: da hora cheia de h horas atrás até agora.
+    None se o pluviômetro estiver atrasado ou com falhas (aí a previsão usa o modelo sem ele)."""
+    if not est or est.get("fonte") != "spaguas" or not est.get("id_chuva"): return None
+    agora = datetime.now(timezone.utc); ini = agora - timedelta(hours=74)
+    d = obter(f"{SIBH}?station_prefix_ids[]={est['id_chuva']}&start_date={ini:%Y-%m-%dT%H:%M}&end_date={agora + timedelta(hours=1):%Y-%m-%dT%H:%M}")
+    ls = [(datetime.strptime(m["date"], "%Y/%m/%d %H:%M").replace(tzinfo=timezone.utc), float(m["value"]))
+          for m in (d or {}).get("measurements", []) if m["value"] is not None and 0 <= float(m["value"]) <= 50]
+    if not ls or agora - max(t for t, _ in ls) > timedelta(hours=2): return None
+    hora = agora.replace(minute=0, second=0, microsecond=0)
+    def soma(h):
+        ini = hora - timedelta(hours=h); js = [v for t, v in ls if t >= ini]
+        return sum(js) if len(js) >= 0.8 * (agora - ini).total_seconds() / 600 else None   # leitura a cada 10 min
+    v = {f"l{h}": soma(h) for h in (6, 12, 24, 72)}
+    return v if all(x is not None for x in v.values()) else None
+
+
 def leituras_ana(codigo, horas=14):
     hoje = datetime.now(BRT).date()
     try:
@@ -100,7 +118,7 @@ def cota_de(cm, cotas):
     return next(((k, n, cotas[k]) for k, n in COTAS if k in cotas and cm >= cotas[k]), None)
 
 
-def probabilidade(modelo, ref, rio_acima):
+def probabilidade(modelo, ref, rio_acima, pluv=None):
     """Chance (0–1) de a régua principal chegar a cada cota em 48 h — mesmo modelo do painel."""
     pm = modelo["passarela"]; pts = modelo["pontos"]
     base = "https://api.open-meteo.com/v1/forecast?" + urllib.parse.urlencode({
@@ -116,12 +134,16 @@ def probabilidade(modelo, ref, rio_acima):
     p24, p72, api, f48 = S(i - 24, i + 1), S(i - 72, i + 1), S(i - 720, i - 72), S(i + 1, i + 49) * modelo["fator_previsao"]
     dc6, dc12 = variacao(rio_acima, 6), variacao(rio_acima, 12)
     versao = "B" if dc6 is not None and dc12 is not None and rio_acima and (datetime.now(timezone.utc) - rio_acima[-1][0]) < timedelta(hours=2) else "A"
+    com_pluv = "P" if versao == "A" else versao + "P"   # A → P, B → BP (pluviômetro rio acima)
+    if pluv and f"pesos_{com_pluv}" in pm: versao = com_pluv
     def bruta(G, h0=ref):
         f, a, b, s, g = math.log1p(f48), math.log1p(p24), math.log1p(p72), api / 100, G / 100
         v = [1, g, f, a, b, s, h0 / 100, f * s, f * g, a * g, g * g]
-        if versao == "B":
+        if "B" in versao:
             dc = max(dc6, 0) / 100; v += [dc, max(dc12, 0) / 100, dc / (g + .3)]
-        w = pm["pesos_B"] if versao == "B" else pm["pesos_A"]
+        if "P" in versao:
+            L = math.log1p; v += [L(pluv["l6"]), L(pluv["l24"]), L(pluv["l72"]), L(pluv["l24"]) * g, L(pluv["l12"]) * g]
+        w = pm[f"pesos_{versao}"]
         z = sum(x * y for x, y in zip(w, v)); return 1 / (1 + math.exp(-max(-30, min(30, z))))
     def subir(G, h0=ref):
         # igual ao painel: o termo g² faz a curva voltar a subir em subidas muito grandes;
@@ -234,7 +256,8 @@ def verificar(bacia, mandar):
     # 4) previsão (só bacias com modelo)
     if cfg.get("previsao") and cot_p:
         modelo = json.loads((comum.pasta(bacia) / cfg["previsao"]["modelo"]).read_text(encoding="utf-8"))
-        r = probabilidade(modelo, nivel, s.get(cfg["previsao"].get("rio_acima"), []))
+        pluv = chuva_pluviometro(EST.get(modelo["passarela"].get("pluviometro")))
+        r = probabilidade(modelo, nivel, s.get(cfg["previsao"].get("rio_acima"), []), pluv)
         if r:
             chance, f48 = r
             prox = next(((k, n, cot_p[k]) for k, n in reversed(COTAS) if k in cot_p and nivel < cot_p[k]), None)
