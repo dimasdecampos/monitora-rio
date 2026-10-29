@@ -213,7 +213,8 @@ function mostrarGrafico(card) {
 
 (async () => {
   if (window.DESTINO) return;   // indo direto para o painel: não precisa montar a lista
-  const { bacias } = await fetch("bacias.json").then(r => r.json());
+  // bacias com "oculta": true têm painel publicado, mas não aparecem nesta lista
+  const bacias = (await fetch("bacias.json").then(r => r.json())).bacias.filter(b => !b.oculta);
   const lista = document.getElementById("lista");
   lista.innerHTML = bacias.map(b => `
     <div class="bacia" id="b-${b.id}">

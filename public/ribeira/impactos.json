@@ -1,0 +1,162 @@
+{
+  "_sobre": "Níveis em cm na régua de Eldorado (SP Águas 5F-001, Av. Beira Rio). Impactos tirados de notícias de cheias passadas, casadas com o pico medido na régua; são aproximados e não substituem a Defesa Civil. A imprensa costuma dar o nível 'acima do normal' (o rio fica em ~2,5 m na régua): '5,99 m' em out/2026 = 8,44 m na régua; '10 m acima do normal' em set/2026 ≈ 12 m.",
+  "regua": "sp29791",
+  "nota": "Baseado nas cheias de 2016 e 2026. Cada impacto mostra o pico daquela cheia: o lugar pode começar a alagar um pouco antes. Sem mapa por enquanto (faltam endereços confirmados). Não substitui a Defesa Civil (199).",
+  "maior": {
+    "ano": "2026",
+    "texto": "acima de 11,1 m (≈ 12 m)"
+  },
+  "niveis": [
+    {
+      "cm": 450,
+      "tipo": "cota",
+      "titulo": "Atenção (cota oficial)",
+      "texto": "Risco significativo de cheia, mas ainda incerto. Acompanhe, principalmente se chover forte no Alto Ribeira."
+    },
+    {
+      "cm": 500,
+      "tipo": "cota",
+      "titulo": "Alerta (cota oficial)",
+      "texto": "Perigo iminente ou previsível a curto prazo; Defesa Civil de prontidão. Prepare-se se mora perto do rio."
+    },
+    {
+      "cm": 550,
+      "tipo": "cota",
+      "titulo": "Emergência (cota oficial)",
+      "texto": "Situação crítica que exige ação imediata. Siga as orientações da Defesa Civil."
+    },
+    {
+      "cm": 600,
+      "tipo": "cota",
+      "titulo": "Transbordamento (cota oficial)",
+      "texto": "Rio acima das margens, saindo do leito."
+    },
+    {
+      "cm": 720,
+      "tipo": "registro",
+      "titulo": "Bananais alagados",
+      "texto": "Em 3/1/2016 (7,20 m) o Ribeira alagou plantações de banana na região de Eldorado, Registro e Sete Barras.",
+      "fonte": "https://www.climatempo.com.br/noticia/2016/01/11/verao-de-enchente-em-sp-pr-e-ms-4062"
+    },
+    {
+      "cm": 844,
+      "tipo": "registro",
+      "titulo": "Água em casas da Vila Nova Esperança",
+      "texto": "Em 26/10/2026 (pico de 8,44 m) duas casas alagaram na Vila Nova Esperança; cinco famílias ficaram fora de casa (quatro com parentes, uma em abrigo).",
+      "fonte": "https://cnnbrasil.com.br/nacional/sudeste/sp/governo-reforca-ajuda-em-oito-cidades-e-mantem-alerta-para-chuvas-em-sp"
+    },
+    {
+      "cm": 930,
+      "tipo": "registro",
+      "titulo": "A água entra na área urbana",
+      "texto": "Em 12/1/2016 (9,30 m) o rio invadiu a área urbana: 73 famílias levadas para escolas e cerca de 3.600 pessoas isoladas na cidade e na zona rural.",
+      "fonte": "https://atarde.com.br/brasil/chuva-leva-cidades-de-sp-a-decretar-emergencia-748599"
+    },
+    {
+      "cm": 1111,
+      "tipo": "registro",
+      "titulo": "Centro e hospital alagados",
+      "texto": "Em 13–14/9/2026 a régua parou em 11,11 m (limite do sensor; o pico foi maior, ≈ 12 m): cerca de 60% da cidade sob a água, casas e comércio do centro, o hospital municipal (atendimento levado para uma UBS mais alta), 58 a 60 famílias desabrigadas e 11 abrigos.",
+      "fonte": "https://www.spagora.com.br/cotidiano/clima/rio-ribeira-transborda-e-deixa-eldorado-alagada-no-interior-de-sp/"
+    }
+  ],
+  "lugares": [],
+  "historia": [
+    {
+      "data": "1807-01-01",
+      "titulo": "Primeira grande enchente registrada",
+      "nivel": null,
+      "texto": "Segundo o IBGE, a primeira grande enchente do povoado foi em 1807 e se repetiu dois anos depois.",
+      "fonte": "IBGE — histórico de Eldorado"
+    },
+    {
+      "data": "2011-08-05",
+      "titulo": "Calamidade pública no Vale do Ribeira",
+      "nivel": "≈ 8 m acima do normal",
+      "texto": "Eldorado foi a cidade mais atingida: calamidade pública em Eldorado, Sete Barras e Iporanga e mais de 12 mil desabrigados e desalojados no Vale do Ribeira. A régua da cidade ainda não tem dados dessa época aqui.",
+      "fonte": "Arpen-SP (05/08/2011)"
+    },
+    {
+      "data": "2014-06-08",
+      "titulo": "Cheia do Ribeira",
+      "nivel": "7,59 m em Eldorado",
+      "cm": 759,
+      "texto": "Pico medido na régua. Não encontramos registro na imprensa de onde a água chegou.",
+      "fonte": "Régua de Eldorado (SP Águas 5F-001)"
+    },
+    {
+      "data": "2016-01-12",
+      "titulo": "Água na área urbana",
+      "nivel": "9,30 m em Eldorado",
+      "cm": 930,
+      "texto": "Depois de 7,20 m no dia 3, o rio voltou a subir e invadiu a área urbana: 73 famílias levadas para escolas, ~3.600 pessoas isoladas e situação de emergência.",
+      "fonte": "A Tarde (12/01/2016), Climatempo e régua de Eldorado"
+    },
+    {
+      "data": "2016-08-22",
+      "titulo": "Cheia do Ribeira",
+      "nivel": "8,79 m em Eldorado",
+      "cm": 879,
+      "texto": "Pico medido na régua. Não encontramos registro na imprensa de onde a água chegou.",
+      "fonte": "Régua de Eldorado (SP Águas 5F-001)"
+    },
+    {
+      "data": "2017-06-07",
+      "titulo": "Cheia do Ribeira",
+      "nivel": "8,15 m em Eldorado",
+      "cm": 815,
+      "texto": "Pico medido na régua. Não encontramos registro na imprensa de onde a água chegou.",
+      "fonte": "Régua de Eldorado (SP Águas 5F-001)"
+    },
+    {
+      "data": "2017-12-30",
+      "titulo": "Cheia do Ribeira",
+      "nivel": "10,04 m em Eldorado",
+      "cm": 1004,
+      "texto": "Segunda maior cheia medida desde 2014, mais alta que a de 2016 (quando a água entrou na cidade). Não encontramos registro na imprensa de onde a água chegou.",
+      "fonte": "Régua de Eldorado (SP Águas 5F-001)"
+    },
+    {
+      "data": "2019-06-03",
+      "titulo": "Cheia do Ribeira",
+      "nivel": "7,86 m em Eldorado",
+      "cm": 786,
+      "texto": "Pico medido na régua; o rio ficou mais de 4 dias acima do alerta. Não encontramos registro na imprensa de onde a água chegou.",
+      "fonte": "Régua de Eldorado (SP Águas 5F-001)"
+    },
+    {
+      "data": "2023-10-31",
+      "titulo": "Cheia do Ribeira",
+      "nivel": "9,96 m em Eldorado",
+      "cm": 996,
+      "texto": "Pico medido na régua, a segunda cheia do mês (7,61 m em 9/10); mais de 6 dias acima do alerta. Não encontramos registro na imprensa de onde a água chegou.",
+      "fonte": "Régua de Eldorado (SP Águas 5F-001)"
+    },
+    {
+      "data": "2024-12-11",
+      "titulo": "Cheia do Ribeira",
+      "nivel": "8,27 m em Eldorado",
+      "cm": 827,
+      "texto": "Pico medido na régua. Não encontramos registro na imprensa de onde a água chegou.",
+      "fonte": "Régua de Eldorado (SP Águas 5F-001)"
+    },
+    {
+      "data": "2026-09-13",
+      "titulo": "Maior cheia medida",
+      "nivel": "acima de 11,11 m (limite do sensor)",
+      "cm": 1111,
+      "destaque": true,
+      "texto": "Chuva de 11 a 13/9 em toda a bacia: cerca de 60% da cidade alagada, centro e hospital municipal atingidos, 58 a 60 famílias desabrigadas, 11 abrigos e emergência decretada. A régua ficou parada em 11,11 m por ~20 h; a imprensa fala em mais de 12 m.",
+      "fonte": "Metrópoles, SP Agora e NC News (14/09/2026) e régua de Eldorado"
+    },
+    {
+      "data": "2026-10-26",
+      "titulo": "Nova cheia, um mês depois",
+      "nivel": "8,44 m em Eldorado",
+      "cm": 844,
+      "texto": "Duas casas alagadas na Vila Nova Esperança e cinco famílias fora de casa.",
+      "fonte": "CNN Brasil (26/10/2026) e CBN Santos (27/10/2026)"
+    }
+  ],
+  "_definicoes": "Cotas segundo o Manual de Operação das Salas de Situação do Estado de SP (ANA/ProGestão): atenção = risco significativo mas incerto; alerta = perigo iminente, Defesa Civil de prontidão; emergência = situação crítica que demanda ação imediata; extravasamento = rio acima das margens, transbordando. Abaixo da atenção = normal."
+}

@@ -11,6 +11,13 @@
       "rio": "Rio Paraibuna",
       "cidade": "Natividade da Serra",
       "descricao": "Da serra em Santa Virgínia até Natividade da Serra."
+    },
+    {
+      "id": "ribeira",
+      "rio": "Rio Ribeira de Iguape",
+      "cidade": "Eldorado",
+      "descricao": "Do Alto Ribeira (Cerro Azul, PR), passando pela divisa e por Iporanga, até Eldorado.",
+      "oculta": true
     }
   ]
 }

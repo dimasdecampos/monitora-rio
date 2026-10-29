@@ -1,0 +1,218 @@
+{
+  "id": "ribeira",
+  "rio": "Rio Ribeira de Iguape",
+  "cidade": "Eldorado",
+  "titulo": "Rio Ribeira de Iguape em Eldorado",
+  "descricao": "Do Alto Ribeira (Cerro Azul, PR), passando pela divisa e por Iporanga, até Eldorado.",
+  "principal": "sp29791",
+  "reserva": null,
+  "estacao_padrao": "sp29791",
+  "reguas_cidade": [
+    "sp29791"
+  ],
+  "previsao": {
+    "modelo": "modelo_cheias.json",
+    "rio_acima": "sp33203"
+  },
+  "impactos": "impactos.json",
+  "estatisticas": "estatisticas.json",
+  "represamento": null,
+  "textos": {
+    "rio_acima": "A cheia leva de 6 a 14 h de Iporanga e de 12 a 20 h da divisa até Eldorado (cheias de set e out/2026)",
+    "chuva_bacia": "Alto Ribeira no Paraná, divisa, Iporanga e Eldorado"
+  },
+  "avisos": {
+    "telegram": null
+  },
+  "atualizar_a_cada_minutos": 5,
+  "_aviso_cotas": "Cotas em cm. Nas réguas da SP Águas (Eldorado, Iporanga e divisa) são as cadastradas no SIBH. A régua de Cerro Azul (ANA/IAT-PR) não tem cotas cadastradas. Nada disso foi validado pela Defesa Civil de Eldorado.",
+  "rios": [
+    {
+      "nome": "Rio Ribeira de Iguape",
+      "estacoes": [
+        {
+          "codigo": "81135000",
+          "fonte": "ana",
+          "nome": "Balsa do Cerro Azul — Cerro Azul (PR)",
+          "operadora": "IAT-PR",
+          "lat": -24.7964,
+          "lon": -49.2725,
+          "atraso_max_horas": 2,
+          "historico_desde": "2014-01",
+          "cotas_cm": {},
+          "curto": "Cerro Azul (PR)",
+          "rio_acima": {
+            "ordem": 1,
+            "horas_ate_cidade": 18
+          },
+          "observacao": "Alto Ribeira, no Paraná. Fica acima da divisa: a água leva mais de 12 a 20 h até Eldorado. Sem cotas cadastradas."
+        },
+        {
+          "codigo": "sp29794",
+          "fonte": "spaguas",
+          "id_nivel": "29794",
+          "id_chuva": "621",
+          "prefixo": "5F-005",
+          "nome": "Ribeira — Ponte da Divisa Estadual",
+          "operadora": "SP Águas",
+          "lat": -24.65639,
+          "lon": -49.00306,
+          "atraso_max_horas": 1,
+          "historico_desde": "2023-06",
+          "cotas_oficiais": true,
+          "cotas_cm": {
+            "atencao": 350,
+            "alerta": 400,
+            "emergencia": 450,
+            "extravasamento": 500,
+            "inundacao": 450
+          },
+          "curto": "Divisa (Ribeira)",
+          "rio_acima": {
+            "ordem": 2,
+            "horas_ate_cidade": 16
+          },
+          "observacao": "Entrada do rio em São Paulo. A água leva de 12 a 20 h até Eldorado (12 h na cheia de set/2026, 20 h na de out/2026)."
+        },
+        {
+          "codigo": "sp33203",
+          "fonte": "spaguas",
+          "id_nivel": "33203",
+          "id_chuva": "33204",
+          "prefixo": "5F-019",
+          "nome": "Iporanga — R. dos Expedicionários",
+          "operadora": "SP Águas",
+          "lat": -24.58713,
+          "lon": -48.59287,
+          "atraso_max_horas": 1,
+          "historico_desde": "2014-01",
+          "cotas_oficiais": true,
+          "cotas_cm": {
+            "atencao": 300,
+            "alerta": 350,
+            "emergencia": 400,
+            "extravasamento": 450,
+            "inundacao": 400
+          },
+          "curto": "Iporanga",
+          "rio_acima": {
+            "ordem": 3,
+            "horas_ate_cidade": 10
+          },
+          "observacao": "A água leva de 6 a 14 h até Eldorado (6 h na cheia de set/2026, 14 h na de out/2026)."
+        },
+        {
+          "codigo": "sp29791",
+          "fonte": "spaguas",
+          "id_nivel": "29791",
+          "id_chuva": "622",
+          "prefixo": "5F-001",
+          "nome": "Eldorado — Av. Beira Rio",
+          "operadora": "SP Águas",
+          "lat": -24.5167,
+          "lon": -48.1125,
+          "atraso_max_horas": 1,
+          "historico_desde": "2014-01",
+          "cotas_oficiais": true,
+          "cotas_cm": {
+            "atencao": 450,
+            "alerta": 500,
+            "emergencia": 550,
+            "extravasamento": 600,
+            "inundacao": 550
+          },
+          "curto": "Eldorado",
+          "observacao": "Régua da cidade. Na cheia de set/2026 ficou travada em 11,11 m por cerca de 20 h (limite do sensor): o pico real foi maior."
+        }
+      ]
+    }
+  ],
+  "conversoes": {},
+  "pluviometros": [
+    {
+      "codigo": "pl1256",
+      "fonte": "spaguas",
+      "id_chuva": "1256",
+      "prefixo": "351480902A",
+      "nome": "Eldorado — Meninos (pluviômetro)",
+      "curto": "Eldorado (Meninos)",
+      "operadora": "Cemaden",
+      "lat": -24.565,
+      "lon": -48.152,
+      "atraso_max_horas": 2,
+      "historico_desde": "2016-01"
+    }
+  ],
+  "regioes_chuva": [
+    {
+      "nome": "Alto Ribeira (Paraná)",
+      "curto": "Paraná",
+      "estacoes": [
+        "81135000"
+      ],
+      "chegada": "chega a Eldorado em mais de 12 a 20 h"
+    },
+    {
+      "nome": "Divisa e Iporanga",
+      "curto": "Iporanga",
+      "estacoes": [
+        "sp29794",
+        "sp33203"
+      ],
+      "chegada": "chega em ~6 a 20 h"
+    },
+    {
+      "nome": "Eldorado",
+      "curto": "Eldorado",
+      "estacoes": [
+        "sp29791",
+        "pl1256"
+      ],
+      "chegada": "cai perto da cidade"
+    }
+  ],
+  "pontos_chuva": [
+    {
+      "codigo": "pt-cerroazul",
+      "nome": "Alto Ribeira (Cerro Azul, PR)",
+      "lat": -24.8,
+      "lon": -49.27,
+      "curto": "Cerro Azul"
+    },
+    {
+      "codigo": "pt-divisa",
+      "nome": "Divisa (Ribeira / Adrianópolis)",
+      "lat": -24.66,
+      "lon": -49.0,
+      "curto": "Divisa"
+    },
+    {
+      "codigo": "pt-iporanga",
+      "nome": "Iporanga",
+      "lat": -24.59,
+      "lon": -48.59,
+      "curto": "Iporanga"
+    },
+    {
+      "codigo": "pt-eldorado",
+      "nome": "Eldorado",
+      "lat": -24.52,
+      "lon": -48.11,
+      "curto": "Eldorado"
+    }
+  ],
+  "chuva_era5": {
+    "arquivo": "chuva_era5_ribeira.json",
+    "pontos": [
+      "pt-cerroazul",
+      "pt-divisa",
+      "pt-iporanga",
+      "pt-eldorado"
+    ]
+  },
+  "tv_chuva": [
+    "pt-cerroazul",
+    "pt-eldorado"
+  ],
+  "_previsao": "Previsão de 48 h com a subida de Iporanga (versão B de scripts/modelo_cheias/treinar_bacia.py, histórico desde 2014). Teste fev/2024–out/2026 com a previsão do tempo real: das 7 vezes em que Eldorado passou da atenção, avisou 6 com 3 h, 7 com 6 h, 6 com 12 h e 3 com 24 h de antecedência; mas 41 dos 55 dias com aviso não tiveram cheia. Só com nível e chuva: 4, 4, 2 e 1. Poucas cheias no teste: números ainda frágeis."
+}

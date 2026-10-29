@@ -69,11 +69,11 @@ def conferir(cfg, pasta):
 
 
 def atalhos_do_app():
-    """Atalhos do ícone do app (toque longo): um por bacia, na ordem de bacias.json."""
+    """Atalhos do ícone do app (toque longo): um por bacia, na ordem de bacias.json (sem as ocultas)."""
     arq = PUBLIC / "manifest.webmanifest"
     m = json.loads(arq.read_text(encoding="utf-8"))
     m["shortcuts"] = [{"name": f"{b['rio']} — {b['cidade']}", "short_name": b["rio"].replace("Rio ", ""), "url": f"./{b['id']}/",
-                       "icons": [{"src": "icones/icone-192.png", "sizes": "192x192", "type": "image/png"}]} for b in bacias()]
+                       "icons": [{"src": "icones/icone-192.png", "sizes": "192x192", "type": "image/png"}]} for b in bacias() if not b.get("oculta")]
     arq.write_text(json.dumps(m, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
