@@ -65,6 +65,7 @@ Os dois se encontram na represa de Paraibuna e formam o Paraíba do Sul.
 | Chuva na bacia (regiões) | Cunha, Lagoinha, cidade, Chapéu | Cabeceiras em Cunha (só previsão), serra, Natividade |
 | Chuva × subida do rio | sim (ERA5 desde 2018) | sim (ERA5 desde 2015) |
 | Modo TV: chuva prevista | Serra da Bocaina e São Luiz | Cunha e Natividade |
+| Pontos de chuva prevista | Serra da Bocaina, Cunha, Lagoinha, São Luiz | Cunha, divisa com Ubatuba, Santa Virgínia, Natividade |
 | Histórico | desde 2018 (Passarela) | desde 2015 (Natividade) |
 
 **Para adicionar um rio:**
@@ -218,6 +219,21 @@ Anos com falhas aparecem como **parciais** e podem subestimar picos.
   o histórico antigo vem de `scripts/modelo_cheias/baixar_pluviometro.py`;
 - o aviso costuma vir **6 a 12 h antes**; tempestades localizadas na serra podem escapar.
 
+**Gatilho rio acima (Barro Vermelho)** — com a cidade abaixo da atenção, se a régua de Lagoinha –
+Barro Vermelho (`sp662`, ~9 h até a cidade) sobe **60 cm ou mais em 12 h**, o painel mostra *risco
+alto* e o robô avisa risco de atenção, mesmo com chance do modelo abaixo de 30%
+(`config.json` → `previsao.gatilho`; teste em `scripts/modelo_cheias/gatilho_rio_acima.py`):
+
+- nas cheias que o modelo perdeu, essa régua já tinha subido 80–137 cm em 12 h (24/10/2024: chance
+  de 10% e +137 cm). O nível dela não entra no modelo porque a SP Águas quase não tem histórico antes
+  de 2024 (só alguns meses de janeiro de 2011, 2013, 2016, 2018 e 2021);
+- teste out/2024–out/2026 (15 cheias, modelo P treinado até 2023, previsão do tempo real): modelo +
+  gatilho avisou **15 de 15 com 6 h** e 13 com 12 h (só o modelo: 13 e 11); dias com aviso sem cheia:
+  42 de 69 (só o modelo: 33 de 59). Com limites de 40 a 70 cm o resultado com 6 h é o mesmo;
+- limites: só 15 cheias, e o limite foi escolhido com esses mesmos dados; sem a régua transmitindo,
+  vale só o modelo; um temporal logo acima da cidade (abaixo de Lagoinha) chega em 0–3 h e não dá
+  6 h de aviso.
+
 **Paraibuna: previsão de 48 h com a régua de Ponte Alta.** O mesmo método, treinado para
 Natividade (`scripts/modelo_cheias/treinar_bacia.py --bacia paraibuna`), com a subida de
 Ponte Alta em 6 h e 12 h (histórico dela desde dez/2015). Teste fev/2024–out/2026 com a
@@ -318,8 +334,25 @@ ou desliga a região.
 |---|---|---|
 | `site.yml` | todo dia às 06:20 e a cada push | baixa o mês atual e o anterior de todas as bacias (ANA e SP Águas), gera os resumos diários (com preenchimento), atualiza as estatísticas, monta o painel em cada bacia e publica no GitHub Pages |
 | `alertas.yml` | a cada ~10 min | verifica todas as bacias e envia os avisos (ntfy, Telegram, WhatsApp) |
+| `lembretes.yml` | dia 1 de cada mês | abre um issue quando vence a data de revisão do gatilho (`previsao.gatilho.revisar_em`) |
 
-O GitHub pode atrasar tarefas agendadas em alguns minutos.
+**O agendamento do GitHub atrasa muito.** Em out–nov/2026 o robô de avisos, marcado para cada
+10 min, rodou em média a cada ~5 h (de 3 a 10 h), e a coleta das 06:20 rodou entre 12h e 16h30.
+Por isso o Supabase (projeto estoura) chama os dois workflows na hora certa
+(`scripts/supabase/monitora_disparo.sql`, com pg_cron); o agendamento do GitHub fica de reserva.
+Para ligar (uma vez):
+
+1. No GitHub: *Settings → Developer settings → Personal access tokens → Fine-grained tokens →
+   Generate new token*. Acesso só ao repositório `monitora-rio`, permissão **Actions: Read and
+   write**, validade de 1 ano (anote quando vence).
+2. No Supabase (projeto estoura) → *SQL Editor*: rode o conteúdo de
+   `scripts/supabase/monitora_disparo.sql` e depois, numa consulta separada,
+   `select vault.create_secret('<token>', 'monitora_github_token');`.
+3. Confira depois de uns 20 min: `select created, status_code from net._http_response order by created desc limit 5;`
+   (204 = ok) e a aba *Actions* do GitHub (rodadas com o evento `workflow_dispatch`).
+
+Para trocar o token vencido: `select vault.update_secret(id, '<novo token>') from vault.secrets where name = 'monitora_github_token';`.
+Ligue também o vigia (healthchecks.io, em *Avisos*): é ele que avisa por e-mail se as rodadas pararem ou atrasarem.
 
 ## Estrutura do projeto
 
@@ -346,6 +379,8 @@ scripts/
   coletar.py               coleta ANA + SP Águas, filtros, resumo diário e preenchimento
   estatisticas.py          gera estatisticas.json de cada bacia
   alertas.py               robô de avisos (ntfy, Telegram, WhatsApp)
+  testar_previsao.py       confere se o painel e o robô calculam a mesma chance de cheia
+  supabase/                SQL do Web Push (monitora_push.sql) e do disparo dos robôs (monitora_disparo.sql)
   montar_site.py           copia os modelos para cada bacia e confere as configurações
   baixar_chuva_era5.py     chuva estimada (ERA5) nos pontos de uma bacia, para chuva × subida
   modelo_cheias/           previsão do Paraitinga: chuva (ERA5, previsões arquivadas), treino e testes
@@ -364,6 +399,7 @@ python scripts/coletar.py --bacia paraitinga --desde 2018-01 --estacao sp664   #
 python scripts/estatisticas.py                    # recalcula as estatísticas
 python scripts/montar_site.py                     # monta as páginas e confere os config.json
 python scripts/alertas.py --bacia paraibuna       # testa os avisos (sem canais: só mostra)
+python scripts/testar_previsao.py                 # painel e robô calculam a mesma chance? (precisa do Node; roda a cada publicação)
 ```
 
 Para refazer os modelos, siga a ordem descrita em `scripts/modelo_cheias/exportar.py`
@@ -373,7 +409,7 @@ Só usa a biblioteca padrão do Python.
 ## Limitações conhecidas
 
 - Cotas, impactos e previsões **não validados pela Defesa Civil**.
-- Previsão testada com poucas cheias recentes (8); aviso de poucas horas.
+- Previsão testada com poucas cheias recentes (20 desde 2024; o gatilho de Barro Vermelho, com 15); aviso de poucas horas.
 - Níveis das ruas do centro em 2024 são aproximados; faltam pontos de referência oficiais.
 - Lagoinha (Jusante do Jacuí) e Estrada do Ribeira têm menos de 1 ano de histórico.
 - Cotas oficiais de Ponte Alta (a partir de 5,20 m) nunca foram atingidas desde 2024.

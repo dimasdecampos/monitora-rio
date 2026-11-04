@@ -1,0 +1,43 @@
+name: Lembretes de revisão
+
+# Uma vez por mês: se alguma bacia tem previsao.gatilho.revisar_em vencido, abre um issue
+# (o GitHub manda e-mail). Não abre de novo se já houver um aberto com o mesmo título.
+on:
+  schedule:
+    - cron: "0 12 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  lembrar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Conferir datas de revisão
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY' > vencidos.txt
+          import json, glob, datetime
+          hoje = datetime.date.today().isoformat()
+          for f in sorted(glob.glob("public/*/config.json")):
+              c = json.load(open(f, encoding="utf-8"))
+              g = (c.get("previsao") or {}).get("gatilho") or {}
+              if g.get("revisar_em") and g["revisar_em"] <= hoje:
+                  print(c["id"])
+          PY
+          while read -r bacia; do
+            titulo="Revisar o gatilho rio acima da previsão ($bacia)"
+            if gh issue list --state open --search "\"$titulo\" in:title" --json number -q 'length' | grep -qv '^0$'; then
+              echo "já existe: $titulo"; continue
+            fi
+            gh issue create --title "$titulo" --body "Chegou a data de revisão (previsao.gatilho.revisar_em em public/$bacia/config.json).
+
+          1. Atualize os dados: python scripts/modelo_cheias/baixar_chuva.py, baixar_prev7.py e baixar_pluviometro.py.
+          2. Mude o fim do teste em scripts/modelo_cheias/gatilho_rio_acima.py para incluir a última temporada de chuva.
+          3. Rode python scripts/modelo_cheias/gatilho_rio_acima.py e veja se o limite (sobe_cm) ainda avisa todas as cheias com poucos alarmes falsos.
+          4. Atualize previsao.gatilho (limite, teste e uma nova data em revisar_em) e o README."
+          done < vencidos.txt

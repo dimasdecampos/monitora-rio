@@ -5,6 +5,7 @@ Avisa, em cada bacia, quando:
   - a água sobe rápido numa régua rio acima (≥ 20 cm em 3 h), com o tempo de chegada à cidade;
   - o afluente de "represamento" está cheio junto com o rio alto (se a bacia tiver);
   - a previsão dá 30% ou mais de chance de chegar à próxima cota em 48 h (se a bacia tiver modelo);
+    ou, com a cidade abaixo da atenção, a régua do gatilho rio acima sobe muito (config previsao.gatilho);
   - a régua principal para de transmitir (repete a cada 24 h, ou 6 h se o rio estava em cota) e quando volta.
 Cada tipo de aviso se repete no máximo a cada 6–12 h.
 
@@ -136,7 +137,13 @@ def probabilidade(modelo, ref, rio_acima, pluv=None):
     versao = "B" if dc6 is not None and dc12 is not None and rio_acima and (datetime.now(timezone.utc) - rio_acima[-1][0]) < timedelta(hours=2) else "A"
     com_pluv = "P" if versao == "A" else versao + "P"   # A → P, B → BP (pluviômetro rio acima)
     if pluv and f"pesos_{com_pluv}" in pm: versao = com_pluv
-    def bruta(G, h0=ref):
+    return calculadora(pm, versao, ref, f48, p24, p72, api, dc6, dc12, pluv), f48
+
+
+def calculadora(pm, versao, ref, f48, p24, p72, api, dc6=None, dc12=None, pluv=None):
+    """chance(G): chance de a régua principal, hoje em ref (cm), chegar a ref + G em 48 h.
+    Mesma conta de chanceDeSubir/chanceDeChegar no painel (scripts/testar_previsao.py confere)."""
+    def bruta(G, h0):
         f, a, b, s, g = math.log1p(f48), math.log1p(p24), math.log1p(p72), api / 100, G / 100
         v = [1, g, f, a, b, s, h0 / 100, f * s, f * g, a * g, g * g]
         if "B" in versao:
@@ -145,16 +152,18 @@ def probabilidade(modelo, ref, rio_acima, pluv=None):
             L = math.log1p; v += [L(pluv["l6"]), L(pluv["l24"]), L(pluv["l72"]), L(pluv["l24"]) * g, L(pluv["l12"]) * g]
         w = pm[f"pesos_{versao}"]
         z = sum(x * y for x, y in zip(w, v)); return 1 / (1 + math.exp(-max(-30, min(30, z))))
-    def subir(G, h0=ref):
+    def passos(a, b):   # a, a+10, a+20… enquanto < b (igual ao for do painel, sem arredondar)
+        while a < b: yield a; a += 10
+    def subir(G, h0):
         # igual ao painel: o termo g² faz a curva voltar a subir em subidas muito grandes;
         # a chance de subir G cm nunca pode ser maior que a de subir menos
         if G <= 0: return 1.0
-        return min([bruta(G, h0)] + [bruta(cm, h0) for cm in range(10, int(G), 10)])
+        return min([bruta(G, h0)] + [bruta(cm, h0) for cm in passos(10, G)])
     def chance(G):
         # chance de chegar a ref + G: não pode ser maior que a de quem já está mais alto chegar lá
         alvo = ref + G
-        return min([subir(G)] + [subir(alvo - h, h) for h in range(int(ref) + 10, int(alvo), 10)])
-    return chance, f48
+        return min([subir(G, ref)] + [subir(alvo - h, h) for h in passos(ref + 10, alvo)])
+    return chance
 
 
 def verificar(bacia, mandar):
@@ -185,6 +194,7 @@ def verificar(bacia, mandar):
     acima = [c for c, e in EST.items() if e.get("rio_acima", {}).get("horas_ate_cidade") and not e["rio_acima"].get("afluente")]
     extras = [cfg["represamento"]["afluente"]] if cfg.get("represamento") else []
     if cfg.get("previsao", {}) and cfg["previsao"].get("rio_acima"): extras.append(cfg["previsao"]["rio_acima"])
+    if cfg.get("previsao", {}).get("gatilho"): extras.append(cfg["previsao"]["gatilho"]["estacao"])
     codigos = list(dict.fromkeys([P, *acima, *extras]))
     s = leituras_sibh([EST[c] for c in codigos if EST[c]["fonte"] == "spaguas"])
     for c in codigos:
@@ -258,14 +268,32 @@ def verificar(bacia, mandar):
         modelo = json.loads((comum.pasta(bacia) / cfg["previsao"]["modelo"]).read_text(encoding="utf-8"))
         pluv = chuva_pluviometro(EST.get(modelo["passarela"].get("pluviometro")))
         r = probabilidade(modelo, nivel, s.get(cfg["previsao"].get("rio_acima"), []), pluv)
-        if r:
+        prox = next(((k, n, cot_p[k]) for k, n in reversed(COTAS) if k in cot_p and nivel < cot_p[k]), None)
+        p = f48 = None
+        if r and prox:
             chance, f48 = r
-            prox = next(((k, n, cot_p[k]) for k, n in reversed(COTAS) if k in cot_p and nivel < cot_p[k]), None)
-            if prox:
-                p = chance(prox[2] - nivel)
-                print(f"{bacia}: previsão {p*100:.0f}% de chegar a {prox[1]} ({br(prox[2])} m); chuva prevista 48 h {f48:.0f} mm")
-                if p >= .3 and pode("prev-" + prox[0], 12):
-                    avisar(f"🌧️ *Previsão: {p*100:.0f}% de chance de {prox[1].lower()}*\nNas próximas 48 h, {nome(P)} pode chegar a {br(prox[2])} m (agora {br(nivel)} m). Chuva prevista na bacia: {f48:.0f} mm.", "prev-" + prox[0])
+            p = chance(prox[2] - nivel)
+            print(f"{bacia}: previsão {p*100:.0f}% de chegar a {prox[1]} ({br(prox[2])} m); chuva prevista 48 h {f48:.0f} mm")
+        # gatilho rio acima: subida forte numa régua a horas da cidade avisa a atenção mesmo com chance baixa
+        # (testado só para a atenção: scripts/modelo_cheias/gatilho_rio_acima.py); funciona mesmo sem a previsão de chuva
+        gat = cfg["previsao"].get("gatilho")
+        sobe = None
+        if gat and prox and prox[0] == "atencao":
+            serie = s.get(gat["estacao"], [])
+            if serie and datetime.now(timezone.utc) - serie[-1][0] < timedelta(hours=2):
+                d = variacao(serie, gat["horas"])
+                if d is not None and d >= gat["sobe_cm"]: sobe = d
+            print(f"{bacia}: gatilho {nome(gat['estacao'])}: {'dispara' if sobe else 'não dispara'}")
+        if prox and ((p is not None and p >= .3) or sobe) and pode("prev-" + prox[0], 12):
+            if sobe:
+                h = EST[gat["estacao"]].get("rio_acima", {}).get("horas_ate_cidade")
+                chega = f" e essa água chega a {cfg['cidade']} em cerca de {h} h" if h else ""
+                texto = (f"🌊 *Previsão: risco de {prox[1].lower()}*\n{nome(gat['estacao'])} subiu {sobe:.0f} cm em {gat['horas']} h{chega}. "
+                         f"{nome(P)} pode passar de {br(prox[2])} m (agora {br(nivel)} m).")
+                if p is not None: texto += f" Chance pelo modelo de chuva: {p*100:.0f}%."
+            else:
+                texto = f"🌧️ *Previsão: {p*100:.0f}% de chance de {prox[1].lower()}*\nNas próximas 48 h, {nome(P)} pode chegar a {br(prox[2])} m (agora {br(nivel)} m). Chuva prevista na bacia: {f48:.0f} mm."
+            avisar(texto, "prev-" + prox[0])
 
     if os.environ.get("TESTE") == "1":
         sit = atual[1] if atual else "Normal" if cot_p else "sem cotas"

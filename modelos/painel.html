@@ -1856,7 +1856,9 @@ async function nivelDeReferencia() {
       : r && Date.now() - rioAcima.quando < 10 * 60e3 ? r : await buscarLeituras(estacoes[cod], 2).catch(() => []);
     return comNivel(ls || []);
   };
-  const [pas, cunha, pluv] = await Promise.all([ler(P), config.previsao.rio_acima ? ler(config.previsao.rio_acima) : [], chuvaDoPluviometro()]);
+  const gat = config.previsao.gatilho;   // régua rio acima que, subindo muito, já indica cheia (gatilho_rio_acima.py)
+  const [pas, cunha, pluv, regGat] = await Promise.all([ler(P), config.previsao.rio_acima ? ler(config.previsao.rio_acima) : [], chuvaDoPluviometro(),
+    gat ? ler(gat.estacao).catch(() => []) : []]);
   const u = pas.at(-1);
   if ((!u || Date.now() - ms(u) > 3 * 36e5) && config.reserva) {   // reserva: outra régua da cidade, convertida
     const ana = comNivel(await buscarLeituras(estacoes[config.reserva], 2).catch(() => [])).at(-1);
@@ -1865,12 +1867,19 @@ async function nivelDeReferencia() {
   }
   if (!u) return null;
   const ref = { H0: u.nivel, t: ms(u), fonte: apelido(P), versao: "A" };
+  // nível de uma régua h horas antes da última leitura dela (null se não houver leitura perto disso)
+  const antesDe = (ls, h) => {
+    const alvo = ms(ls.at(-1)) - h * 36e5, l = ls.reduce((m, x) => Math.abs(ms(x) - alvo) < Math.abs(ms(m) - alvo) ? x : m, ls[0]);
+    return Math.abs(ms(l) - alvo) < 36e5 ? l.nivel : null;
+  };
+  const ug = regGat.at(-1);
+  if (gat && ug && Date.now() - ms(ug) < 2 * 36e5) {
+    const a = antesDe(regGat, gat.horas);
+    if (a != null && ug.nivel - a >= gat.sobe_cm) ref.gatilho = { sobe: ug.nivel - a, cod: gat.estacao, horas: gat.horas };
+  }
   const cu = cunha.at(-1);
   if (cu && Date.now() - ms(cu) < 2 * 36e5) {
-    const antes = h => {
-      const alvo = ms(cu) - h * 36e5, l = cunha.reduce((m, x) => Math.abs(ms(x) - alvo) < Math.abs(ms(m) - alvo) ? x : m, cunha[0]);
-      return Math.abs(ms(l) - alvo) < 36e5 ? l.nivel : null;
-    };
+    const antes = h => antesDe(cunha, h);
     const a6 = antes(6), a12 = antes(12);
     if (a6 != null && a12 != null) Object.assign(ref, { versao: "B", dc6: cu.nivel - a6, dc12: cu.nivel - a12, fonte: `${apelido(P)} + ${apelido(config.previsao.rio_acima)}` });
   }
@@ -1926,9 +1935,12 @@ function renderizarPrevisao(ref) {
   // nível de risco: olha a próxima cota que ainda não foi passada
   const proxima = linhas.find(n => H0 < n.cesp);
   const pr = proxima ? probs[proxima.chave] : 1;
-  prev.chanceProxima = proxima ? { p: pr, nome: proxima.nome, cm: proxima.cm, chave: proxima.chave } : null;
+  // gatilho rio acima: só vale para a atenção (foi o que se testou)
+  const gatilho = ref.gatilho && proxima?.chave === "atencao" ? ref.gatilho : null;
+  prev.chanceProxima = proxima ? { p: pr, nome: proxima.nome, cm: proxima.cm, chave: proxima.chave, gatilho } : null;
   const jaAcima = H0 >= linhas[0].cesp;   // já em atenção: o risco é de piorar
   const risco = !proxima ? ["Acima do transbordamento", "--extravasa"]
+    : gatilho && pr < .6 ? ["Risco alto", "--alerta"]
     : pr < .1 ? [jaAcima ? "Sem sinal de piora" : "Risco baixo", "--bom"]
     : pr < .3 ? [jaAcima ? "Pode piorar" : "Risco moderado", "--atencao"]
     : pr < .6 ? [jaAcima ? "Risco alto de piorar" : "Risco alto", "--alerta"]
@@ -1974,6 +1986,7 @@ function renderizarPrevisao(ref) {
     <p class="prev-frase">${g50 < 10
       ? `O rio deve <strong>ficar perto do nível atual</strong> (${naRegua(H0)} m)`
       : `Pico mais provável: <strong>${naRegua(H0 + g50)} m</strong>`}${g10 > g50 + 5 ? `; num cenário de mais chuva, pode chegar a <strong>${naRegua(H0 + g10)} m</strong>` : ""}.
+      ${gatilho ? `<br>🌊 <strong>${apelido(gatilho.cod)} subiu ${fmt(gatilho.sobe, 0)} cm em ${gatilho.horas} h</strong>${estacoes[gatilho.cod]?.rio_acima?.horas_ate_cidade ? `: essa água chega à cidade em cerca de ${estacoes[gatilho.cod].rio_acima.horas_ate_cidade} h` : ""}. Subidas assim vieram antes de todas as cheias de ${config.previsao.gatilho.teste?.periodo || "2024–2026"}, mesmo quando a chance pela chuva era baixa.` : ""}
       ${idade > 3 ? `<span class="aviso-atraso">Atenção: a última leitura do rio é de ${ha(idade)}.</span>` : ""}</p>
     <div>
       <div class="rot" style="margin-bottom:8px">Chuva na bacia por dia (mm)</div>
@@ -2003,6 +2016,7 @@ function renderizarPrevisao(ref) {
         <li>Em ${t.B_dias_sem_cheia} dos ${t.B_dias_com_aviso} dias com aviso, a cheia não veio.</li>`
           : `<li>Testado de ${t.periodo.replace(" a ", " até ")} com a previsão do tempo real da época: das <b>${t.cheias}</b> vezes em que o rio passou da atenção, avisou (chance ≥ ${t.limiar_aviso * 100}%) <b>${t.avisadas["6"]}</b> com 6 h de antecedência, ${t.avisadas["12"]} com 12 h e ${t.avisadas["24"]} com 24 h.</li>
         <li>Em ${t.dias_sem_cheia} dos ${t.dias_com_aviso} dias com aviso, a cheia não veio.${t.B_dias_com_aviso != null ? ` Com a régua ${apelido(config.previsao.rio_acima)}, foram ${t.B_dias_sem_cheia} de ${t.B_dias_com_aviso}.` : ""}</li>`}
+        ${config.previsao.gatilho?.teste ? (g => `<li>Aviso extra: quando a régua ${apelido(config.previsao.gatilho.estacao)} sobe ${config.previsao.gatilho.sobe_cm} cm ou mais em ${config.previsao.gatilho.horas} h, o risco de atenção vira alto mesmo com chance baixa. Testado de ${g.periodo.replace(" a ", " até ")}: das <b>${g.cheias}</b> cheias, o modelo com esse aviso avisou <b>${g.avisadas["6"]}</b> com 6 h de antecedência e ${g.avisadas["12"]} com 12 h (só o modelo: ${g.modelo_avisadas["6"]} e ${g.modelo_avisadas["12"]}); dias com aviso sem cheia: ${g.dias_sem_cheia} de ${g.dias_com_aviso} (só o modelo: ${g.modelo_dias_sem_cheia} de ${g.modelo_dias_com_aviso}).</li>`)(config.previsao.gatilho.teste) : ""}
         <li>Tempestades muito localizadas na serra podem escapar da previsão. O aviso costuma vir poucas horas antes.</li>
         <li>Cotas da régua ${apelido(P)}. Nível de partida: ${ref.fonte}, ${ha(idade)}.</li>
         <li><b>Não substitui os alertas da Defesa Civil (199).</b></li>
@@ -2383,7 +2397,8 @@ function verificarAvisos() {
     notificar(`Água subindo em ${r.e.nome}`, `+${fmt(r.dif, 0)} cm em 3 h (${fmt(r.u.nivel / 100, 2)} m). Chega à cidade em cerca de ${r.e.rio_acima.horas_ate_cidade} h.`, "sobe-" + r.e.codigo, 6);
   if (rioAcima.represa?.[0] === "alto") notificar("Risco de represamento", rioAcima.represa[2], "represa", 12);
   const pr = prev.chanceProxima;
-  if (pr && pr.p >= .3) notificar(`Previsão: ${fmt(pr.p * 100, 0)}% de chance de ${pr.nome.toLowerCase()}`, `Nas próximas 48 h, a régua ${apelido(P)} pode chegar a ${fmt(pr.cm / 100, 2)} m.`, "prev-" + pr.chave, 12);
+  if (pr?.gatilho && pr.p < .3) notificar(`Previsão: risco de ${pr.nome.toLowerCase()}`, `${apelido(pr.gatilho.cod)} subiu ${fmt(pr.gatilho.sobe, 0)} cm em ${pr.gatilho.horas} h. A régua ${apelido(P)} pode passar de ${fmt(pr.cm / 100, 2)} m.`, "prev-" + pr.chave, 12);
+  else if (pr && pr.p >= .3) notificar(`Previsão: ${fmt(pr.p * 100, 0)}% de chance de ${pr.nome.toLowerCase()}`, `Nas próximas 48 h, a régua ${apelido(P)} pode chegar a ${fmt(pr.cm / 100, 2)} m.`, "prev-" + pr.chave, 12);
 }
 function configurarAvisos() {
   const btn = $("#btnNotif"), textoPadrao = $("#avisoTexto").textContent;

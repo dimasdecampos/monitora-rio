@@ -15,7 +15,24 @@
   ],
   "previsao": {
     "modelo": "modelo_cheias.json",
-    "rio_acima": "sp818"
+    "rio_acima": "sp818",
+    "gatilho": {
+      "_explicacao": "Avisa risco de atenção quando a régua rio acima sobe sobe_cm em horas, mesmo que o modelo dê menos de 30% (scripts/modelo_cheias/gatilho_rio_acima.py). Só vale com a cidade abaixo da atenção.",
+      "estacao": "sp662",
+      "sobe_cm": 60,
+      "horas": 12,
+      "revisar_em": "2027-04-15",
+      "teste": {
+        "periodo": "out/2024 a out/2026",
+        "cheias": 15,
+        "avisadas": { "3": 15, "6": 15, "12": 13 },
+        "modelo_avisadas": { "3": 13, "6": 13, "12": 11 },
+        "dias_com_aviso": 69,
+        "dias_sem_cheia": 42,
+        "modelo_dias_com_aviso": 59,
+        "modelo_dias_sem_cheia": 33
+      }
+    }
   },
   "impactos": "impactos.json",
   "estatisticas": "estatisticas.json",
@@ -386,6 +403,13 @@
       "curto": "Cunha",
       "lat": -23.07,
       "lon": -44.96
+    },
+    {
+      "codigo": "pt-lagoinha",
+      "nome": "Lagoinha (chega à cidade em ~9–11 h)",
+      "curto": "Lagoinha",
+      "lat": -23.09,
+      "lon": -45.19
     },
     {
       "codigo": "pt-slp",
