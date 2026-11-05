@@ -1,7 +1,8 @@
 name: Lembretes de revisão
 
-# Uma vez por mês: se alguma bacia tem previsao.gatilho.revisar_em vencido, abre um issue
-# (o GitHub manda e-mail). Não abre de novo se já houver um aberto com o mesmo título.
+# Uma vez por mês: se alguma bacia tem previsao.gatilho.revisar_em vencido, abre um issue atribuído ao
+# dono do repositório (é a atribuição que gera o e-mail: o dono não "acompanha" o repositório).
+# Não abre de novo se já houver um aberto com o mesmo título. O repositório é público: o issue também é.
 on:
   schedule:
     - cron: "0 12 1 * *"
@@ -34,7 +35,7 @@ jobs:
             if gh issue list --state open --search "\"$titulo\" in:title" --json number -q 'length' | grep -qv '^0$'; then
               echo "já existe: $titulo"; continue
             fi
-            gh issue create --title "$titulo" --body "Chegou a data de revisão (previsao.gatilho.revisar_em em public/$bacia/config.json).
+            gh issue create --title "$titulo" --assignee "$GITHUB_REPOSITORY_OWNER" --body "Chegou a data de revisão (previsao.gatilho.revisar_em em public/$bacia/config.json).
 
           1. Atualize os dados: python scripts/modelo_cheias/baixar_chuva.py, baixar_prev7.py e baixar_pluviometro.py.
           2. Mude o fim do teste em scripts/modelo_cheias/gatilho_rio_acima.py para incluir a última temporada de chuva.
