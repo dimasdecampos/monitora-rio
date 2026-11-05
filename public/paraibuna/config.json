@@ -26,6 +26,12 @@
   },
   "atualizar_a_cada_minutos": 5,
   "_aviso_cotas": "Cotas em cm. Em Ponte Alta são as oficiais da SP Águas. Em Natividade (Fazenda Palmeiras) o cadastro da SP Águas não tem cotas: as usadas aqui são provisórias, estimadas pelo histórico.",
+  "cotas_confirmadas": {
+    "_explicacao": "Cotas de atenção, alerta, emergência e extravasamento destes postos confirmadas como corretas e atualizadas pela fonte (e-mail).",
+    "por": "Sala de Situação da SP Águas",
+    "em": "2026-11-05",
+    "postos": ["sp792"]
+  },
   "rios": [
     {
       "nome": "Rio Paraibuna",

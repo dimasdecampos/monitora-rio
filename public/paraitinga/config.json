@@ -60,6 +60,12 @@
   },
   "atualizar_a_cada_minutos": 5,
   "_aviso_cotas": "Cotas em cm na régua de cada estação. Nas réguas da SP Águas são as cotas oficiais cadastradas no SIBH (atenção, alerta, emergência e extravasamento). Na régua da ANA na cidade são as mesmas cotas da Passarela convertidas (ANA = 123 + 1,017 × Passarela, erro típico 7 cm). Na CESP e em Natividade são aproximadas.",
+  "cotas_confirmadas": {
+    "_explicacao": "Cotas de atenção, alerta, emergência e extravasamento destes postos confirmadas como corretas e atualizadas pela fonte (e-mail).",
+    "por": "Sala de Situação da SP Águas",
+    "em": "2026-11-05",
+    "postos": ["sp664", "sp662", "sp35402", "sp818", "sp820", "sp489"]
+  },
   "rios": [
     {
       "nome": "Rio Paraitinga",

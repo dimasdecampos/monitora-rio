@@ -144,14 +144,22 @@ Cotas usadas (em metros, na régua de cada estação):
 
 | Estação | Atenção | Alerta | Emergência | Transb. | Origem |
 |---|---|---|---|---|---|
-| Passarela (SP Águas) | 1,92 | 2,32 | 2,72 | 3,12 | Oficiais (SIBH) |
+| Passarela (SP Águas) | 1,92 | 2,32 | 2,72 | 3,12 | Oficiais (SIBH), confirmadas pela SP Águas em 05/11/2026 |
 | Régua da ANA na cidade | 2,73 | 3,16 | 4,00 | 4,41 | Atenção e alerta oficiais (SIBH); emergência e transbordamento convertidos da Passarela |
 | Régua da CESP | 3,04 | 3,48 | 3,91 | 4,35 | Convertidas da Passarela (aproximadas) |
-| Lagoinha, Cunha, Rio Jacuí, Chapéu, Ponte Alta | — | — | — | — | Oficiais (SIBH), ver `public/<bacia>/config.json` |
+| Lagoinha, Cunha, Rio Jacuí, Chapéu, Ponte Alta | — | — | — | — | Oficiais (SIBH), confirmadas pela SP Águas em 05/11/2026; ver `public/<bacia>/config.json` |
+| Estrada do Ribeira, Chapéu – Catuçaba | — | — | — | — | Sem cotas de atenção e alerta (ainda não estabelecidas pela SP Águas) |
 | Fazenda Palmeiras (ANA) | 2,50 | 3,50 | 4,50 | — | Provisórias, pelo histórico |
 
-As duas tabelas oficiais da cidade não batem entre si: a atenção da régua da ANA
-(2,73 m) equivale a ~1,48 m na Passarela, cuja atenção oficial é 1,92 m. **Confirme com a
+**Confirmação da SP Águas (Sala de Situação, e-mail de 05/11/2026):** as cotas dos postos da
+SP Águas usados aqui (Passarela, Barro Vermelho, Jusante do Jacuí, Cunha, Rio Jacuí, Ribeirão do
+Chapéu e Ponte Alta) estão **corretas e atualizadas**; Estrada do Ribeira e Catuçaba ainda não têm
+cotas de atenção e alerta; o uso da API do SIBH pelo painel não tem problema. Registro em
+`config.json` → `cotas_confirmadas` (o painel mostra no rodapé e na legenda das cotas).
+
+As duas tabelas da cidade não batem entre si: a atenção da régua da ANA (2,73 m) equivale a
+~1,48 m na Passarela, cuja atenção oficial é 1,92 m. A SP Águas não indicou conversão oficial
+entre as réguas: as cotas de cada uma são definidas pelas condições do local. **Confirme com a
 Defesa Civil qual tabela é usada nas sirenes.**
 
 Outras regras de classificação:
@@ -408,7 +416,7 @@ Só usa a biblioteca padrão do Python.
 
 ## Limitações conhecidas
 
-- Cotas, impactos e previsões **não validados pela Defesa Civil**.
+- Cotas, impactos e previsões **não validados pela Defesa Civil** (as cotas dos postos da SP Águas foram confirmadas pela própria SP Águas em 05/11/2026).
 - Previsão testada com poucas cheias recentes (20 desde 2024; o gatilho de Barro Vermelho, com 15); aviso de poucas horas.
 - Níveis das ruas do centro em 2024 são aproximados; faltam pontos de referência oficiais.
 - Lagoinha (Jusante do Jacuí) e Estrada do Ribeira têm menos de 1 ano de histórico.

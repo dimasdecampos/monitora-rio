@@ -690,6 +690,7 @@
       <li><a href="tv.html">Modo TV</a>: tela cheia para televisão ou monitor, com letras grandes e atualização automática.</li>
       <li id="avisosRodape" hidden><span id="avisosRodapeTxt">Avisos ligados neste aparelho</span> · <button class="link" id="btnDesligarAvisos">desligar</button></li>
       <li>Quando uma régua da cidade fica sem transmitir, os dias que faltam no histórico são completados com uma régua vizinha convertida (quando há).</li>
+      <li id="cotasConfirmadas" hidden></li>
       <li>Definição das cotas (Manual das Salas de Situação de SP): <strong>atenção</strong> = risco significativo, mas incerto; <strong>alerta</strong> = perigo iminente, Defesa Civil de prontidão; <strong>emergência</strong> = situação crítica, ação imediata; <strong>transbordamento</strong> (extravasamento) = rio acima das margens.</li>
     </ul>
     <div class="creditos">
@@ -1703,7 +1704,7 @@ function desenharLinhas() {
       <span class="det"><span>${dataCurta(t.pico.d)}</span>${total ? `<span class="dias">${cl.slice().reverse().filter(n => dias[n.chave]).map(n => `<span><i style="background:${tok(n.cor)}"></i>${dias[n.chave]} d</span>`).join("")}</span>` : `<span>${cl.length ? `nenhum dia acima da ${cl.at(-1).nome.toLowerCase()}` : "sem cotas cadastradas"}</span>`}</span>
     </button>`;
   }).join("");
-  $("#legCotas").innerHTML = cl.slice().reverse().map(n => `<span><i style="background:${tok(n.cor)}"></i>${n.nome} ≥ ${fmt(n.cm / 100, 2)} m</span>`).join("") + (cl.length ? `<span>· d = dias${estacoes[estado.estacao].cotas_oficiais ? " · cotas oficiais SP Águas" : ""}</span>` : "");
+  $("#legCotas").innerHTML = cl.slice().reverse().map(n => `<span><i style="background:${tok(n.cor)}"></i>${n.nome} ≥ ${fmt(n.cm / 100, 2)} m</span>`).join("") + (cl.length ? `<span>· d = dias${estacoes[estado.estacao].cotas_oficiais ? " · cotas oficiais SP Águas" : ""}${config.cotas_confirmadas?.postos.includes(estado.estacao) ? ` (confirmadas em ${new Date(config.cotas_confirmadas.em + "T12:00").toLocaleDateString("pt-BR")})` : ""}</span>` : "");
   const nome = estado.de === 1 && estado.ate === 12 ? "" : ` (${MESES[estado.de - 1]}–${MESES[estado.ate - 1]})`;
   $("#anoSub").textContent = `Maior nível de cada ${vira() ? "temporada" : "ano"}${nome} e dias acima das cotas. Toque para comparar no gráfico.`;
 }
@@ -2539,6 +2540,9 @@ async function iniciar() {
   document.querySelector('meta[name="description"]').content = `Nível, chuva e avisos de cheia do ${config.rio} em ${config.cidade}, com dados da SP Águas e da ANA.`;
   document.querySelector('meta[name="apple-mobile-web-app-title"]').content = config.rio;
   $("#sobreCotas").innerHTML = config._aviso_cotas || "";
+  const cc = config.cotas_confirmadas;   // confirmação da fonte (e-mail), só para os postos listados
+  if (cc) Object.assign($("#cotasConfirmadas"), { hidden: false, innerHTML:
+    `Cotas confirmadas como <strong>corretas e atualizadas</strong> pela ${cc.por} em ${new Date(cc.em + "T12:00").toLocaleDateString("pt-BR")}: ${cc.postos.map(c => apelido(c)).join(", ")}.${REGUAS_CIDADE.length > 1 ? " As réguas da cidade têm cotas próprias, definidas pelas condições de cada local; não há conversão oficial entre elas." : ""}` });
   const p = new URLSearchParams(location.search);
   estado.estacao = config.estacao_padrao || P;
   if (estacoes[p.get("estacao")]) estado.estacao = p.get("estacao");
