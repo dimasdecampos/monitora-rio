@@ -334,7 +334,7 @@ ou desliga a região.
 |---|---|---|
 | `site.yml` | todo dia às 06:20 e a cada push | baixa o mês atual e o anterior de todas as bacias (ANA e SP Águas), gera os resumos diários (com preenchimento), atualiza as estatísticas, monta o painel em cada bacia e publica no GitHub Pages |
 | `alertas.yml` | a cada ~10 min | verifica todas as bacias e envia os avisos (ntfy, Telegram, WhatsApp) |
-| `lembretes.yml` | dia 1 de cada mês | abre um issue quando vence a data de revisão do gatilho (`previsao.gatilho.revisar_em`) |
+| `lembretes.yml` | toda segunda-feira | abre um issue (atribuído ao dono) quando vence a revisão do gatilho (`previsao.gatilho.revisar_em`) e avisa no ntfy, no tópico privado `<NTFY_TOPIC>-admin`, os vencimentos de `.github/lembretes.json` (token do GitHub: 14 dias antes) |
 
 **O agendamento do GitHub atrasa muito.** Em out–nov/2026 o robô de avisos, marcado para cada
 10 min, rodou em média a cada ~5 h (de 3 a 10 h), e a coleta das 06:20 rodou entre 12h e 16h30.
