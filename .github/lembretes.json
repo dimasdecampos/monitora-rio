@@ -1,0 +1,11 @@
+{
+  "_explicacao": "Datas de vencimento lembradas por .github/workflows/lembretes.yml no tópico ntfy <NTFY_TOPIC>-admin (só o dono assina). Atualize a data quando renovar.",
+  "vencimentos": [
+    {
+      "nome": "token do GitHub no Supabase (monitora_github_token)",
+      "vence": "2026-12-04",
+      "avisar_dias_antes": 14,
+      "como_renovar": "GitHub → Settings → Developer settings → Fine-grained tokens → monitora-rio → Regenerate token. Depois, no Supabase (estoura) → SQL Editor: select vault.update_secret(id, 'NOVO_TOKEN') from vault.secrets where name = 'monitora_github_token'; e troque a data em .github/lembretes.json."
+    }
+  ]
+}

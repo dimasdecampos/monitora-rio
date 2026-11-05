@@ -3,10 +3,17 @@ name: Lembretes de revisão
 # Uma vez por mês: se alguma bacia tem previsao.gatilho.revisar_em vencido, abre um issue atribuído ao
 # dono do repositório (é a atribuição que gera o e-mail: o dono não "acompanha" o repositório).
 # Não abre de novo se já houver um aberto com o mesmo título. O repositório é público: o issue também é.
+# Toda segunda-feira: vencimentos de .github/lembretes.json (ex.: token do GitHub) avisados no app ntfy, no
+# tópico <NTFY_TOPIC>-admin, que só o dono assina (os tópicos das bacias são do público).
 on:
   schedule:
-    - cron: "0 12 1 * *"
+    - cron: "0 12 * * 1"
   workflow_dispatch:
+    inputs:
+      teste:
+        description: "Mandar agora uma mensagem de teste no tópico ntfy -admin"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -42,3 +49,30 @@ jobs:
           3. Rode python scripts/modelo_cheias/gatilho_rio_acima.py e veja se o limite (sobe_cm) ainda avisa todas as cheias com poucos alarmes falsos.
           4. Atualize previsao.gatilho (limite, teste e uma nova data em revisar_em) e o README."
           done < vencidos.txt
+
+      - name: Vencimentos (aviso privado no ntfy)
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          TESTE: ${{ inputs.teste && '1' || '0' }}
+        run: |
+          python - <<'PY'
+          import json, os, datetime, urllib.request
+          topico = os.environ.get("NTFY_TOPIC")
+          if not topico:
+              raise SystemExit("sem NTFY_TOPIC: nada a avisar")
+          def avisar(titulo, texto):
+              req = urllib.request.Request(f"https://ntfy.sh/{topico}-admin", data=texto.encode("utf-8"),
+                                           method="POST", headers={"Title": titulo.encode("utf-8").decode("latin-1"), "Priority": "4"})
+              urllib.request.urlopen(req, timeout=30)
+          hoje = datetime.date.today()
+          if os.environ.get("TESTE") == "1":
+              avisar("Teste: lembretes do Monitor dos Rios", "Se chegou, os avisos de vencimento vão chegar aqui.")
+              print("teste enviado")
+          for v in json.load(open(".github/lembretes.json", encoding="utf-8"))["vencimentos"]:
+              dias = (datetime.date.fromisoformat(v["vence"]) - hoje).days
+              if dias > v.get("avisar_dias_antes", 14):
+                  print(f"ok: {v['nome']} vence em {dias} dias"); continue
+              titulo = f"Vence em {dias} dias: {v['nome']}" if dias >= 0 else f"VENCEU há {-dias} dias: {v['nome']}"
+              avisar(titulo, v["como_renovar"])
+              print("avisado:", titulo)
+          PY
