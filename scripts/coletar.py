@@ -210,11 +210,16 @@ def main():
         inicio = datetime.strptime(args.desde, "%Y-%m").date()
     else:
         inicio = (HOJE.replace(day=1) - timedelta(days=1)).replace(day=1)
-    falhas = 0
+    falhas = tentados = 0
     for bacia in [args.bacia] if args.bacia else comum.bacias():
-        falhas += coletar_bacia(bacia, inicio, args.estacao)
+        f, n = coletar_bacia(bacia, inicio, args.estacao)
+        falhas += f; tentados += n
+    # uma fonte instável (a ANA às vezes não responde) não pode travar o resto: as outras estações são
+    # salvas e o site é publicado. Só para com erro (e o GitHub manda e-mail) se nada foi baixado.
+    if falhas and falhas == tentados:
+        sys.exit(f"nenhum mês baixado ({falhas} falhas)")
     if falhas:
-        sys.exit(1)
+        print(f"::warning::{falhas} de {tentados} meses não foram baixados; os dados já salvos foram mantidos")
 
 
 def coletar_bacia(bacia, inicio, so_estacao=None):
@@ -225,7 +230,7 @@ def coletar_bacia(bacia, inicio, so_estacao=None):
     if so_estacao:
         estacoes = [e for e in estacoes if e["codigo"] == so_estacao]
     codigos = [e["codigo"] for e in estacoes]
-    falhas = 0
+    falhas = tentados = 0
 
     for est in estacoes:
         codigo = est["codigo"]
@@ -233,10 +238,11 @@ def coletar_bacia(bacia, inicio, so_estacao=None):
         pasta.mkdir(parents=True, exist_ok=True)
         desde = max(inicio, datetime.strptime(est.get("historico_desde", "2000-01"), "%Y-%m").date())
         for mes in meses(desde):
+            tentados += 1
             try:
                 linhas = baixar_mes_sibh(est, mes) if est.get("fonte") == "spaguas" else baixar_mes(codigo, mes)
             except RuntimeError as erro:
-                print(erro)
+                print(f"::warning::{bacia}: {erro}")
                 falhas += 1
                 continue
             arquivo = pasta / f"{mes:%Y-%m}.json"
@@ -267,7 +273,7 @@ def coletar_bacia(bacia, inicio, so_estacao=None):
     (PASTA / "index.json").write_text(
         json.dumps({"atualizado_em": HOJE.isoformat(), "meses": indice}, separators=(",", ":")), encoding="utf-8"
     )
-    return falhas
+    return falhas, tentados
 
 
 if __name__ == "__main__":
