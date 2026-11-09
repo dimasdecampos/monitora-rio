@@ -227,6 +227,32 @@ Anos com falhas aparecem como **parciais** e podem subestimar picos.
   o histórico antigo vem de `scripts/modelo_cheias/baixar_pluviometro.py`;
 - o aviso costuma vir **6 a 12 h antes**; tempestades localizadas na serra podem escapar.
 
+**Vento do mar e energia de tempestade (testado em nov/2026, sem ganho que valesse).** Hipótese: mesmo
+quando a chuva prevista falha, a previsão mostra os "ingredientes" do temporal — vento soprando do mar
+contra a Serra do Mar (de SE, no litoral de Ubatuba) e CAPE alto (energia para tempestade). Dados da
+Open-Meteo (`scripts/modelo_cheias/baixar_atmosfera.py`); teste em `testar_atmosfera.py`, com o modelo
+treinado até 2023 e testado em fev/2024–out/2026 com vento e CAPE previstos 1–2 dias antes:
+
+| Modelo | 6 h | 12 h | 24 h | Dias com aviso sem cheia |
+|---|---|---|---|---|
+| Passarela, versão P (atual) | 17/20 | 12/20 | 13/20 | 28 |
+| + vento do mar | 17/20 | 12/20 | 13/20 | 27 |
+| + vento do mar e CAPE | 17/20 | 15/20 | 15/20 | **46** |
+| Natividade, versão B (atual) | 9/20 | 5/20 | 6/20 | 52 |
+| + vento do mar | 8/20 | 5/20 | 6/20 | 42 |
+| + vento do mar e CAPE | 9/20 | 6/20 | 7/20 | 56 |
+
+- O vento do mar não acrescenta avisos. No Paraibuna ele corta ~20% dos alarmes falsos, mas perde uma
+  cheia com 6 h.
+- O CAPE avisa 2–3 cheias a mais com 12–24 h na Passarela, mas quase dobra os dias com aviso falso: na
+  prática ele só deixa o modelo mais "nervoso", com efeito parecido ao de baixar o limite de 30% para 20%
+  (testado em nov/2026: +2 cheias com 12 h e +13 dias falsos). Com a régua
+  de Cunha transmitindo (versão BP), piora.
+- Diagnóstico por cheia: em Natividade, 8 das 20 cheias tiveram vento do mar previsto entre os 10% mais
+  fortes da estação, mas outras (ex.: 21/02/2026, 118 mm) não tiveram nem vento do mar nem CAPE alto. Há
+  dois tipos de evento (frente/ar do mar e temporal de verão) e poucos casos de cada um.
+- Vale repetir depois de mais 1–2 estações chuvosas (o CAPE previsto só existe arquivado desde 2022/2024).
+
 **Gatilho rio acima (Barro Vermelho)** — com a cidade abaixo da atenção, se a régua de Lagoinha –
 Barro Vermelho (`sp662`, ~9 h até a cidade) sobe **60 cm ou mais em 12 h**, o painel mostra *risco
 alto* e o robô avisa risco de atenção, mesmo com chance do modelo abaixo de 30%
@@ -391,7 +417,7 @@ scripts/
   supabase/                SQL do Web Push (monitora_push.sql) e do disparo dos robôs (monitora_disparo.sql)
   montar_site.py           copia os modelos para cada bacia e confere as configurações
   baixar_chuva_era5.py     chuva estimada (ERA5) nos pontos de uma bacia, para chuva × subida
-  modelo_cheias/           previsão do Paraitinga: chuva (ERA5, previsões arquivadas), treino e testes
+  modelo_cheias/           previsão: chuva (ERA5, previsões arquivadas), vento e CAPE (testes), treino e testes
 android/                   gera o app Android (app.json + gerar.js), usado pelo workflow app-android.yml
 playstore/                 publicar na Play Store: passo a passo (LEIAME.md), textos, imagens
   dominio/                 arquivos do repositório dimasdecampos.github.io (verificação do app)
