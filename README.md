@@ -317,11 +317,13 @@ ou desliga a região.
 
 ## Avisos
 
-- **No aparelho (Web Push):** botão "Avisar neste aparelho". O celular se inscreve na bacia
+- **No aparelho (Web Push):** botão "Avisar neste aparelho" (no celular fica no sininho do topo e em
+  *Receber avisos*, no menu ☰, para o gráfico aparecer mais cedo). O celular se inscreve na bacia
   (tabela `monitora_push` no Supabase, projeto estoura; SQL em `scripts/supabase/monitora_push.sql`)
   e o robô manda a notificação mesmo com o app fechado. Precisa dos segredos `VAPID_PRIVATE_KEY`
   e `MONITORA_PUSH_TOKEN` no GitHub. Sem suporte a push (ex.: iPhone sem o app instalado), o
-  painel avisa enquanto estiver aberto. Para desligar, use o rodapé.
+  painel avisa enquanto estiver aberto. Para desligar, use o rodapé (ou, no celular, o sininho).
+  Uma vez por dia o robô faz uma consulta leve ao Supabase, para o projeto não ser pausado por falta de uso.
 - **Robô de avisos:** `scripts/alertas.py` roda a cada ~10 min (`.github/workflows/alertas.yml`)
   para todas as bacias. Avisa quando a régua principal muda de cota, a água sobe ≥ 20 cm
   em 3 h rio acima (com tempo de chegada), há risco de represamento ou a previsão passa de
@@ -414,6 +416,7 @@ scripts/
   estatisticas.py          gera estatisticas.json de cada bacia
   alertas.py               robô de avisos (ntfy, Telegram, WhatsApp)
   testar_previsao.py       confere se o painel e o robô calculam a mesma chance de cheia
+  testar_alertas.py        cheia simulada: o robô manda um aviso por mudança de cota, sem repetir
   supabase/                SQL do Web Push (monitora_push.sql) e do disparo dos robôs (monitora_disparo.sql)
   montar_site.py           copia os modelos para cada bacia e confere as configurações
   baixar_chuva_era5.py     chuva estimada (ERA5) nos pontos de uma bacia, para chuva × subida
@@ -434,6 +437,7 @@ python scripts/estatisticas.py                    # recalcula as estatísticas
 python scripts/montar_site.py                     # monta as páginas e confere os config.json
 python scripts/alertas.py --bacia paraibuna       # testa os avisos (sem canais: só mostra)
 python scripts/testar_previsao.py                 # painel e robô calculam a mesma chance? (precisa do Node; roda a cada publicação)
+python scripts/testar_alertas.py                  # robô de avisos com uma cheia simulada (não manda nada; roda a cada publicação)
 ```
 
 Para refazer os modelos, siga a ordem descrita em `scripts/modelo_cheias/exportar.py`

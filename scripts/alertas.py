@@ -411,9 +411,25 @@ def main():
             erros += verificar(bacia, enviar)
         except Exception as e:   # uma bacia com problema não impede as outras
             print(f"{bacia}: erro {e!r}"); erros += 1
+    acordar_supabase()
     vigia(erros)
     if erros:   # rodada vermelha no GitHub (e e-mail para o dono do repositório)
         sys.exit(f"{erros} problema(s) nesta rodada")
+
+
+def acordar_supabase():
+    """Uma consulta leve por dia ao Supabase. No plano gratuito, um projeto sem uso por ~1 semana é pausado;
+    na seca o robô passa semanas sem mandar aviso, e a primeira cheia sairia sem Web Push."""
+    token = os.environ.get("MONITORA_PUSH_TOKEN")
+    arq = PASTA_ESTADO / "supabase.json"
+    if not token: return
+    try:
+        if arq.exists() and time.time() - json.loads(arq.read_text()).get("ultimo", 0) < 86400: return
+        n = len(supabase_rpc("monitora_listar", {"p_token": token, "p_bacia": comum.bacias()[0]}) or [])
+        PASTA_ESTADO.mkdir(exist_ok=True); arq.write_text(json.dumps({"ultimo": time.time()}))
+        print(f"Supabase respondeu ({n} aparelho(s) inscrito(s) em {comum.bacias()[0]})")
+    except Exception as e:   # não derruba a rodada: os outros canais de aviso não dependem do Supabase
+        print("::warning::Supabase não respondeu à consulta diária:", e)
 
 
 def vigia(erros):

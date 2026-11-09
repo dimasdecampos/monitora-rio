@@ -61,7 +61,7 @@
   [hidden] { display: none !important; }
   /* previsão de 48 h, "o que alaga" e avisos são da cidade: em outra estação (rio acima, afluente) não aparecem,
      para não parecer que aquele ponto está sendo analisado */
-  body[data-oficial="0"] :is(#cardPrev, #cardImpacto, #cardAvisos, #menuAvisos) { display: none !important; }
+  body[data-oficial="0"] :is(#cardPrev, #cardImpacto, #cardAvisos, #menuAvisos, #btnSino) { display: none !important; }
   html { -webkit-text-size-adjust: 100%; }
   body { margin: 0; background: var(--plano); color: var(--tinta); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   button, select { font: inherit; color: inherit; }
@@ -445,6 +445,12 @@
   .menu a:hover { background: var(--superficie-2); color: var(--tinta); }
   .menu a[aria-current="page"] { color: var(--tinta); background: var(--superficie-2); }
   .hamb { display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 10px; background: var(--superficie-2); color: var(--tinta); cursor: pointer; }
+  /* sininho: bolinha azul = avisos ainda desligados; verde e cheio = ligados */
+  .sino { position: relative; }
+  .sino::after { content: ""; position: absolute; top: 8px; right: 9px; width: 8px; height: 8px; border-radius: 50%; background: var(--acento); box-shadow: 0 0 0 2px var(--superficie-2); }
+  .sino.ligado { color: var(--bom); }
+  .sino.ligado::after { display: none; }
+  .sino.ligado svg path:first-child { fill: currentColor; }
   .menu.aberto { display: flex; flex-direction: column; gap: 2px; position: absolute; top: 100%; left: 0; right: 0; padding: 8px 12px 12px;
                  background: var(--plano); border-bottom: 1px solid var(--borda); box-shadow: 0 12px 24px rgba(0,0,0,.12); }
   .menu.aberto a { padding: 12px; font-size: 16px; }
@@ -508,6 +514,7 @@
     </nav>
     <div class="dir">
       <span class="vivo" id="vivo"><i></i><span id="vivoTxt">Carregando…</span></span>
+      <button class="hamb sino" id="btnSino" aria-label="Receber avisos" title="Receber avisos"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.6a5 5 0 0 0-5 5v3.1l-1.5 2.9v.9h13v-.9L15 10.7V7.6a5 5 0 0 0-5-5Z" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/><path d="M8.2 16.6a1.9 1.9 0 0 0 3.6 0" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round"/></svg></button>
       <button class="hamb" id="btnMenu" aria-label="Abrir menu" aria-expanded="false" aria-controls="menu"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5.5h14M3 10h14M3 14.5h14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg></button>
     </div>
   </div>
@@ -2458,6 +2465,8 @@ function configurarAvisos() {
     // na folha do celular o cartão fica sempre disponível, com o botão trocando para "Desligar avisos"
     $("#cardAvisos").hidden = !mqCel.matches && ativo && $("#btnInstalar").hidden && $("#lnkTelegram").hidden;
     btn.hidden = ativo && !mqCel.matches;
+    $("#btnSino").classList.toggle("ligado", ativo);
+    $("#btnSino").title = ativo ? "Avisos ligados" : "Receber avisos"; $("#btnSino").setAttribute("aria-label", $("#btnSino").title);
     if (mqCel.matches && typeof Notification !== "undefined") {
       btn.textContent = ativo ? "Desligar avisos" : textoBotao; btn.classList.toggle("sec", ativo);
       if (ativo) $("#avisoTexto").textContent = ler("push", false) ? "Avisos ligados neste aparelho (chegam mesmo com o app fechado)." : "Avisos ligados neste aparelho (com o painel aberto).";
@@ -2481,7 +2490,8 @@ function configurarAvisos() {
   };
   lugar(); atualizar();
   mqCel.addEventListener("change", () => { lugar(); atualizar(); });
-  $("#menuAvisos").addEventListener("click", ev => { ev.preventDefault(); atualizar(); $("#folhaAvisos").showModal(); });
+  const abrirAvisos = ev => { ev.preventDefault(); atualizar(); $("#folhaAvisos").showModal(); };
+  $("#menuAvisos").addEventListener("click", abrirAvisos); $("#btnSino").addEventListener("click", abrirAvisos);
   $("#folhaAvisos").addEventListener("click", ev => { if (ev.target === ev.currentTarget) ev.currentTarget.close(); });   // toque fora fecha
   addEventListener("visibilitychange", () => { if (!document.hidden) atualizar(); });   // volta das configurações do Android
   // mantém a inscrição em dia (o navegador às vezes troca as chaves); uma vez por dia
@@ -2563,11 +2573,20 @@ function mostrarVista(v) {
   if (v === "graficos") desenharGraficos(); else setTimeout(redimensionar, 0);
   scrollTo(0, 0);
 }
+// topo: no celular o nome completo da régua não cabe; mostra o nome curto (o completo fica na lista de estações)
+const mqTopo = matchMedia("(max-width: 520px)");
+function nomeTopo() {
+  const e = estacoes[estado.estacao]; if (!e) return;
+  const c = e.curto || e.nome;
+  $("#selNome").textContent = mqTopo.matches ? c[0].toUpperCase() + c.slice(1) : e.nome;
+  $("#selNome").title = e.nome;
+}
+mqTopo.addEventListener("change", nomeTopo);
 async function trocarEstacao(cod) {
   estado.estacao = cod; estado.destaques = new Map(); estado.janela = null;
   marcarOficial();
   const est = estacoes[cod];
-  $("#selRio").textContent = est.rio; $("#selNome").textContent = est.nome;
+  $("#selRio").textContent = est.rio; nomeTopo();
   $("#principal").classList.add("carregando");
   try {
     await carregar(cod);

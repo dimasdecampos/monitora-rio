@@ -53,6 +53,9 @@ jobs:
       - name: Conferir se o painel e o robô de avisos calculam a mesma chance de cheia
         run: python scripts/testar_previsao.py
 
+      - name: Conferir o robô de avisos com uma cheia simulada (um aviso por mudança, sem repetir)
+        run: python scripts/testar_alertas.py
+
       - name: Montar o site (painel e modo TV em cada bacia) e conferir as configurações
         run: python scripts/montar_site.py
 
