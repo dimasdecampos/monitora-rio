@@ -70,6 +70,7 @@
   .nivel { text-align: right; flex: none; }
   .nivel b { display: block; font-size: 26px; font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1.1; }
   .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 650; }
+  .quando { display: block; font-size: 13px; color: var(--tinta-2); margin-top: 3px; font-variant-numeric: tabular-nums; }
   .pill i { width: 9px; height: 9px; border-radius: 50%; background: var(--cor, var(--neutro)); }
   .grafico { display: block; width: 100%; height: 64px; margin-top: 10px; }
   .grafico path.linha { fill: none; stroke: var(--cor, var(--neutro)); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
@@ -247,7 +248,11 @@ function mostrarGrafico(card) {
         const [nome, cor] = c ? [c[1], c[2]] : temCotas ? ["Normal", "--bom"] : ["Sem cotas", "--neutro"];
         const velho = Date.now() - u.t > 3 * 36e5;
         card.style.setProperty("--cor", `var(${velho ? "--neutro" : cor})`);
-        nv.innerHTML = `<b>${fmt(u.v / 100)} m</b><span class="pill"><i></i>${velho ? "leitura atrasada" : nome} · ${esc(e.curto || e.nome)}</span>`;
+        const min = Math.max(0, Math.round((Date.now() - u.t) / 6e4));
+        const ha = min < 2 ? "agora" : min < 60 ? `há ${min} min` : min < 1440 ? `há ${Math.round(min / 60)} h` : `há ${Math.round(min / 1440)} d`;
+        const ref = pts.findLast(q => q.t <= u.t - 3 * 36e5), tx = ref ? (u.v - ref.v) / ((u.t - ref.t) / 36e5) : null;   // cm/h nas últimas ~3 h
+        const tend = tx == null || velho ? "" : Math.abs(tx) < 1 ? " · ▬ estável" : tx > 0 ? ` · ▲ subindo ${fmt(tx, 0)} cm/h` : ` · ▼ baixando ${fmt(-tx, 0)} cm/h`;
+        nv.innerHTML = `<b>${fmt(u.v / 100)} m</b><span class="pill"><i></i>${velho ? "leitura atrasada" : nome} · ${esc(e.curto || e.nome)}</span><span class="quando">${ha}${tend}</span>`;
         card._pts = pts; card._e = e;
         mostrarGrafico(card);
       };

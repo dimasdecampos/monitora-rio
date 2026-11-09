@@ -66,7 +66,7 @@
   body { margin: 0; background: var(--plano); color: var(--tinta); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   button, select { font: inherit; color: inherit; }
   a { color: var(--acento); }
-  .rot { font-size: 11.5px; color: var(--tinta-3); text-transform: uppercase; letter-spacing: .06em; font-weight: 650; }
+  .rot { font-size: 12px; color: var(--tinta-3); text-transform: uppercase; letter-spacing: .06em; font-weight: 650; }
 
   /* ---------- barra do topo ---------- */
   .barra { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--plano) 85%, transparent);
@@ -115,7 +115,7 @@
   .medidor .trilho { position: relative; height: 10px; border-radius: 6px; background: var(--superficie-2); overflow: visible; }
   .medidor .agua { position: absolute; inset: 0 auto 0 0; border-radius: 6px; background: linear-gradient(90deg, color-mix(in srgb, var(--acento) 55%, transparent), var(--acento)); transition: width .6s; }
   .medidor .marca { position: absolute; top: -4px; bottom: -4px; width: 2px; border-radius: 1px; }
-  .medidor .escala { position: relative; height: 16px; font-size: 11px; color: var(--tinta-3); margin-top: 6px; }
+  .medidor .escala { position: relative; height: 16px; font-size: 12px; color: var(--tinta-3); margin-top: 6px; }
   .medidor .escala span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
   .hero p { margin: 0; font-size: 14px; color: var(--tinta-2); position: relative; }
   .hero p strong { color: var(--tinta); }
@@ -153,9 +153,21 @@
   .leitura .vals i { width: 10px; height: 3px; border-radius: 2px; display: inline-block; align-self: center; }
   .leitura .vals i.barra { height: 9px; width: 6px; border-radius: 2px; }
 
+  /* celular: o gráfico sobe na tela (menos botões e legendas antes dele) */
+  @media (max-width: 520px) {
+    #cardGrafico > .cab .sub { display: none; }
+    #cardGrafico .seg button { padding: 7px 10px; font-size: 13.5px; }
+    #cardGrafico .seg.grande button { padding: 8px 10px; font-size: 15px; }
+    #cardGrafico .controles { margin: 10px 0 8px; gap: 6px; }
+    .leitura { min-height: 0; padding: 8px 12px; gap: 2px; }
+    .leitura .vals { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 4px 12px; padding-right: 24px;
+                     -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); }
+    .leitura .vals::-webkit-scrollbar { display: none; }
+  }
+
   .area-g { position: relative; height: 300px; touch-action: pan-y; }
   .area-chuva { position: relative; height: 92px; margin-top: 2px; touch-action: pan-y; }
-  .area-chuva .rot-chuva { position: absolute; left: 50px; top: 0; font-size: 11px; color: var(--tinta-3); font-weight: 600; pointer-events: none; }
+  .area-chuva .rot-chuva { position: absolute; left: 50px; top: 0; font-size: 12px; color: var(--tinta-3); font-weight: 600; pointer-events: none; }
 
   .nav { position: relative; height: 46px; margin-top: 10px; border-radius: 10px; background: var(--superficie-2); touch-action: none; user-select: none; cursor: pointer; }
   .nav svg { position: absolute; inset: 6px 0; width: 100%; height: calc(100% - 12px); }
@@ -174,7 +186,7 @@
          padding: 6px 12px 6px 10px; font-size: 13.5px; cursor: pointer; color: var(--tinta-2); font-variant-numeric: tabular-nums; }
   .ano i { width: 14px; height: 4px; border-radius: 2px; background: var(--neutro); }
   .ano[aria-pressed="true"] { color: var(--tinta); font-weight: 650; border-color: var(--eixo); }
-  .ano em { font-style: normal; font-size: 11px; color: var(--tinta-3); font-weight: 400; }
+  .ano em { font-style: normal; font-size: 12px; color: var(--tinta-3); font-weight: 400; }
 
   .area-chuva.bacia { height: 130px; }
   @media (min-width: 900px) { .area-chuva.bacia { height: 160px; } }
@@ -189,7 +201,7 @@
                       padding: 6px 10px; font-size: 13px; cursor: pointer; color: var(--tinta); text-align: left; }
   .leg-chuva button i { width: 12px; height: 12px; border-radius: 3px; flex: none; }
   .leg-chuva button b { font-variant-numeric: tabular-nums; }
-  .leg-chuva button small { color: var(--tinta-3); font-size: 11.5px; display: block; }
+  .leg-chuva button small { color: var(--tinta-3); font-size: 12px; display: block; }
   .leg-chuva button[aria-pressed="false"] { opacity: .45; }
   .leg-chuva button[aria-pressed="false"] i { background: var(--neutro) !important; }
   .leg-agora { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--tinta-2); margin-top: 10px; }
@@ -205,7 +217,7 @@
   .linha:last-child { border-bottom: 0; }
   .linha:hover { background: var(--superficie-2); }
   .linha .ano-n { font-weight: 650; font-variant-numeric: tabular-nums; font-size: 14px; }
-  .linha .ano-n em { display: block; font-style: normal; font-size: 11px; color: var(--tinta-3); font-weight: 500; }
+  .linha .ano-n em { display: block; font-style: normal; font-size: 12px; color: var(--tinta-3); font-weight: 500; }
   .linha .trilho { position: relative; height: 12px; border-radius: 4px; background: var(--superficie-2); }
   .linha .enche { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--neutro); }
   .linha .marca { position: absolute; top: -3px; bottom: -3px; width: 2px; border-radius: 1px; opacity: .9; }
@@ -221,7 +233,7 @@
   /* ---------- mapa de calor ---------- */
   .rolagem { overflow-x: auto; margin: 0 -18px; padding: 0 18px; }
   table.calor { border-collapse: separate; border-spacing: 2px; width: 100%; min-width: 560px; font-variant-numeric: tabular-nums; }
-  table.calor th { font-size: 11.5px; font-weight: 600; color: var(--tinta-3); padding: 3px; }
+  table.calor th { font-size: 12px; font-weight: 600; color: var(--tinta-3); padding: 3px; }
   table.calor th[scope="row"] { text-align: right; padding-right: 8px; color: var(--tinta-2); position: sticky; left: 0; background: var(--superficie); }
   table.calor td { height: 30px; text-align: center; font-size: 12px; border-radius: 4px; background: var(--superficie-2); color: var(--tinta-3); }
   table.calor td.max { box-shadow: inset 0 0 0 2px var(--tinta); font-weight: 700; }
@@ -235,7 +247,7 @@
   ol.cheias li:last-child { border-bottom: 0; }
   ol.cheias li::before { content: counter(c); grid-row: span 2; color: var(--tinta-3); font-size: 13px; font-weight: 600; text-align: center; }
   ol.cheias .quando { font-weight: 600; font-size: 14px; }
-  ol.cheias .quando em { font-style: normal; font-size: 11px; font-weight: 700; color: var(--acento); margin-left: 6px; text-transform: uppercase; letter-spacing: .04em; }
+  ol.cheias .quando em { font-style: normal; font-size: 12px; font-weight: 700; color: var(--acento); margin-left: 6px; text-transform: uppercase; letter-spacing: .04em; }
   ol.cheias .pico { font-weight: 750; font-size: 17px; text-align: right; font-variant-numeric: tabular-nums; }
   ol.cheias .extra { font-size: 12px; color: var(--tinta-2); }
   ol.cheias .pill { justify-self: end; font-size: 12px; padding: 2px 9px 2px 7px; }
@@ -271,7 +283,7 @@
   .prev-frase { margin: 0; font-size: 14px; color: var(--tinta-2); }
   .prev-frase strong { color: var(--tinta); }
   .dias-chuva { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; align-items: end; height: 118px; }
-  .dia-ch { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; height: 100%; font-size: 11.5px; color: var(--tinta-2); min-width: 0; }
+  .dia-ch { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; height: 100%; font-size: 12px; color: var(--tinta-2); min-width: 0; }
   .dia-ch .col { width: 100%; max-width: 30px; border-radius: 4px 4px 2px 2px; background: var(--chuva); min-height: 2px; position: relative; }
   .dia-ch .col.passado { background: color-mix(in srgb, var(--chuva) 45%, transparent); }
   .dia-ch .faixa-ens { position: absolute; left: 50%; width: 2px; transform: translateX(-50%); background: var(--tinta-3); bottom: 0; }
@@ -310,7 +322,7 @@
   ol.escada li.marcador::before { content: ""; flex: 1; height: 2px; background: currentColor; order: 2; }
   ol.escada li.marcador.agora { color: var(--acento); }
   ol.escada li.marcador.prev { color: var(--alerta); }
-  ol.escada li em { font-style: normal; font-size: 11px; color: var(--tinta-3); }
+  ol.escada li em { font-style: normal; font-size: 12px; color: var(--tinta-3); }
   .mapa-box { min-width: 0; }
   .impacto.so-escada { grid-template-columns: minmax(0, 1fr) !important; }
   .mapa { height: 340px; border-radius: 12px; overflow: hidden; background: var(--superficie-2); position: relative; z-index: 0; isolation: isolate; }
@@ -350,7 +362,7 @@
   ol.linha-tempo strong { display: block; font-size: 15px; }
   ol.linha-tempo .nv { font-size: 13px; font-weight: 650; color: var(--tinta); }
   ol.linha-tempo p { margin: 3px 0 0; font-size: 13.5px; color: var(--tinta-2); max-width: 80ch; }
-  ol.linha-tempo small { font-size: 11.5px; color: var(--tinta-3); }
+  ol.linha-tempo small { font-size: 12px; color: var(--tinta-3); }
   ol.linha-tempo .barra-h { height: 6px; border-radius: 3px; background: var(--acento); margin-top: 6px; max-width: 360px; }
 
   /* ---------- fontes ---------- */
@@ -389,7 +401,7 @@
     ol.trecho li.no svg { display: none; }
     ol.trecho li.no strong { white-space: normal; }
   }
-  .mini-pill { font-size: 11px; font-weight: 700; padding: 0 6px; border-radius: 4px; color: #fff; margin-left: 6px; vertical-align: 1px; }
+  .mini-pill { font-size: 12px; font-weight: 700; padding: 0 6px; border-radius: 4px; color: #fff; margin-left: 6px; vertical-align: 1px; }
 
   /* ---------- folha de estações ---------- */
   dialog.folha { border: 0; padding: 0; margin: auto auto 0; width: 100%; max-width: 560px; max-height: 85vh; border-radius: 22px 22px 0 0;
@@ -406,8 +418,8 @@
   .op-est strong { font-size: 15px; }
   .op-est small { font-size: 12px; color: var(--tinta-2); grid-column: 1; }
   .op-est .nv { grid-row: 1 / 3; grid-column: 2; text-align: right; font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums; }
-  .op-est .nv small { display: block; font-size: 11px; font-weight: 500; color: var(--tinta-3); }
-  .selo { font-size: 10px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; color: var(--acento); border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; margin-left: 6px; vertical-align: 2px; }
+  .op-est .nv small { display: block; font-size: 12px; font-weight: 500; color: var(--tinta-3); }
+  .selo { font-size: 11px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; color: var(--acento); border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; margin-left: 6px; vertical-align: 2px; }
 
   /* ---------- menu e vistas ---------- */
   body[data-vista="inicio"] [data-vista="graficos"], body[data-vista="graficos"] [data-vista="inicio"] { display: none !important; }
@@ -525,8 +537,8 @@
       <button data-modo="comparar" role="tab">Comparar anos</button>
     </div>
     <div class="controles" id="ctrlAgora">
-      <div class="seg" id="modoChuva" aria-label="Chuva mostrada no gráfico">
-        <button data-c="regua">Chuva na régua</button><button data-c="bacia">Chuva na bacia</button>
+      <div class="seg" id="modoChuva" role="group" aria-label="Chuva mostrada no gráfico">
+        <button data-c="regua" title="Chuva medida na régua da cidade">Chuva: régua</button><button data-c="bacia" title="Chuva em cada região da bacia">Chuva: bacia</button>
       </div>
       <div class="seg" id="janelas">
         <button data-d="1">24 h</button><button data-d="3">3 dias</button><button data-d="7">7 dias</button><button data-d="30">30 dias</button>
@@ -1027,9 +1039,9 @@ const pluginCotas = {
       const py = Math.round(y.getPixelForValue(v)) + .5;
       ctx.strokeStyle = tok(n.cor); ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
       ctx.beginPath(); ctx.moveTo(a.left, py); ctx.lineTo(a.right, py); ctx.stroke(); ctx.setLineDash([]);
-      ctx.font = "600 10.5px system-ui"; ctx.textAlign = "right"; ctx.textBaseline = "bottom";
+      ctx.font = "600 11.5px system-ui"; ctx.textAlign = "right"; ctx.textBaseline = "bottom";
       const t = n.nome, w = ctx.measureText(t).width;
-      ctx.fillStyle = tok("--superficie"); ctx.globalAlpha = .85; ctx.fillRect(a.right - w - 8, py - 14, w + 6, 13); ctx.globalAlpha = 1;
+      ctx.fillStyle = tok("--superficie"); ctx.globalAlpha = .95; ctx.fillRect(a.right - w - 8, py - 15, w + 6, 14); ctx.globalAlpha = 1;
       ctx.fillStyle = tok("--tinta-2"); ctx.fillText(t, a.right - 4, py - 2);
     }
     ctx.restore();
@@ -1121,9 +1133,9 @@ function opcoesBase() {
     elements: { point: { hoverRadius: 0, radius: 0 } },
     scales: {
       x: { type: "linear", grid: { color: grade, drawTicks: false }, border: { color: tok("--eixo") },
-           ticks: { color: t3, padding: 6, font: { size: 11.5 }, maxRotation: 0, autoSkipPadding: 22, align: "inner", maxTicksLimit: innerWidth < 700 ? 5 : 9 } },
+           ticks: { color: t3, padding: 6, font: { size: 12 }, maxRotation: 0, autoSkipPadding: 22, align: "inner", maxTicksLimit: innerWidth < 700 ? 5 : 9 } },
       y: { grid: { color: grade, drawTicks: false }, border: { display: false }, afterFit: ax => { ax.width = LARGURA_Y; },
-           ticks: { color: t3, padding: 6, font: { size: 11.5 }, maxTicksLimit: 6 } },
+           ticks: { color: t3, padding: 6, font: { size: 12 }, maxTicksLimit: 6, includeBounds: false } },
     },
     onHover: (ev, _, chart) => moverCursor(ev, chart),
   };

@@ -52,7 +52,7 @@
   .corpo { display: grid; grid-template-columns: minmax(0, 38fr) minmax(0, 62fr); gap: 1.6vmin; min-height: 0; }
   .lado { display: flex; flex-direction: column; gap: 1.6vmin; min-height: 0; }
   .card { background: var(--superficie); border: 1px solid var(--borda); border-radius: 1.6vmin; padding: 2vmin 2.4vmin; min-height: 0; }
-  .rot { font-size: 1.5vmin; color: var(--tinta-3); text-transform: uppercase; letter-spacing: .08em; font-weight: 650; }
+  .rot { font-size: 1.8vmin; color: var(--tinta-3); text-transform: uppercase; letter-spacing: .08em; font-weight: 650; }
 
   /* nível agora */
   .agora { display: grid; grid-template-columns: 1fr auto; gap: 2vmin; position: relative; overflow: hidden;
@@ -65,51 +65,51 @@
   .info { display: flex; flex-direction: column; min-width: 0; }
   .status { display: inline-flex; align-items: center; gap: 1.2vmin; font-size: 4.6vmin; font-weight: 800; letter-spacing: -.01em; margin-top: 1vmin; }
   .status i { width: 3vmin; height: 3vmin; border-radius: 50%; background: var(--cor-status); }
-  .num { font-size: 19vmin; font-weight: 800; line-height: .95; letter-spacing: -.04em; font-variant-numeric: tabular-nums; margin-top: 1.5vmin; }
+  .num { font-size: 17vmin; font-weight: 800; line-height: .95; letter-spacing: -.04em; font-variant-numeric: tabular-nums; margin-top: 1.5vmin; }
   .num small { font-size: 6vmin; font-weight: 600; color: var(--tinta-2); margin-left: 1vmin; letter-spacing: 0; }
   .tend { font-size: 3.4vmin; font-weight: 700; margin-top: 1.4vmin; }
   .tend .sobe { color: var(--sobe); } .tend .desce { color: var(--desce); }
   .tend span { color: var(--tinta-2); font-weight: 500; font-size: 2.6vmin; margin-left: 1vmin; }
-  .hora { font-size: 2vmin; color: var(--tinta-2); margin-top: auto; padding-top: 1.4vmin; }
+  .hora { font-size: 2.2vmin; color: var(--tinta-2); margin-top: auto; padding-top: 1.4vmin; }
   .nota { font-size: 1.8vmin; color: var(--atencao); margin-top: .8vmin; font-weight: 600; }
   .nota:empty { display: none; }
 
   /* régua vertical com as cotas */
   .regua { width: 17vmin; position: relative; margin: 1vmin 0 1vmin; }
-  .fatos { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6vmin 2vmin; margin-top: 3vmin; padding-top: 2vmin; border-top: 1px solid var(--borda); }
-  .fatos b { display: block; font-size: 3.4vmin; font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1.15; }
-  .fatos span { font-size: 1.6vmin; color: var(--tinta-2); }
+  .fatos { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6vmin 2vmin; margin-top: 3vmin; padding-top: 2vmin; border-top: 1px solid var(--borda); flex: 1; align-content: space-evenly; }
+  .fatos b { display: block; font-size: 4.4vmin; font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .fatos span { font-size: 2vmin; color: var(--tinta-2); }
   .regua .tubo { position: absolute; left: 0; width: 3.2vmin; top: 0; bottom: 0; border-radius: 1.6vmin; background: var(--superficie-2); overflow: hidden; }
   .regua .agua { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(0deg, var(--acento), color-mix(in srgb, var(--acento) 45%, transparent)); transition: height 1s; }
-  .regua .cota { position: absolute; left: 0; right: 0; height: 0; border-top: .35vmin solid; }
-  .regua .cota span { position: absolute; left: 4.2vmin; transform: translateY(-55%); font-size: 1.5vmin; white-space: nowrap; color: var(--tinta-2); line-height: 1.1; }
-  .regua .cota span b { display: block; color: var(--tinta); font-size: 1.8vmin; }
+  .regua .cota { position: absolute; left: 0; width: 3.8vmin; height: 0; border-top: .35vmin solid; }
+  .regua .cota span { position: absolute; left: 5vmin; top: 0; transform: translateY(-50%); font-size: 1.8vmin; white-space: nowrap; color: var(--tinta-2); line-height: 1.1; }
+  .regua .cota span b { display: block; color: var(--tinta); font-size: 2.1vmin; }
 
   /* chuva e rio acima */
   .linha { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2vmin; margin-top: 1.2vmin; }
-  .mini b { display: block; font-size: 4vmin; font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1.1; }
-  .mini b small { font-size: 2vmin; color: var(--tinta-2); font-weight: 500; }
-  .mini span { font-size: 1.6vmin; color: var(--tinta-2); }
-  .mini .depois { display: block; font-size: 1.6vmin; color: var(--tinta-2); }
-  .mini .depois b { display: inline; font-size: 2vmin; font-weight: 700; color: var(--tinta); }
+  .mini b { display: block; font-size: 5vmin; font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .mini b small { font-size: 2.4vmin; color: var(--tinta-2); font-weight: 500; }
+  .mini span { font-size: 1.9vmin; color: var(--tinta-2); }
+  .mini .depois { display: block; font-size: 1.9vmin; color: var(--tinta-2); }
+  .mini .depois b { display: inline; font-size: 2.3vmin; font-weight: 700; color: var(--tinta); }
   .acima { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.2vmin; margin-top: 1.2vmin; }
   .est { background: var(--superficie-2); border-radius: 1.2vmin; padding: 1.2vmin 1.4vmin; border-left: .6vmin solid var(--cor, var(--tinta-3)); min-width: 0; }
-  .est .n { font-size: 1.6vmin; color: var(--tinta-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .est .n { font-size: 1.9vmin; color: var(--tinta-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .est b { display: block; font-size: 3.4vmin; font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1.15; }
-  .est .d { font-size: 1.7vmin; font-weight: 650; }
+  .est .d { font-size: 2vmin; font-weight: 650; }
   .est .d.sobe { color: var(--sobe); } .est .d.desce { color: var(--desce); }
-  .est .t { font-size: 1.5vmin; color: var(--tinta-3); }
+  .est .t { font-size: 1.8vmin; color: var(--tinta-2); }
 
   /* gráfico */
   .grafico { display: flex; flex-direction: column; flex: 1; }
   [hidden] { display: none !important; }
   .grafico .cab { display: flex; align-items: baseline; gap: 2vmin; }
-  .grafico .leg { margin-left: auto; display: flex; gap: 1.8vmin; font-size: 1.6vmin; color: var(--tinta-2); }
+  .grafico .leg { margin-left: auto; display: flex; gap: 1.8vmin; font-size: 1.9vmin; color: var(--tinta-2); }
   .grafico .leg i { display: inline-block; width: 2vmin; height: .5vmin; vertical-align: middle; margin-right: .6vmin; border-radius: .3vmin; }
   .grafico .area { position: relative; flex: 1; min-height: 0; margin-top: 1vmin; }
 
-  .rodape { display: flex; gap: 2vmin; font-size: 1.6vmin; color: var(--tinta-3); }
-  .rodape b { color: var(--tinta-2); }
+  .rodape { display: flex; gap: 2vmin; font-size: 2vmin; color: var(--tinta-2); }
+  .rodape b { color: var(--tinta); }
   .rodape .dir { margin-left: auto; }
 
   /* tela em pé (celular, tablet ou monitor vertical) */
@@ -372,10 +372,10 @@ function desenharGrafico(ls) {
   const max = Math.max(cl.length ? cl.at(-1).cm / 100 + .2 : 0, ymax + Math.max(.15, (ymax - ymin) * .15));
   const min = Math.max(0, ymin - Math.max(.3, (ymax - ymin) * .15));
   const visiveis = cl.filter(n => n.cm / 100 <= max + .01);
-  const ds = [{ data: pts, borderColor: tok("--acento"), borderWidth: 4, pointRadius: 0, tension: .25, fill: "start",
+  const ds = [{ data: pts, order: 0, borderColor: tok("--acento"), borderWidth: 4, pointRadius: 0, tension: .25, fill: "start",
                 backgroundColor: tok("--acento") + "33" }];
-  for (const n of visiveis) ds.push({ data: [{ x: ini, y: n.cm / 100 }, { x: agora, y: n.cm / 100 }], borderColor: tok(n.cor),
-                                      borderWidth: 2, borderDash: [10, 8], pointRadius: 0, fill: false });
+  for (const n of visiveis) ds.push({ data: [{ x: ini, y: n.cm / 100 }, { x: agora, y: n.cm / 100 }], order: 1, borderColor: tok(n.cor) + "b3",
+                                      borderWidth: 1.5, borderDash: [10, 8], pointRadius: 0, fill: false });
   $("#leg").innerHTML = `<span><i style="background:${tok("--acento")}"></i>Nível</span>` +
     visiveis.slice().reverse().map(n => `<span><i style="background:${tok(n.cor)}"></i>${n.nome} ${fmt(n.cm / 100, 2)} m</span>`).join("");
   const fs = Math.max(11, Math.round(Math.min(innerWidth, innerHeight) * .016));
