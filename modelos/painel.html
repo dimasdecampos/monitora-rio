@@ -61,7 +61,7 @@
   [hidden] { display: none !important; }
   /* previsão de 48 h, "o que alaga" e avisos são da cidade: em outra estação (rio acima, afluente) não aparecem,
      para não parecer que aquele ponto está sendo analisado */
-  body[data-oficial="0"] :is(#cardPrev, #cardImpacto, #cardAvisos) { display: none !important; }
+  body[data-oficial="0"] :is(#cardPrev, #cardImpacto, #cardAvisos, #menuAvisos) { display: none !important; }
   html { -webkit-text-size-adjust: 100%; }
   body { margin: 0; background: var(--plano); color: var(--tinta); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   button, select { font: inherit; color: inherit; }
@@ -124,7 +124,7 @@
   .sem-vivo #hNum, .sem-vivo #hTend, .sem-vivo #hStatus, .sem-vivo #stats .v { opacity: .4; transition: opacity .3s; }
 
   /* ---------- números rápidos ---------- */
-  .stats { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(140px, 1fr); gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory;
+  .stats { display: grid; grid-auto-flow: column; grid-auto-columns: clamp(220px, 64vw, 270px); gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 20px;
            margin: 0 -20px; padding: 2px 20px 6px; scrollbar-width: none; }
   .stats::-webkit-scrollbar { display: none; }
   .stat { scroll-snap-align: start; background: var(--superficie); border: 1px solid var(--borda); border-radius: 16px; padding: 12px 14px; box-shadow: var(--sombra);
@@ -152,6 +152,21 @@
   .leitura .vals b { color: var(--tinta); font-size: 15px; font-variant-numeric: tabular-nums; }
   .leitura .vals i { width: 10px; height: 3px; border-radius: 2px; display: inline-block; align-self: center; }
   .leitura .vals i.barra { height: 9px; width: 6px; border-radius: 2px; }
+
+  /* celular: os botões do gráfico ficam numa guia fechada; o resumo mostra o que está valendo */
+  details.filtros > summary { display: none; }
+  @media (max-width: 899px) {
+    details.filtros > summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; list-style: none;
+                                padding: 10px 12px; border-radius: 12px; background: var(--superficie-2); font-size: 14px; font-weight: 600; color: var(--tinta-2); }
+    details.filtros > summary::-webkit-details-marker { display: none; }
+    details.filtros > summary::after { content: ""; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--tinta-3); border-bottom: 2px solid var(--tinta-3);
+                                       transform: translateY(-2px) rotate(45deg); transition: transform .2s; }
+    details.filtros[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
+    details.filtros > summary:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+    details.filtros > summary span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    details.filtros[open] > summary { margin-bottom: 10px; }
+    details.filtros + .leitura { margin-top: 8px; }
+  }
 
   /* celular: o gráfico sobe na tela (menos botões e legendas antes dele) */
   @media (max-width: 520px) {
@@ -300,6 +315,7 @@
   .prev-carregando { color: var(--tinta-3); font-size: 14px; }
 
   /* ---------- avisos ---------- */
+  #folhaAvisos .card { border: 0; box-shadow: none; background: none; padding: 4px 0 0; }
   .avisos h2 { font-size: 15px; }
   .avisos .sub { margin-bottom: 10px; }
   .botoes-avisos { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -439,6 +455,7 @@
   /* ---------- telas maiores ---------- */
   @media (min-width: 900px) {
     .hamb { display: none; }
+    .menu .so-celular { display: none; }
     .menu { display: flex; gap: 4px; flex: 1; margin-left: 12px; }
     .barra-in { padding: 12px 28px; }
     main { padding: 22px 28px 48px; gap: 20px; }
@@ -486,6 +503,7 @@
       <a href="#inicio" data-v="inicio">Início</a>
       <a href="#graficos" data-v="graficos">Mais gráficos</a>
       <a href="tv.html">Modo TV</a>
+      <a href="#avisos" id="menuAvisos" class="so-celular">Receber avisos</a>
       <a href="../">Outros rios</a>
     </nav>
     <div class="dir">
@@ -499,6 +517,13 @@
   <div class="folha-in">
     <div class="puxador"></div>
     <div id="listaEstacoes"></div>
+  </div>
+</dialog>
+
+<dialog class="folha" id="folhaAvisos" aria-label="Receber avisos">
+  <div class="folha-in">
+    <div class="puxador"></div>
+    <div id="lugarAvisos"></div>
   </div>
 </dialog>
 
@@ -532,27 +557,30 @@
   <section class="card grafico recolhivel" id="cardGrafico">
     <div class="cab" role="button" tabindex="0" aria-expanded="true"><div><h2>Nível e chuva</h2><p class="sub">Últimos dias ou comparação entre anos</p></div><span class="lado"><span class="seta-exp" aria-hidden="true"></span></span></div>
     <div class="corpo">
-    <div class="seg grande" id="modo" role="tablist">
-      <button data-modo="agora" role="tab">Últimos dias</button>
-      <button data-modo="comparar" role="tab">Comparar anos</button>
-    </div>
-    <div class="controles" id="ctrlAgora">
-      <div class="seg" id="modoChuva" role="group" aria-label="Chuva mostrada no gráfico">
-        <button data-c="regua" title="Chuva medida na régua da cidade">Chuva: régua</button><button data-c="bacia" title="Chuva em cada região da bacia">Chuva: bacia</button>
+    <details class="filtros" id="filtros">
+      <summary><span id="filtrosResumo">Filtros</span></summary>
+      <div class="seg grande" id="modo" role="tablist">
+        <button data-modo="agora" role="tab">Últimos dias</button>
+        <button data-modo="comparar" role="tab">Comparar anos</button>
       </div>
-      <div class="seg" id="janelas">
-        <button data-d="1">24 h</button><button data-d="3">3 dias</button><button data-d="7">7 dias</button><button data-d="30">30 dias</button>
+      <div class="controles" id="ctrlAgora">
+        <div class="seg" id="modoChuva" role="group" aria-label="Chuva mostrada no gráfico">
+          <button data-c="regua" title="Chuva medida na régua da cidade">Chuva: régua</button><button data-c="bacia" title="Chuva em cada região da bacia">Chuva: bacia</button>
+        </div>
+        <div class="seg" id="janelas">
+          <button data-d="1">24 h</button><button data-d="3">3 dias</button><button data-d="7">7 dias</button><button data-d="30">30 dias</button>
+        </div>
       </div>
-    </div>
-    <div class="controles" id="ctrlComp" hidden>
-      <div class="seg" id="periodos">
-        <button data-de="1" data-ate="12">Ano</button><button data-de="10" data-ate="3">Chuvoso</button><button data-de="12" data-ate="3">Verão</button><button data-de="10" data-ate="9">Hidrológico</button>
+      <div class="controles" id="ctrlComp" hidden>
+        <div class="seg" id="periodos">
+          <button data-de="1" data-ate="12">Ano</button><button data-de="10" data-ate="3">Chuvoso</button><button data-de="12" data-ate="3">Verão</button><button data-de="10" data-ate="9">Hidrológico</button>
+        </div>
+        <select id="metrica" aria-label="Medida">
+          <option value="nmax">Nível máximo</option><option value="nmed">Nível médio</option><option value="vmed">Vazão</option><option value="chuva">Chuva acumulada</option>
+        </select>
       </div>
-      <select id="metrica" aria-label="Medida">
-        <option value="nmax">Nível máximo</option><option value="nmed">Nível médio</option><option value="vmed">Vazão</option><option value="chuva">Chuva acumulada</option>
-      </select>
-    </div>
 
+    </details>
     <div class="leitura" id="leitura" aria-live="polite"></div>
     <div class="area-g"><canvas id="gPrincipal" aria-label="Gráfico do nível do rio"></canvas></div>
     <div class="area-chuva" id="boxChuva"><span class="rot-chuva" id="rotChuva">Chuva (mm)</span><canvas id="gChuva" aria-label="Gráfico de chuva"></canvas></div>
@@ -2414,7 +2442,11 @@ function verificarAvisos() {
   else if (pr && pr.p >= .3) notificar(`Previsão: ${fmt(pr.p * 100, 0)}% de chance de ${pr.nome.toLowerCase()}`, `Nas próximas 48 h, a régua ${apelido(P)} pode chegar a ${fmt(pr.cm / 100, 2)} m.`, "prev-" + pr.chave, 12);
 }
 function configurarAvisos() {
-  const btn = $("#btnNotif"), textoPadrao = $("#avisoTexto").textContent;
+  const btn = $("#btnNotif"), textoPadrao = $("#avisoTexto").textContent, textoBotao = btn.textContent;
+  // celular: o cartão "Receber avisos" sai da página (o gráfico sobe) e fica numa folha aberta pelo menu
+  const mqCel = matchMedia("(max-width: 899px)");
+  const cartao = $("#cardAvisos"), casa = cartao.parentNode, depois = cartao.nextSibling;
+  const lugar = () => { if (mqCel.matches) $("#lugarAvisos").appendChild(cartao); else if (cartao.parentNode !== casa) casa.insertBefore(cartao, depois); };
   const atualizar = () => {
     // permissão recusada (ou desligada nas configurações do Android): explica como liberar, em vez de não fazer nada
     const bloqueado = typeof Notification !== "undefined" && Notification.permission === "denied";
@@ -2423,8 +2455,13 @@ function configurarAvisos() {
       : textoPadrao;
     const ativo = ler("avisos", false) && typeof Notification !== "undefined" && Notification.permission === "granted";
     // depois de ligado, o cartão some; dá para desligar pelo rodapé
-    $("#cardAvisos").hidden = ativo && $("#btnInstalar").hidden && $("#lnkTelegram").hidden;
-    btn.hidden = ativo;
+    // na folha do celular o cartão fica sempre disponível, com o botão trocando para "Desligar avisos"
+    $("#cardAvisos").hidden = !mqCel.matches && ativo && $("#btnInstalar").hidden && $("#lnkTelegram").hidden;
+    btn.hidden = ativo && !mqCel.matches;
+    if (mqCel.matches && typeof Notification !== "undefined") {
+      btn.textContent = ativo ? "Desligar avisos" : textoBotao; btn.classList.toggle("sec", ativo);
+      if (ativo) $("#avisoTexto").textContent = ler("push", false) ? "Avisos ligados neste aparelho (chegam mesmo com o app fechado)." : "Avisos ligados neste aparelho (com o painel aberto).";
+    }
     $("#avisosRodape").hidden = !ativo;
     $("#avisosRodapeTxt").textContent = ler("push", false) ? "Avisos ligados neste aparelho (chegam mesmo com o app fechado)" : "Avisos ligados neste aparelho (com o painel aberto)";
   };
@@ -2442,7 +2479,10 @@ function configurarAvisos() {
       ? `Você será avisado sobre o ${config.rio} mesmo com o app fechado: cota, água subindo rio acima e previsão de cheia.`
       : "Você será avisado enquanto o painel estiver aberto. Para receber com o app fechado, instale o app.", "teste-" + Date.now(), 0);
   };
-  atualizar();
+  lugar(); atualizar();
+  mqCel.addEventListener("change", () => { lugar(); atualizar(); });
+  $("#menuAvisos").addEventListener("click", ev => { ev.preventDefault(); atualizar(); $("#folhaAvisos").showModal(); });
+  $("#folhaAvisos").addEventListener("click", ev => { if (ev.target === ev.currentTarget) ev.currentTarget.close(); });   // toque fora fecha
   addEventListener("visibilitychange", () => { if (!document.hidden) atualizar(); });   // volta das configurações do Android
   // mantém a inscrição em dia (o navegador às vezes troca as chaves); uma vez por dia
   if (ler("avisos", false) && ler("push", false) && Notification.permission === "granted" && Date.now() - ler("push-sync", 0) > 864e5)
@@ -2611,6 +2651,19 @@ async function iniciar() {
   addEventListener("hashchange", () => mostrarVista(vistaDaUrl()));
   $("#btnMenu").onclick = () => { const sim = !$("#menu").classList.contains("aberto"); $("#menu").classList.toggle("aberto", sim); $("#btnMenu").setAttribute("aria-expanded", sim); };
   $("#menu").onclick = ev => { if (ev.target.closest("a")) { $("#menu").classList.remove("aberto"); $("#btnMenu").setAttribute("aria-expanded", "false"); } };
+  // guia "Filtros" do gráfico: no celular começa fechada e o resumo diz o que está valendo; no computador fica sempre aberta
+  const filtros = $("#filtros"), mqFiltros = matchMedia("(max-width: 899px)");
+  const marcado = sel => filtros.querySelector(sel + ' button[aria-pressed="true"]')?.textContent.trim();
+  const resumir = () => {
+    const partes = [marcado("#modo")];
+    if (!$("#ctrlAgora").hidden) partes.push(marcado("#janelas"), $("#modoChuva").hidden ? null : marcado("#modoChuva"));
+    else partes.push(marcado("#periodos"), $("#metrica").selectedOptions[0]?.textContent);
+    $("#filtrosResumo").textContent = partes.filter(Boolean).join(" · ") || "Filtros";
+  };
+  const abrirNoComputador = () => { if (!mqFiltros.matches) filtros.open = true; };
+  new MutationObserver(resumir).observe(filtros, { subtree: true, attributes: true, attributeFilter: ["aria-pressed", "hidden"] });
+  $("#metrica").addEventListener("change", resumir);
+  mqFiltros.addEventListener("change", abrirNoComputador); abrirNoComputador(); resumir();
   // cartões recolhíveis: todos começam abertos; o navegador lembra a escolha
   document.querySelectorAll(".recolhivel").forEach(card => {
     const cab = card.querySelector(".cab"), corpo = card.querySelector(".corpo"), chave = "aberto2-" + card.id;
