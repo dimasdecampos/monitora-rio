@@ -253,6 +253,55 @@ treinado até 2023 e testado em fev/2024–out/2026 com vento e CAPE previstos 1
   dois tipos de evento (frente/ar do mar e temporal de verão) e poucos casos de cada um.
 - Vale repetir depois de mais 1–2 estações chuvosas (o CAPE previsto só existe arquivado desde 2022/2024).
 
+**Cinco ideias testadas em nov/2026, sem ganho que valesse** (`scripts/modelo_cheias/testar_ideias.py`,
+que precisa de `numpy`; mesmo protocolo: treino até 2023, teste fev/2024–out/2026 com a previsão do tempo
+real, aviso com chance ≥ 30%):
+
+| Ideia | Resultado |
+|---|---|
+| Subida da própria Passarela em 3, 6 e 12 h como variável | P: 6 h 17→18 e 12 h 13→14 de 20; BP: só 3 h 14→15 de 15; mesmos dias falsos. Pequeno e só no curto prazo |
+| Outro modelo de tempo (ECMWF, GFS, ICON, GEM, Météo-France, JMA, CMA; `baixar_prev_modelos.py`) | Todos parecidos (AUC só da chuva 0,84–0,88; em uso: 0,87); nenhum vê melhor a chuva forte |
+| Média de 4 modelos de tempo no lugar da previsão em uso | Mesmas cheias avisadas; o ganho nas chances só aparece em 59% das reamostragens por semana |
+| Treinar 2024–2026 com a previsão real em vez da chuva "perfeita" da ERA5 | Mesmas cheias avisadas e mesmos dias falsos (P e BP) |
+| Chuva medida no pluviômetro de Cunha (SP Águas, só desde dez/2024; 14 cheias) | Mesmas cheias com +13 dias falsos: só deixa o modelo mais "nervoso", como o CAPE |
+
+- **O modelo está perto do teto dos dados.** Se soubesse a chuva futura da ERA5, a versão P avisaria 16 de
+  20 cheias com 12 h e 17 com 24 h; com a previsão real avisa 13 e 14. Previsão perfeita compraria ~3 cheias
+  em 20. Com Cunha e o pluviômetro transmitindo (BP) já são 14 de 15 com 6 h e 12 h; o que sobra é o prazo
+  de 24 h, que depende só da chuva prevista.
+- **O gargalo é a chuva que as grades não veem:** em 48 h, o pluviômetro de Barro Vermelho passou de 50 mm
+  em 94 dos ~3.900 momentos testados (um a cada 6 h) e a ERA5 (média da bacia), em 18; nesses casos a previsão dava 22 mm de mediana contra
+  62 mm medidos. Nem a ERA5 "que aconteceu" separa bem as cheias (AUC 0,88).
+- **Parte dos avisos "falsos" é quase-cheia:** dos 35 dias com aviso sem cheia da versão P, em 11 o rio
+  chegou a menos de 12 cm da atenção (181–189 cm).
+- O ajuste exato (método de Newton) usado no teste dá o mesmo resultado da média de 5 sorteios de
+  `passarela.py`, em segundos e sem variar de uma rodada para outra.
+- Com 15–20 cheias de teste, diferença de 1–2 cheias é sorteio: por isso o script mostra também AUC,
+  log-perda e as cheias avisadas com o mesmo número de dias falsos.
+
+**Pluviômetros do CEMADEN (levantado em nov/2026, ainda não testado).** O CEMADEN tem pluviômetros
+automáticos na bacia desde 2015, o que cobriria o treino inteiro com chuva medida em Cunha (a SP Águas só
+tem desde dez/2024):
+
+| Estação | Código | id | Desde | Em 10/11/2026 |
+|---|---|---|---|---|
+| São Luiz do Paraitinga — COMDEC | 355000101A | 4395 | fev/2015 | transmitindo |
+| Cunha — ETA 1 | 351360301A | 4352 | fev/2015 | transmitindo |
+| Cunha — ETA 2 | 351360302A | 6700 | fev/2015 | transmitindo |
+| Lagoinha — ETA Sabesp | 352630802A | 8145 | jul/2015 | transmitindo |
+| Natividade da Serra — Polícia Militar (Paraibuna) | 353230601A | 8153 | jul/2015 | transmitindo |
+
+- **Ao vivo, sem cadastro:** `https://resources.cemaden.gov.br/graficos/interativo/getJson2.php?uf=SP`
+  devolve todas as estações de SP com a chuva acumulada em 1 a 96 h.
+- **Histórico:** só com cadastro gratuito na [Plataforma de Entrega de Dados](https://ped.cemaden.gov.br/)
+  (pedido de histórico por estação, entregue em CSV; ou token para a API, 12 pedidos por minuto) ou pelo
+  [Mapa Interativo](https://mapainterativo.cemaden.gov.br/), mês a mês por município, com captcha.
+- Todas ficam nas cidades (fundo de vale); nenhuma na Serra da Bocaina nem nas cabeceiras. Areias,
+  Silveiras e São José do Barreiro têm estação, mas do outro lado do divisor.
+- Expectativa moderada: o pluviômetro de Cunha da SP Águas não ajudou em 2024–2026 (tabela acima). O teste
+  que falta é trocar a chuva da ERA5 (24 h, 72 h e 30 dias) pela média medida nos pluviômetros, com 9 anos
+  de treino.
+
 **Gatilho rio acima (Barro Vermelho)** — com a cidade abaixo da atenção, se a régua de Lagoinha –
 Barro Vermelho (`sp662`, ~9 h até a cidade) sobe **60 cm ou mais em 12 h**, o painel mostra *risco
 alto* e o robô avisa risco de atenção, mesmo com chance do modelo abaixo de 30%
@@ -420,7 +469,7 @@ scripts/
   supabase/                SQL do Web Push (monitora_push.sql) e do disparo dos robôs (monitora_disparo.sql)
   montar_site.py           copia os modelos para cada bacia e confere as configurações
   baixar_chuva_era5.py     chuva estimada (ERA5) nos pontos de uma bacia, para chuva × subida
-  modelo_cheias/           previsão: chuva (ERA5, previsões arquivadas), vento e CAPE (testes), treino e testes
+  modelo_cheias/           previsão: chuva (ERA5, previsões arquivadas), vento e CAPE (testes), treino e testes (testar_ideias.py: o que já foi tentado)
 android/                   gera o app Android (app.json + gerar.js), usado pelo workflow app-android.yml
 playstore/                 publicar na Play Store: passo a passo (LEIAME.md), textos, imagens
   dominio/                 arquivos do repositório dimasdecampos.github.io (verificação do app)
