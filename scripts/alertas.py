@@ -29,7 +29,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import comum  # noqa: E402
 
-SITE = "https://dimasdecampos.github.io/monitora-rio/"
+SITE = "https://rio.slparaitinga.com/"
 SIBH = "https://cth.daee.sp.gov.br/sibh/api/v2/measurements"
 BRT = timezone(timedelta(hours=-3))
 COTAS = [("extravasamento", "Transbordamento"), ("emergencia", "Emergência"), ("alerta", "Alerta"), ("atencao", "Atenção")]

@@ -5,14 +5,14 @@ Um mesmo código atende várias bacias; cada uma tem sua pasta com configuraçã
 
 | Bacia | Cidade de referência | Painel |
 |---|---|---|
-| Rio Paraitinga (e afluentes) | São Luiz do Paraitinga | https://dimasdecampos.github.io/monitora-rio/paraitinga/ |
-| Rio Paraibuna | Natividade da Serra | https://dimasdecampos.github.io/monitora-rio/paraibuna/ |
-| Rio Ribeira de Iguape | Eldorado | https://dimasdecampos.github.io/monitora-rio/ribeira/ (fora da página inicial) |
+| Rio Paraitinga (e afluentes) | São Luiz do Paraitinga | https://rio.slparaitinga.com/paraitinga/ |
+| Rio Paraibuna | Natividade da Serra | https://rio.slparaitinga.com/paraibuna/ |
+| Rio Ribeira de Iguape | Eldorado | https://rio.slparaitinga.com/ribeira/ (fora da página inicial) |
 
 Uma bacia com `"oculta": true` em `public/bacias.json` tem painel publicado, histórico e avisos
 como as outras, mas não aparece na página inicial nem nos atalhos do app (só por link direto).
 
-**Página inicial:** https://dimasdecampos.github.io/monitora-rio/
+**Página inicial:** https://rio.slparaitinga.com/ (o endereço antigo, dimasdecampos.github.io/monitora-rio/, redireciona para cá)
 
 > **Idealização e criação: Dimas de Campos.** Desenvolvido em parceria com IA
 > (Claude, da Anthropic).

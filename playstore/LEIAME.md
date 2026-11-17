@@ -13,7 +13,7 @@ formato usado por apps como o do Twitter Lite). Por isso:
 |---|---|
 | Manifesto do app (nome, ícones, cores, atalhos por rio) | `public/manifest.webmanifest` (os atalhos são atualizados por `scripts/montar_site.py`) |
 | Funciona sem internet (última leitura guardada) | `public/sw.js`, agora também na página inicial |
-| Política de privacidade | `public/privacidade.html` → https://dimasdecampos.github.io/monitora-rio/privacidade.html |
+| Política de privacidade | `public/privacidade.html` → https://rio.slparaitinga.com/privacidade.html |
 | Textos da loja | `playstore/ficha-da-loja.md` |
 | Ícone, imagem de destaque e capturas de tela | `playstore/imagens/` |
 | Arquivos de verificação do domínio | `playstore/dominio/` |
@@ -28,8 +28,8 @@ formato usado por apps como o do Twitter Lite). Por isso:
 
 Faça o commit e o push deste repositório. Confira que estes endereços abrem:
 
-- https://dimasdecampos.github.io/monitora-rio/manifest.webmanifest
-- https://dimasdecampos.github.io/monitora-rio/privacidade.html
+- https://rio.slparaitinga.com/manifest.webmanifest
+- https://rio.slparaitinga.com/privacidade.html
 
 ## Passo 2 — Conta de desenvolvedor no Google Play
 
@@ -73,8 +73,16 @@ Store exige.
 ## Passo 4 — Verificação do domínio (tira a barra de endereço do app)
 
 Sem isso, o app abre com uma barra de endereço do Chrome no topo. O Android só confia no app
-se o arquivo `https://dimasdecampos.github.io/.well-known/assetlinks.json` existir. Como o site
-fica em `/monitora-rio/`, esse arquivo precisa de um repositório próprio:
+se o domínio do site (o mesmo de `site` em `android/app.json`) tiver o arquivo
+`/.well-known/assetlinks.json`.
+
+**Domínio atual: `rio.slparaitinga.com`.** O arquivo fica em `public/.well-known/assetlinks.json`
+e é publicado junto com o site: confira em https://rio.slparaitinga.com/.well-known/assetlinks.json.
+Se trocar de domínio de novo, mude `site` em `android/app.json`, gere uma versão nova do app e
+envie à Play Console; até lá, o app instalado mostra a barra de endereço.
+
+Histórico (quando o site ficava em `dimasdecampos.github.io/monitora-rio/`), o arquivo
+precisava de um repositório próprio:
 
 1. Crie no GitHub um repositório **público** chamado exatamente `dimasdecampos.github.io`.
 2. Envie para ele o conteúdo da pasta `playstore/dominio/`, que tem `.nojekyll`, `index.html`
@@ -99,7 +107,7 @@ e a raiz `dimasdecampos.github.io` só redireciona para ele.
 
    | Seção | Resposta |
    |---|---|
-   | Política de privacidade | `https://dimasdecampos.github.io/monitora-rio/privacidade.html` |
+   | Política de privacidade | `https://rio.slparaitinga.com/privacidade.html` |
    | Anúncios | Não contém anúncios |
    | Acesso ao app | Todas as funções estão disponíveis sem restrições (não tem login) |
    | Classificação do conteúdo | Categoria "Referência, notícias ou educacional". Responda "não" a violência, sexo, drogas, jogos de azar e interação entre usuários. Deve sair **Livre** |

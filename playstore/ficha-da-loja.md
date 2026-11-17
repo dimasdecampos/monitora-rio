@@ -65,7 +65,7 @@ Ordem sugerida das capturas: 2 (agora), 3 (gráfico), 4 (previsão), 5 (o que al
 | Categoria | Clima |
 | Tags | Clima, Notícias locais, Utilitários (escolha as que a Console oferecer) |
 | E-mail de contato | dimasrafting@gmail.com |
-| Site | https://dimasdecampos.github.io/monitora-rio/ |
-| Política de privacidade | https://dimasdecampos.github.io/monitora-rio/privacidade.html |
+| Site | https://rio.slparaitinga.com/ |
+| Política de privacidade | https://rio.slparaitinga.com/privacidade.html |
 | Idioma padrão | Português (Brasil) – pt-BR |
 | Gratuito ou pago | Gratuito |
