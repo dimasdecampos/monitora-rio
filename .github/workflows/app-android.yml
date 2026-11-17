@@ -48,7 +48,8 @@ jobs:
         run: |
           cd android
           npm install --no-audit --no-fund
-          node gerar.js ${{ github.run_number }}
+          # +10: uma versão gerada fora daqui já usou o código 9, e a Play Console só aceita códigos maiores
+          node gerar.js $(( ${{ github.run_number }} + 10 ))
 
       - name: Compilar (APK e AAB)
         run: |
