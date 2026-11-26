@@ -2,11 +2,11 @@
 
 Cada bacia listada em public/bacias.json tem sua pasta (public/<id>/) com config.json e
 historico/. Este script gera, em cada uma:
-  index.html            <- modelos/painel.html
+  index.html            <- modelos/painel.html (com título, descrição e prévia de link do rio, para o Google e o WhatsApp)
   tv.html               <- modelos/tv.html
   manifest.webmanifest  <- modelos/manifest.webmanifest (com o nome do rio)
 e atualiza os atalhos do app (public/manifest.webmanifest, o do app da Play Store) com a
-lista de bacias.
+lista de bacias. Gera também public/sitemap.xml (para o Google) com as páginas públicas.
 
 Também confere se cada config.json está coerente (régua principal existe, réguas da
 cidade têm conversão etc.) e para com erro se não estiver.
@@ -16,14 +16,71 @@ antes de publicar. Localmente, o server.py serve os modelos direto, sem precisar
 
 Uso:  python scripts/montar_site.py
 """
+import html
 import json
 import shutil
 import sys
+from datetime import date
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 PUBLIC = RAIZ / "public"
 MODELOS = RAIZ / "modelos"
+SITE = "https://rio.slparaitinga.com/"
+
+
+def textos_seo(cfg):
+    """Título e descrição do painel de um rio (o painel repete o mesmo título pelo JavaScript)."""
+    titulo = f"{cfg['rio']} hoje: nível e cheias em {cfg['cidade']}"
+    descricao = (f"Nível do {cfg['rio']} em {cfg['cidade']} agora: régua em tempo real, chuva na bacia, "
+                 f"previsão de cheia e avisos no celular. Dados oficiais da SP Águas e da ANA.")
+    return titulo, descricao
+
+
+def painel_com_seo(modelo, b, cfg):
+    """Troca o título e a descrição genéricos do modelo pelos do rio e põe endereço canônico, prévia de link
+    (WhatsApp, Facebook) e dados estruturados. Bacias ocultas ficam fora do Google (noindex)."""
+    titulo, descricao = textos_seo(cfg)
+    url = f"{SITE}{b['id']}/"
+    t, d = html.escape(titulo), html.escape(descricao)
+    antigo_t, antigo_d = "<title>Monitor do Rio</title>", '<meta name="description" content="Nível, chuva, previsão e avisos de cheia em tempo real, com dados da SP Águas e da ANA">'
+    if antigo_t not in modelo or antigo_d not in modelo:
+        sys.exit("modelos/painel.html: título ou descrição mudaram; atualize painel_com_seo em montar_site.py")
+    dados = {"@context": "https://schema.org", "@type": "WebPage", "name": titulo, "description": descricao, "url": url,
+             "inLanguage": "pt-BR", "isPartOf": {"@type": "WebSite", "name": "Monitor dos Rios", "url": SITE},
+             "about": {"@type": "RiverBodyOfWater", "name": cfg["rio"],
+                       "containedInPlace": {"@type": "City", "name": cfg["cidade"], "address": {"@type": "PostalAddress", "addressRegion": "SP", "addressCountry": "BR"}}}}
+    extra = "\n".join(filter(None, [
+        f'<link rel="canonical" href="{url}">',
+        '<meta name="robots" content="noindex">' if b.get("oculta") else "",
+        '<meta property="og:type" content="website">',
+        '<meta property="og:site_name" content="Monitor dos Rios">',
+        '<meta property="og:locale" content="pt_BR">',
+        f'<meta property="og:title" content="{t}">',
+        f'<meta property="og:description" content="{d}">',
+        f'<meta property="og:url" content="{url}">',
+        f'<meta property="og:image" content="{SITE}divulgacao/painel.jpg">',
+        '<meta property="og:image:width" content="1000"><meta property="og:image:height" content="1160">',
+        '<meta name="twitter:card" content="summary_large_image">',
+        f'<script type="application/ld+json">{json.dumps(dados, ensure_ascii=False)}</script>',
+    ]))
+    h1 = '<h1 class="so-leitor" id="tituloPagina">Nível do rio em tempo real</h1>'
+    if h1 not in modelo:
+        sys.exit("modelos/painel.html: o título da página (h1) mudou; atualize painel_com_seo em montar_site.py")
+    return (modelo.replace(antigo_t, f"<title>{t}</title>", 1)
+            .replace(antigo_d, f'<meta name="description" content="{d}">\n{extra}', 1)
+            .replace(h1, h1.replace("Nível do rio em tempo real", html.escape(f"Nível do {cfg['rio']} em {cfg['cidade']} em tempo real")), 1))
+
+
+def sitemap():
+    """public/sitemap.xml: página inicial, painel de cada rio visível e as páginas de texto."""
+    hoje = date.today().isoformat()
+    paginas = [("", "1.0"), *((f"{b['id']}/", "0.9") for b in bacias() if not b.get("oculta")),
+               ("privacidade.html", "0.2"), ("termos.html", "0.2")]
+    linhas = [f"  <url><loc>{SITE}{p}</loc><lastmod>{hoje}</lastmod><changefreq>{'yearly' if p.endswith('.html') else 'hourly'}</changefreq><priority>{pr}</priority></url>"
+              for p, pr in paginas]
+    (PUBLIC / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+                                       + "\n".join(linhas) + "\n</urlset>\n", encoding="utf-8")
 
 
 def bacias():
@@ -87,13 +144,14 @@ def main():
         for e in erros:
             print(f"[{b['id']}] {e}")
         problemas += len(erros)
-        shutil.copyfile(MODELOS / "painel.html", pasta / "index.html")
+        (pasta / "index.html").write_text(painel_com_seo((MODELOS / "painel.html").read_text(encoding="utf-8"), b, cfg), encoding="utf-8")
         shutil.copyfile(MODELOS / "tv.html", pasta / "tv.html")
         m = dict(manifesto, name=f"{cfg['rio']} — {cfg['cidade']}", short_name=cfg["rio"],
                  description=f"Nível, chuva e avisos de cheia do {cfg['rio']} em {cfg['cidade']}.")
         (pasta / "manifest.webmanifest").write_text(json.dumps(m, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"{b['id']}: painel, modo TV e manifesto prontos")
     atalhos_do_app()
+    sitemap()
     if problemas:
         sys.exit(f"{problemas} problema(s) nas configurações")
 

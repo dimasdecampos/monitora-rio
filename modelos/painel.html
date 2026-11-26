@@ -319,6 +319,7 @@
   .avisos h2 { font-size: 15px; }
   .avisos .sub { margin-bottom: 10px; }
   .botoes-avisos { display: flex; flex-wrap: wrap; gap: 8px; }
+  .so-leitor { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   .nivel-avisos { border: 0; margin: 0 0 12px; padding: 0; min-width: 0; }
   .nivel-avisos legend { padding: 0; margin-bottom: 6px; font-size: 13px; font-weight: 650; color: var(--tinta-2); }
   .nivel-avisos label { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 10px; cursor: pointer; font-size: 14px; }
@@ -544,6 +545,7 @@
 </dialog>
 
 <main id="principal" class="carregando">
+  <h1 class="so-leitor" id="tituloPagina">Nível do rio em tempo real</h1>
   <div id="erro" class="card largo"></div>
 
   <div class="painel" data-vista="inicio">
@@ -2653,8 +2655,10 @@ async function iniciar() {
   (config.pluviometros || []).forEach(e => estacoes[e.codigo] = { ...e, rio: "Pluviômetros", so_chuva: true });
   (config.pontos_chuva || []).filter(p => p.codigo).forEach(p => estacoes[p.codigo] = { ...p, rio: "Pontos de previsão", so_previsao: true });
   P = config.principal; REGUAS_CIDADE = config.reguas_cidade || [P];
-  document.title = `${config.rio} · ${config.cidade}`;
-  document.querySelector('meta[name="description"]').content = `Nível, chuva e avisos de cheia do ${config.rio} em ${config.cidade}, com dados da SP Águas e da ANA.`;
+  // os mesmos textos que scripts/montar_site.py grava no HTML publicado (textos_seo), para o Google ver um só título
+  document.title = `${config.rio} hoje: nível e cheias em ${config.cidade}`;
+  $("#tituloPagina").textContent = `Nível do ${config.rio} em ${config.cidade} em tempo real`;
+  document.querySelector('meta[name="description"]').content = `Nível do ${config.rio} em ${config.cidade} agora: régua em tempo real, chuva na bacia, previsão de cheia e avisos no celular. Dados oficiais da SP Águas e da ANA.`;
   document.querySelector('meta[name="apple-mobile-web-app-title"]').content = config.rio;
   $("#sobreCotas").innerHTML = config._aviso_cotas || "";
   const cc = config.cotas_confirmadas;   // confirmação da fonte (e-mail), só para os postos listados

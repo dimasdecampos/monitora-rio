@@ -5,8 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f9f9f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
-<title>Monitor dos Rios</title>
-<meta name="description" content="Nível, chuva e avisos de cheia dos rios do Alto Paraíba do Sul em tempo real, com dados da SP Águas e da ANA.">
+<title>Monitor dos Rios: nível do Rio Paraitinga e do Rio Paraibuna em tempo real</title>
+<meta name="description" content="Nível, chuva e avisos de cheia do Rio Paraitinga (São Luiz do Paraitinga) e do Rio Paraibuna (Natividade da Serra) em tempo real, com dados oficiais da SP Águas e da ANA. Grátis, no site e no app.">
+<link rel="canonical" href="https://rio.slparaitinga.com/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Monitor dos Rios">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:title" content="Monitor dos Rios: nível do Rio Paraitinga e do Rio Paraibuna em tempo real">
+<meta property="og:description" content="Nível, chuva, previsão e avisos de cheia em São Luiz do Paraitinga e Natividade da Serra, com dados oficiais da SP Águas e da ANA.">
+<meta property="og:url" content="https://rio.slparaitinga.com/">
+<meta property="og:image" content="https://rio.slparaitinga.com/divulgacao/painel.jpg">
+<meta property="og:image:width" content="1000"><meta property="og:image:height" content="1160">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Monitor dos Rios","alternateName":"Monitor do Rio Paraitinga","url":"https://rio.slparaitinga.com/","inLanguage":"pt-BR","description":"Nível, chuva e avisos de cheia do Rio Paraitinga e do Rio Paraibuna em tempo real."}</script>
 <link rel="manifest" href="manifest.webmanifest">
 <script data-abertura="1">
 // Aberto como app (instalado ou da Play Store)? Marca o <html> para o visual de app e, uma vez por sessão, a abertura animada.
@@ -18,9 +29,10 @@
     document.documentElement.classList.add("abertura"); sessionStorage.setItem("abertura", "1");
   }
   // no app e no site, abre direto no painel do Paraitinga (uma vez por sessão). Voltando do painel pela seta
-  // (ou com ?lista=1), mostra a lista dos rios.
+  // (ou com ?lista=1), mostra a lista dos rios. Robôs de busca ficam na lista, para o Google indexar a página inicial.
   const deDentro = document.referrer && new URL(document.referrer).origin === location.origin;
-  if (!deDentro && !sessionStorage.getItem("seguiu") && !/[?&]lista=1/.test(location.search)) {
+  const robo = /bot|crawl|spider|slurp|lighthouse|facebookexternalhit|whatsapp/i.test(navigator.userAgent);
+  if (!deDentro && !robo &&!sessionStorage.getItem("seguiu") && !/[?&]lista=1/.test(location.search)) {
     sessionStorage.setItem("seguiu", "1");
     window.DESTINO = "paraitinga/";
     if (document.documentElement.classList.contains("abertura")) document.documentElement.classList.add("segue");
