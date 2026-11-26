@@ -17,12 +17,12 @@
       (app && !sessionStorage.getItem("abertura") && !matchMedia("(prefers-reduced-motion: reduce)").matches))) {
     document.documentElement.classList.add("abertura"); sessionStorage.setItem("abertura", "1");
   }
-  // no app, abre direto no último rio visto (uma vez por sessão). Voltando do painel pela seta, mostra a lista.
-  const ultimo = localStorage.getItem("monitor-ultima-bacia");
+  // no app e no site, abre direto no painel do Paraitinga (uma vez por sessão). Voltando do painel pela seta
+  // (ou com ?lista=1), mostra a lista dos rios.
   const deDentro = document.referrer && new URL(document.referrer).origin === location.origin;
-  if (app && ultimo && /^[\w-]+$/.test(ultimo) && !deDentro && !sessionStorage.getItem("seguiu") && !/[?&]lista=1/.test(location.search)) {
+  if (!deDentro && !sessionStorage.getItem("seguiu") && !/[?&]lista=1/.test(location.search)) {
     sessionStorage.setItem("seguiu", "1");
-    window.DESTINO = ultimo + "/";
+    window.DESTINO = "paraitinga/";
     if (document.documentElement.classList.contains("abertura")) document.documentElement.classList.add("segue");
     else location.replace(window.DESTINO);
   }

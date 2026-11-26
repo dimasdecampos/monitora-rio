@@ -8,6 +8,8 @@ Avisa, em cada bacia, quando:
     ou, com a cidade abaixo da atenção, a régua do gatilho rio acima sobe muito (config previsao.gatilho);
   - a régua principal para de transmitir (repete a cada 24 h, ou 6 h se o rio estava em cota) e quando volta.
 Cada tipo de aviso se repete no máximo a cada 6–12 h.
+Cada aviso tem um nível (atenção, alerta, emergência, transbordamento); no Web Push, cada aparelho escolhe
+a partir de que nível quer ser avisado (o ntfy, o Telegram e o WhatsApp recebem tudo).
 
 Variáveis de ambiente:
   NTFY_TOPIC                      prefixo dos tópicos do app ntfy: cada bacia avisa em <NTFY_TOPIC>-<bacia>
@@ -33,6 +35,7 @@ SITE = "https://rio.slparaitinga.com/"
 SIBH = "https://cth.daee.sp.gov.br/sibh/api/v2/measurements"
 BRT = timezone(timedelta(hours=-3))
 COTAS = [("extravasamento", "Transbordamento"), ("emergencia", "Emergência"), ("alerta", "Alerta"), ("atencao", "Atenção")]
+ORDEM_NIVEL = [k for k, _ in reversed(COTAS)]   # da mais baixa para a mais alta
 PASTA_ESTADO = Path(os.environ.get("ESTADO", comum.RAIZ / ".alertas"))
 # inscrições do Web Push (públicas por natureza: a tabela só é lida com MONITORA_PUSH_TOKEN)
 SUPABASE = "https://smlhkifwlbqsvfsixkvo.supabase.co"
@@ -167,7 +170,7 @@ def calculadora(pm, versao, ref, f48, p24, p72, api, dc6=None, dc12=None, pluv=N
 
 
 def verificar(bacia, mandar):
-    """Confere uma bacia e manda os avisos novos com mandar(cfg, texto) -> True se chegou.
+    """Confere uma bacia e manda os avisos novos com mandar(cfg, texto, nivel) -> True se chegou.
 
     Um aviso só conta como dado (e não se repete) depois de chegar por pelo menos um canal;
     se todos falharem, ele é tentado de novo na próxima rodada. Devolve quantos falharam."""
@@ -181,9 +184,10 @@ def verificar(bacia, mandar):
     falhas = 0
     def pode(chave, horas):
         return agora - estado["avisos"].get(chave, 0) >= horas * 3600
-    def avisar(texto, chave=None):
+    def avisar(texto, chave=None, nivel="atencao"):
+        """nivel: a partir de que cota o aviso interessa (quem escolheu "a partir do alerta" não recebe os de atenção)."""
         nonlocal falhas
-        if mandar(cfg, texto):
+        if mandar(cfg, texto, nivel if nivel in ORDEM_NIVEL else "atencao"):
             if chave: estado["avisos"][chave] = agora
             return True
         falhas += 1; print(f"{bacia}: aviso não chegou por nenhum canal; tenta de novo na próxima rodada")
@@ -221,15 +225,16 @@ def verificar(bacia, mandar):
             else:
                 titulo = f"📡 *{rio}: régua sem dados*"
             if avisar(f"{titulo}\n{nome(P)} parou de transmitir. {desde}\n"
-                      f"Enquanto isso, os avisos de nível ficam parados. Em caso de risco, Defesa Civil: 199.", "sem-dados"):
-                estado["sem_dados_avisado"] = True
+                      f"Enquanto isso, os avisos de nível ficam parados. Em caso de risco, Defesa Civil: 199.", "sem-dados", cota or "atencao"):
+                estado["sem_dados_avisado"] = cota or "atencao"   # nível do aviso, para o "voltou" ir às mesmas pessoas
         gravar(); return falhas
     if not cid:   # a API falhou agora, mas a última leitura ainda é recente: espera a próxima rodada
         print(f"{bacia}: {nome(P)} sem resposta agora; última leitura ainda recente."); gravar(); return falhas
     estado["sem_dados_rodadas"] = 0
     estado["avisos"].pop("sem-dados", None)   # uma nova queda avisa logo, sem esperar 24 h
     nivel = cid[-1][1]; hora = cid[-1][0].astimezone(BRT).strftime("%H:%M")
-    if estado.get("sem_dados_avisado") and avisar(f"✅ *{rio}: régua voltou a transmitir*\n{nome(P)} em {br(nivel)} m às {hora}."):
+    nv_sd = estado.get("sem_dados_avisado")
+    if nv_sd and avisar(f"✅ *{rio}: régua voltou a transmitir*\n{nome(P)} em {br(nivel)} m às {hora}.", None, nv_sd):
         estado.pop("sem_dados_avisado")
     d3 = variacao(cid, 3)
     tend = "" if d3 is None else f", {'subindo' if d3 >= 5 else 'baixando' if d3 <= -5 else 'estável'} ({d3:+.0f} cm em 3 h)"
@@ -241,13 +246,15 @@ def verificar(bacia, mandar):
     if anterior and anterior in cot_p and (not atual or ordem.index(atual[0]) > ordem.index(anterior)) and nivel > cot_p[anterior] - 5:
         atual = (anterior, dict(COTAS)[anterior], cot_p[anterior])
     msg = None
+    nv_msg = anterior   # baixando: o nível anterior (quem foi avisado da subida fica sabendo da descida)
     if atual and atual[0] != anterior and (not anterior or ordem.index(atual[0]) < ordem.index(anterior)):
+        nv_msg = atual[0]
         msg = (f"🔴 *{rio}: {atual[1]}*\n{nome(P)} em *{br(nivel)} m* às {hora}{tend}.\nCota de {atual[1].lower()}: {br(atual[2])} m.")
     elif anterior and not atual:
         msg = f"🟢 *{rio} abaixo da atenção*\n{nome(P)} em {br(nivel)} m às {hora}{tend}."
     elif atual and anterior and atual[0] != anterior:
         msg = f"🟠 *{rio} baixando: {atual[1]}*\n{nome(P)} em {br(nivel)} m às {hora}{tend}."
-    if msg is None or avisar(msg):   # se o aviso não chegou, a mudança de cota é avisada de novo na próxima rodada
+    if msg is None or avisar(msg, None, nv_msg):   # se o aviso não chegou, a mudança de cota é avisada de novo na próxima rodada
         estado["cota"] = atual[0] if atual else None
 
     # 2) água subindo rio acima
@@ -261,7 +268,7 @@ def verificar(bacia, mandar):
     if rep:
         ch = s.get(rep["afluente"], []); at = EST[rep["afluente"]]["cotas_cm"].get("atencao")
         if ch and at and ch[-1][1] >= at and "alerta" in cot_p and nivel >= cot_p["alerta"] and pode("represa", 12):
-            avisar(f"⚠️ *Risco de represamento*\n{rep['nome']} em {br(ch[-1][1])} m com o {rio.replace('Rio ', '')} em {br(nivel)} m: a água pode represar perto da cidade.", "represa")
+            avisar(f"⚠️ *Risco de represamento*\n{rep['nome']} em {br(ch[-1][1])} m com o {rio.replace('Rio ', '')} em {br(nivel)} m: a água pode represar perto da cidade.", "represa", "alerta")
 
     # 4) previsão (só bacias com modelo)
     if cfg.get("previsao") and cot_p:
@@ -293,7 +300,7 @@ def verificar(bacia, mandar):
                 if p is not None: texto += f" Chance pelo modelo de chuva: {p*100:.0f}%."
             else:
                 texto = f"🌧️ *Previsão: {p*100:.0f}% de chance de {prox[1].lower()}*\nNas próximas 48 h, {nome(P)} pode chegar a {br(prox[2])} m (agora {br(nivel)} m). Chuva prevista na bacia: {f48:.0f} mm."
-            avisar(texto, "prev-" + prox[0])
+            avisar(texto, "prev-" + prox[0], prox[0])
 
     if os.environ.get("TESTE") == "1":
         sit = atual[1] if atual else "Normal" if cot_p else "sem cotas"
@@ -312,7 +319,7 @@ def supabase_rpc(funcao, dados):
     return json.loads(corpo) if corpo else None
 
 
-def enviar_push(cfg, m, link):
+def enviar_push(cfg, m, link, nivel="atencao"):
     """Notificação no celular de quem ligou os avisos no painel/app (Web Push), mesmo com o app fechado.
     None se o canal não está configurado ou não há inscritos; True/False se chegou a alguém."""
     token, pem = os.environ.get("MONITORA_PUSH_TOKEN"), os.environ.get("VAPID_PRIVATE_KEY")
@@ -326,6 +333,9 @@ def enviar_push(cfg, m, link):
         inscritos = supabase_rpc("monitora_listar", {"p_token": token, "p_bacia": cfg["id"]}) or []
     except Exception as e:
         print("Web Push: falha ao ler os inscritos:", e); return False
+    # cada aparelho escolheu a partir de que nível quer aviso (sem a coluna no banco: recebe tudo)
+    pos = lambda n: ORDEM_NIVEL.index(n) if n in ORDEM_NIVEL else 0
+    inscritos = [s for s in inscritos if pos(s.get("nivel")) <= pos(nivel)]
     if not inscritos: return None
     titulo, _, corpo = m.replace("*", "").partition("\n")
     urgente = m[:1] in "🔴🌊⚠"
@@ -356,7 +366,7 @@ def telegram_html(m, link):
     return t + f'\n\n<a href="{html.escape(link)}">Abrir o painel</a>'
 
 
-def enviar(cfg, m):
+def enviar(cfg, m, nivel="atencao"):
     """Manda o aviso pelos canais configurados (ntfy, Telegram, WhatsApp). True se chegou por pelo menos um."""
     ok = False
     link = SITE + cfg["id"] + "/"
@@ -393,7 +403,7 @@ def enviar(cfg, m):
                 print("falha no WhatsApp:", e)
             time.sleep(10 * (n + 1))
         time.sleep(5)   # o CallMeBot recusa mensagens muito seguidas
-    push = enviar_push(cfg, m, link)
+    push = enviar_push(cfg, m, link, nivel)
     if push: ok = True
     if not prefixo and not (token and chat) and not (fone and chave) and push is None:
         print("--- (teste, sem canal configurado) ---\n" + m)

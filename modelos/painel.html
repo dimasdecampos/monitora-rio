@@ -319,6 +319,15 @@
   .avisos h2 { font-size: 15px; }
   .avisos .sub { margin-bottom: 10px; }
   .botoes-avisos { display: flex; flex-wrap: wrap; gap: 8px; }
+  .nivel-avisos { border: 0; margin: 0 0 12px; padding: 0; min-width: 0; }
+  .nivel-avisos legend { padding: 0; margin-bottom: 6px; font-size: 13px; font-weight: 650; color: var(--tinta-2); }
+  .nivel-avisos label { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 10px; cursor: pointer; font-size: 14px; }
+  .nivel-avisos label:has(input:checked) { background: var(--superficie-2); font-weight: 650; }
+  .nivel-avisos input { margin: 0; accent-color: var(--acento); }
+  .nivel-avisos i { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .nivel-avisos .obs { color: var(--tinta-3); font-weight: 500; }
+  .nivel-avisos small { margin-left: auto; color: var(--tinta-3); font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .nivel-avisos .dica { margin: 6px 2px 0; font-size: 12.5px; color: var(--tinta-3); }
   .botao { border: 0; border-radius: 10px; padding: 9px 14px; font-weight: 650; font-size: 14px; background: var(--acento); color: #fff; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
   .botao.sec { background: var(--superficie-2); color: var(--tinta); }
   .botao[disabled] { opacity: .6; cursor: default; }
@@ -552,6 +561,11 @@
     <section class="card avisos" id="cardAvisos" aria-labelledby="tituloAvisos">
       <h2 id="tituloAvisos">Receber avisos</h2>
       <p class="sub" id="avisoTexto">Quando o rio passar de uma cota, a água subir rio acima ou a previsão indicar cheia.</p>
+      <fieldset class="nivel-avisos" id="nivelAvisos" hidden>
+        <legend>Avisar a partir de</legend>
+        <div id="nivelOpcoes"></div>
+        <p class="dica" id="nivelDica"></p>
+      </fieldset>
       <div class="botoes-avisos">
         <button class="botao" id="btnNotif">Avisar neste aparelho</button>
         <a class="botao sec" id="lnkTelegram" href="#" target="_blank" rel="noopener" hidden>Canal no Telegram</a>
@@ -2411,7 +2425,10 @@ async function inscreverPush() {
   const b64 = PUSH.vapid.replace(/-/g, "+").replace(/_/g, "/"), chave = Uint8Array.from(atob(b64 + "=".repeat((4 - b64.length % 4) % 4)), c => c.charCodeAt(0));
   const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chave });
   const j = sub.toJSON();
-  await pushRpc("monitora_inscrever", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth, p_bacia: BACIA });
+  const dados = { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth, p_bacia: BACIA };
+  // banco ainda sem o nível (scripts/supabase/monitora_niveis.sql não rodado): inscreve sem ele e recebe tudo
+  try { await pushRpc("monitora_inscrever", { ...dados, p_nivel: nivelAvisos() }); }
+  catch { await pushRpc("monitora_inscrever", dados); }
   guardar("push", true); guardar("push-sync", Date.now());
 }
 async function cancelarPush() {
@@ -2419,6 +2436,14 @@ async function cancelarPush() {
   const sub = await (await navigator.serviceWorker?.getRegistration?.())?.pushManager?.getSubscription?.().catch(() => null);
   if (sub) await pushRpc("monitora_cancelar", { p_endpoint: sub.endpoint, p_bacia: BACIA }).catch(() => {});
 }
+// nível mínimo escolhido para os avisos, entre as cotas da régua principal (da mais baixa para a mais alta)
+const ORDEM_NIVEL = ["atencao", "alerta", "emergencia", "extravasamento"];
+function nivelAvisos() {
+  const tem = cotasDe(estacoes[P]).map(n => n.chave), v = ler("nivel-avisos", "atencao");
+  return tem.includes(v) ? v : tem.at(-1) || "atencao";
+}
+// de que nível é o aviso de chave X (mesmo critério do robô, scripts/alertas.py)
+const nivelDoAviso = chave => /^(cota|prev)-/.test(chave) ? chave.split("-")[1] : chave === "represa" ? "alerta" : "atencao";
 function avisoJaDado(chave, horas) {
   const v = ler("aviso-" + chave, 0);
   if (Date.now() - v < horas * 36e5) return true;
@@ -2427,6 +2452,7 @@ function avisoJaDado(chave, horas) {
 async function notificar(titulo, corpo, chave, horas) {
   if (!ler("avisos", false) || typeof Notification === "undefined" || Notification.permission !== "granted") return;
   if (ler("push", false) && !chave.startsWith("teste-")) return;   // o robô já avisa por Web Push
+  if (!chave.startsWith("teste-") && ORDEM_NIVEL.indexOf(nivelDoAviso(chave)) < ORDEM_NIVEL.indexOf(nivelAvisos())) return;
   if (avisoJaDado(chave, horas)) return;
   const reg = await navigator.serviceWorker?.getRegistration?.().catch(() => null);
   const op = { body: corpo, icon: "../icones/icone-192.png", badge: "../icones/icone-192.png", tag: `${BACIA}-${chave}` };
@@ -2454,6 +2480,24 @@ function configurarAvisos() {
   const mqCel = matchMedia("(max-width: 899px)");
   const cartao = $("#cardAvisos"), casa = cartao.parentNode, depois = cartao.nextSibling;
   const lugar = () => { if (mqCel.matches) $("#lugarAvisos").appendChild(cartao); else if (cartao.parentNode !== casa) casa.insertBefore(cartao, depois); };
+  // escolha do nível: só as cotas que a régua principal tem, da mais baixa para a mais alta
+  const cl = cotasDe(estacoes[P]).reverse();
+  $("#nivelAvisos").hidden = !cl.length;
+  $("#nivelOpcoes").innerHTML = cl.map((n, i) => `<label><input type="radio" name="nivelAvisos" value="${n.chave}"${n.chave === nivelAvisos() ? " checked" : ""}>` +
+    `<i style="background:var(${n.cor})"></i><span>${n.nome}${i ? "" : ` <span class="obs">· todos os avisos</span>`}</span><small>${fmt(n.cm / 100, 2)} m</small></label>`).join("");
+  const nomeNivel = () => cl.find(n => n.chave === nivelAvisos());
+  const dica = () => {
+    const n = nomeNivel();
+    $("#nivelDica").textContent = !n ? "" : n === cl[0]
+      ? "Cotas, água subindo rio acima, previsão de cheia e régua sem dados."
+      : `Só quando a régua ${apelido(P)} chegar a ${fmt(n.cm / 100, 2)} m (${n.nome.toLowerCase()}) ou mais, ou a previsão indicar que pode chegar.`;
+  };
+  dica();
+  $("#nivelOpcoes").addEventListener("change", async ev => {
+    guardar("nivel-avisos", ev.target.value); dica(); atualizar();
+    if (ler("avisos", false) && ler("push", false) && Notification.permission === "granted")
+      try { await inscreverPush(); } catch (e) { console.warn("Web Push: não atualizou o nível:", e); }
+  });
   const atualizar = () => {
     // permissão recusada (ou desligada nas configurações do Android): explica como liberar, em vez de não fazer nada
     const bloqueado = typeof Notification !== "undefined" && Notification.permission === "denied";
@@ -2472,7 +2516,8 @@ function configurarAvisos() {
       if (ativo) $("#avisoTexto").textContent = ler("push", false) ? "Avisos ligados neste aparelho (chegam mesmo com o app fechado)." : "Avisos ligados neste aparelho (com o painel aberto).";
     }
     $("#avisosRodape").hidden = !ativo;
-    $("#avisosRodapeTxt").textContent = ler("push", false) ? "Avisos ligados neste aparelho (chegam mesmo com o app fechado)" : "Avisos ligados neste aparelho (com o painel aberto)";
+    const n = nomeNivel(), aPartir = n && n !== cl[0] ? `, a partir de ${n.nome.toLowerCase()}` : "";
+    $("#avisosRodapeTxt").textContent = (ler("push", false) ? "Avisos ligados neste aparelho (chegam mesmo com o app fechado" : "Avisos ligados neste aparelho (com o painel aberto") + aPartir + ")";
   };
   $("#btnDesligarAvisos").onclick = async () => { guardar("avisos", false); atualizar(); await cancelarPush(); atualizar(); };
   if (typeof Notification === "undefined") { btn.disabled = true; btn.textContent = "Este navegador não mostra avisos"; }
@@ -2484,8 +2529,10 @@ function configurarAvisos() {
     let fechado = false;
     if (pushSuportado()) try { await inscreverPush(); fechado = true; } catch (e) { console.warn("Web Push indisponível:", e); guardar("push", false); }
     atualizar();
+    const n = nomeNivel();
     notificar("Avisos ligados", fechado
-      ? `Você será avisado sobre o ${config.rio} mesmo com o app fechado: cota, água subindo rio acima e previsão de cheia.`
+      ? n && n !== cl[0] ? `Você será avisado sobre o ${config.rio} mesmo com o app fechado, a partir da cota de ${n.nome.toLowerCase()} (${fmt(n.cm / 100, 2)} m).`
+        : `Você será avisado sobre o ${config.rio} mesmo com o app fechado: cota, água subindo rio acima e previsão de cheia.`
       : "Você será avisado enquanto o painel estiver aberto. Para receber com o app fechado, instale o app.", "teste-" + Date.now(), 0);
   };
   lugar(); atualizar();
@@ -2606,7 +2653,6 @@ async function iniciar() {
   (config.pluviometros || []).forEach(e => estacoes[e.codigo] = { ...e, rio: "Pluviômetros", so_chuva: true });
   (config.pontos_chuva || []).filter(p => p.codigo).forEach(p => estacoes[p.codigo] = { ...p, rio: "Pontos de previsão", so_previsao: true });
   P = config.principal; REGUAS_CIDADE = config.reguas_cidade || [P];
-  try { localStorage.setItem("monitor-ultima-bacia", BACIA); } catch {}   // o app abre direto neste rio da próxima vez
   document.title = `${config.rio} · ${config.cidade}`;
   document.querySelector('meta[name="description"]').content = `Nível, chuva e avisos de cheia do ${config.rio} em ${config.cidade}, com dados da SP Águas e da ANA.`;
   document.querySelector('meta[name="apple-mobile-web-app-title"]').content = config.rio;
