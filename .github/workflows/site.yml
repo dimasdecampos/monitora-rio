@@ -37,12 +37,19 @@ jobs:
         if: github.event_name != 'push'
         run: python scripts/estatisticas.py
 
+      # qual previsão de chuva acerta mais (página /admin); se o Open-Meteo falhar, publica com a de ontem
+      - name: Comparar chuva prevista × medida (página /admin)
+        if: github.event_name != 'push'
+        continue-on-error: true
+        timeout-minutes: 20
+        run: python scripts/modelo_cheias/avaliar_chuva_prevista.py --baixar
+
       - name: Salvar histórico no repositório
         if: github.event_name != 'push'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/*/historico public/*/estatisticas.json
+          git add public/*/historico public/*/estatisticas.json public/admin/chuva.json
           if git diff --cached --quiet; then
             echo "Nada novo."
           else

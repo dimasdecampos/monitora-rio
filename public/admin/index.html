@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Admin · Monitor dos Rios</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: uma coluna de leitura (máx. 1040px); veredito primeiro, depois ranking, série diária, dias fortes e tabela */
+:root {
+  --bg: #f4f7f8; --surface: #ffffff; --fg: #15232c; --muted: #5a6a75; --line: #dde4e8; --grid: #e8edf0;
+  --accent: #1f6f8b; --obs: #a9bccb; --under: #2f7fb8; --over: #c4622d; --hit: #0f7b4a; --hit-bg: #e3f3ea; --faixa: rgba(37, 125, 224, .16);
+  --m1: #257de0; --m2: #f47230; --m3: #00b894; --m4: #f2a600; --m5: #ee7fac; --m6: #008a17; --m7: #6a4ce2; --m8: #ec4647;
+  --f-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f171c; --surface: #16222a; --fg: #e6edf1; --muted: #93a4af; --line: #2a3a44; --grid: #22313a;
+  --accent: #5fb3d3; --obs: #4c6475; --under: #5aa3dc; --over: #e07a45; --hit: #4cc38a; --hit-bg: #173528; --faixa: rgba(51, 140, 237, .24);
+  --m1: #338ced; --m2: #e76624; --m3: #00a888; --m4: #d28e05; --m5: #e24d8b; --m6: #0aac23; --m7: #9887ef; --m8: #eb6263;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f171c; --surface: #16222a; --fg: #e6edf1; --muted: #93a4af; --line: #2a3a44; --grid: #22313a;
+  --accent: #5fb3d3; --obs: #4c6475; --under: #5aa3dc; --over: #e07a45; --hit: #4cc38a; --hit-bg: #173528; --faixa: rgba(51, 140, 237, .24);
+  --m1: #338ced; --m2: #e76624; --m3: #00a888; --m4: #d28e05; --m5: #e24d8b; --m6: #0aac23; --m7: #9887ef; --m8: #eb6263;
+  color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 28px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 28px; }
+h1, h2 { font-family: var(--f-display); font-weight: 600; text-wrap: balance; margin: 0; letter-spacing: -.01em; }
+h1 { font-size: clamp(26px, 4.4vw, 38px); line-height: 1.1; }
+h2 { font-size: 21px; }
+p { margin: 0; max-width: 68ch; }
+.eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.lede { color: var(--muted); font-size: 16px; }
+header { display: grid; gap: 10px; }
+.achados { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.achado { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 4px; align-content: start; }
+.achado b { font-family: var(--f-display); font-size: 17px; font-weight: 600; }
+.achado span { color: var(--muted); font-size: 14px; }
+section { display: grid; gap: 14px; min-width: 0; }
+.cab { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: end; justify-content: space-between; }
+.cab > div { display: grid; gap: 4px; min-width: 0; }
+.cab > .seg { display: inline-flex; gap: 0; }
+.nota { color: var(--muted); font-size: 13.5px; }
+.painel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; min-width: 0; }
+.dois { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 760px) { .dois { grid-template-columns: 1fr; } }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.seg button { font: inherit; font-size: 13.5px; border: 0; background: transparent; color: var(--fg); padding: 6px 11px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--surface); font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+.chip i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); display: inline-block; }
+.chip[aria-pressed="false"] { color: var(--muted); }
+.chip[aria-pressed="false"] i { background: transparent; box-shadow: inset 0 0 0 1.5px var(--muted); }
+.chip:disabled { opacity: .45; cursor: not-allowed; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.controles { display: grid; gap: 10px; }
+.controles .linha { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.controles label { font-size: 12.5px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.grafico { position: relative; height: 340px; }
+@media (max-width: 520px) { .grafico { height: 280px; } }
+svg text { fill: var(--fg); font-family: var(--f-body); font-size: 12px; }
+svg .fraco { fill: var(--muted); }
+.legenda { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
+.legenda span { display: inline-flex; align-items: center; gap: 6px; }
+.legenda i { width: 14px; height: 3px; border-radius: 2px; background: var(--c); display: inline-block; }
+.legenda i.barra { width: 10px; height: 10px; border-radius: 2px; }
+.tabela { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 14px; }
+th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+td.ok { color: var(--hit); font-weight: 600; background: var(--hit-bg); }
+tr.site td:first-child::after { content: "no site"; margin-left: 8px; font-size: 11px; font-weight: 600; color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 0 5px; }
+#dica { position: fixed; pointer-events: none; background: var(--fg); color: var(--bg); font-size: 13px; padding: 6px 9px; border-radius: 6px; max-width: 240px; z-index: 5; font-variant-numeric: tabular-nums; }
+.metodo { display: grid; gap: 8px; color: var(--muted); font-size: 14px; }
+.metodo b { color: var(--fg); }
+.topo { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 14px; }
+.topo a { color: var(--accent); }
+.estado { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; }
+.estado::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+code { font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="topo"><b>Admin · Monitor dos Rios</b><a href="../">Voltar ao site</a></div>
+
+  <section>
+    <div class="cab">
+      <div><h2>Robô de previsões</h2><p class="nota">Cada previsão feita pelo robô de avisos fica guardada para comparar depois com o que o rio fez. Com o rio calmo, uma por hora; em cheia, a cada leitura nova (~10 min).</p></div>
+    </div>
+    <div class="painel tabela"><table id="tRobo"><tbody><tr><td>Carregando…</td></tr></tbody></table></div>
+  </section>
+
+  <section>
+    <div class="cab">
+      <div><h2>Nível real × previsto</h2><p class="nota">Linha cheia: o nível que o rio teve. Tracejada com faixa: a previsão feita no momento escolhido. Linhas claras: as outras previsões, a cada 3 h. Registro desde 26/11/2026, 19:10.</p></div>
+      <div class="seg" role="group" aria-label="Rio" id="rioReal"></div>
+    </div>
+    <div class="painel controles">
+      <div class="linha"><label for="qual">Previsão feita em</label><input type="range" id="qual" min="0" max="0" value="0" style="flex: 1; min-width: 160px"><b id="qualTxt" style="font-variant-numeric: tabular-nums">–</b></div>
+      <div class="legenda"><span><i style="--c: var(--fg)"></i>Nível real</span><span><i style="--c: var(--m1)"></i>Previsão escolhida (provável)</span><span><i class="barra" style="--c: var(--faixa)"></i>Faixa de chances</span><span><i style="--c: var(--grid)"></i>Outras previsões</span></div>
+      <div class="grafico"><canvas id="gReal" aria-label="Nível real e previsto"></canvas></div>
+      <p class="nota" id="realNota"></p>
+    </div>
+  </section>
+
+  <header>
+    <div class="eyebrow" id="periodoChuva">Bacia do Rio Paraitinga</div>
+    <h2 style="font-size: clamp(22px, 3.6vw, 30px)">Qual previsão de chuva acerta mais aqui?</h2>
+    <p class="lede">Chuva prevista por 8 modelos de tempo, 1 a 3 dias antes, comparada com a que caiu de fato nos 4 pluviômetros da SP Águas na bacia: São Luiz, Lagoinha, Cunha e Ribeirão do Chapéu.</p>
+  </header>
+
+  <div class="achados" id="achados"></div>
+
+  <section>
+    <div class="cab">
+      <div><h2>Quanto cada modelo erra</h2><p class="nota">Média da bacia (4 pluviômetros), dia a dia. Menor erro é melhor; viés perto de 0% quer dizer que acerta o total de chuva.</p></div>
+      <div class="seg" role="group" aria-label="Previsão feita quantos dias antes" id="antecedencia"></div>
+    </div>
+    <div class="dois">
+      <div class="painel"><div class="eyebrow">Erro médio por dia (mm)</div><svg id="gErro" role="img" aria-label="Erro médio por modelo"></svg></div>
+      <div class="painel"><div class="eyebrow">Viés no total de chuva</div><svg id="gVies" role="img" aria-label="Viés por modelo"></svg></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="cab">
+      <div><h2>Previsto × medido, dia a dia</h2><p class="nota">Barras: chuva medida (média dos 4 pluviômetros). Linhas: o que cada modelo previa para aquele dia. Escolha até 3 modelos.</p></div>
+    </div>
+    <div class="painel controles">
+      <div class="linha"><label>Período</label><div class="chips" id="periodos"></div></div>
+      <div class="linha"><label>Modelos</label><div class="chips" id="modelos"></div></div>
+      <div class="legenda" id="legenda"></div>
+      <div class="grafico"><canvas id="gSerie" aria-label="Chuva prevista e medida por dia"></canvas></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="cab">
+      <div><h2>Os 11 dias de chuva forte</h2><p class="nota">Dias com 30 mm ou mais na média da bacia. Em verde, quando o modelo previu pelo menos 20 mm.</p></div>
+    </div>
+    <div class="painel tabela"><table id="tFortes"></table></div>
+  </section>
+
+  <section>
+    <div class="cab">
+      <div><h2>Tabela completa</h2><p class="nota">"Bacia" compara a média dos 4 pluviômetros; "pontos" compara cada pluviômetro com a previsão no mesmo lugar (mais difícil).</p></div>
+      <div class="seg" role="group" aria-label="Comparar por" id="escala"></div>
+    </div>
+    <div class="painel tabela"><table id="tNotas"></table></div>
+  </section>
+
+  <section class="metodo">
+    <h2>Como foi feito</h2>
+    <p><b>Previsões:</b> arquivo de previsões antigas do Open-Meteo (o mesmo serviço que o site usa), nos pontos exatos de cada pluviômetro. "1 dia antes" é a rodada do modelo feita na véspera.</p>
+    <p><b>Chuva medida:</b> pluviômetros da SP Águas guardados pelo site, só dias com as 24 horas registradas. O dia de hoje fica de fora porque ainda não terminou.</p>
+    <p><b>Cuidado com os dias fortes:</b> só houve 11 dias de chuva forte na média da bacia, então a coluna de acerto muda bastante com um dia a mais ou a menos. O erro médio, o viés e a correlação usam ~660 dias e são mais confiáveis.</p>
+    <p><b>Atualização:</b> todo dia de manhã, junto com a coleta do histórico (<code>scripts/modelo_cheias/avaliar_chuva_prevista.py --baixar</code>). <span id="atualizado"></span></p>
+  </section>
+</div>
+<div id="dica" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const COR = { best_match: "--m1", ecmwf_ifs025: "--m2", gfs_seamless: "--m3", icon_seamless: "--m4", gem_global: "--m5", meteofrance_seamless: "--m6", jma_seamless: "--m7", cma_grapes_global: "--m8" };
+const CURTO = { best_match: "Padrão (site)", ecmwf_ifs025: "ECMWF", gfs_seamless: "GFS", icon_seamless: "ICON", gem_global: "GEM", meteofrance_seamless: "Météo-France", jma_seamless: "JMA", cma_grapes_global: "CMA" };
+const PERIODOS = [
+  { id: "mes", nome: "Últimos 30 dias", ini: null, fim: null },
+  { id: "jan26", nome: "Cheia de jan/2026", ini: "2026-01-08", fim: "2026-02-14" },
+  { id: "dez24", nome: "Dezembro de 2024", ini: "2024-11-20", fim: "2025-01-05" },
+  { id: "ano", nome: "Últimos 12 meses", ini: null, fim: null },
+  { id: "tudo", nome: "Tudo", ini: "2024-01-01", fim: "9999" },
+];
+const est = { k: "d1", periodo: "mes", sel: ["best_match", "ecmwf_ifs025", "gfs_seamless"], escala: "bacia" };
+const cor = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt = (v, c = 1) => v == null ? "–" : v.toLocaleString("pt-BR", { minimumFractionDigits: c, maximumFractionDigits: c });
+const pct = v => v == null ? "–" : (v > 0 ? "+" : "") + fmt(v, 0) + "%";
+const dataBR = d => { const [a, m, dd] = d.split("-"); return `${dd}/${m}/${a.slice(2)}`; };
+const dica = document.getElementById("dica");
+function mostrarDica(e, html) { dica.innerHTML = html; dica.hidden = false; const x = Math.min(e.clientX + 14, innerWidth - dica.offsetWidth - 8); dica.style.left = x + "px"; dica.style.top = (e.clientY + 14) + "px"; }
+function esconderDica() { dica.hidden = true; }
+
+let D, grafico;
+function seg(el, opcoes, chave, aoMudar) {
+  el.innerHTML = "";
+  for (const [v, rot] of opcoes) {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = rot; b.id = `${el.id}-${v}`;
+    b.setAttribute("aria-pressed", est[chave] === v);
+    b.onclick = () => { est[chave] = v; seg(el, opcoes, chave, aoMudar); aoMudar(); };
+    el.append(b);
+  }
+}
+
+function notas(m) { return D.notas[m][est.k][est.escala === "bacia" ? "bacia" : "pontos"]; }
+
+function achados() {
+  const n = m => D.notas[m].d1.bacia;
+  const ordem = Object.keys(D.modelos).sort((a, b) => n(a).erro_medio - n(b).erro_medio);
+  const exageram = Object.keys(D.modelos).filter(m => n(m).vies_pct > 25).sort((a, b) => n(b).vies_pct - n(a).vies_pct);
+  const acertos = Object.keys(D.modelos).map(m => n(m)).filter(x => x.dias_fortes === 11).map(x => Math.round(x.acerto_fortes * 11));
+  document.getElementById("achados").innerHTML = `
+    <div class="achado"><b>Mais certeiros: ${CURTO[ordem[0]]} e ${CURTO[ordem[1]]}</b><span>Erram ~${fmt(n(ordem[0]).erro_medio)} mm por dia e acertam o total de chuva (viés de ${pct(n(ordem[0]).vies_pct)} e ${pct(n(ordem[1]).vies_pct)}). O site já usa o padrão.</span></div>
+    <div class="achado"><b>Exageram: ${exageram.map(m => CURTO[m]).join(", ")}</b><span>Preveem ${exageram.map(m => pct(n(m).vies_pct)).join(", ")} de chuva a mais que a medida, e erram mais por dia.</span></div>
+    <div class="achado"><b>Ninguém vê bem a chuva forte</b><span>Nos 11 dias com 30 mm ou mais, os modelos previram pelo menos 20 mm em só ${Math.min(...acertos)} a ${Math.max(...acertos)} deles, 1 dia antes.</span></div>`;
+}
+
+function barras(svg, itens, { min, max, rotulo, corDe, dicaDe }) {
+  const W = 460, rot = 150, dir = 56, lin = 30, H = itens.length * lin + 26;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.style.width = "100%"; svg.style.height = "auto";
+  const x = v => rot + (v - min) / (max - min) * (W - rot - dir);
+  const ticks = []; const passo = (max - min) > 60 ? 20 : 1;
+  for (let t = Math.ceil(min / passo) * passo; t <= max + 1e-9; t += passo) ticks.push(t);
+  let s = ticks.map(t => `<line x1="${x(t)}" x2="${x(t)}" y1="0" y2="${H - 20}" stroke="${cor(t === 0 ? "--muted" : "--grid")}" stroke-width="1"/><text x="${x(t)}" y="${H - 4}" text-anchor="middle" class="fraco">${passo === 20 ? (t > 0 ? "+" : "") + t + "%" : t}</text>`).join("");
+  itens.forEach((it, i) => {
+    const y = i * lin + 6, v = it.v, x0 = x(Math.max(min, Math.min(0, max))), x1 = x(v);
+    const a = Math.min(x0, x1), w = Math.max(2, Math.abs(x1 - x0));
+    s += `<text x="${rot - 10}" y="${y + 13}" text-anchor="end">${CURTO[it.m]}</text>`;
+    s += `<rect data-i="${i}" x="${a}" y="${y + 2}" width="${w}" height="16" rx="3" fill="${cor(corDe(it))}"/>`;
+    s += `<text x="${v >= 0 ? a + w + 6 : a - 6}" y="${y + 14}" text-anchor="${v >= 0 ? "start" : "end"}" class="fraco">${rotulo(v)}</text>`;
+    s += `<rect data-i="${i}" x="0" y="${y}" width="${W}" height="${lin}" fill="transparent"/>`;
+  });
+  svg.innerHTML = s;
+  svg.onmousemove = e => { const i = e.target.dataset?.i; if (i == null) return esconderDica(); mostrarDica(e, dicaDe(itens[+i])); };
+  svg.onmouseleave = esconderDica;
+}
+
+function desenharRanking() {
+  const ms = Object.keys(D.modelos).map(m => ({ m, n: D.notas[m][est.k].bacia })).sort((a, b) => a.n.erro_medio - b.n.erro_medio);
+  const dicaDe = it => `<b>${D.modelos[it.m]}</b><br>erro médio ${fmt(it.n.erro_medio, 2)} mm/dia<br>viés ${pct(it.n.vies_pct)} · correlação ${fmt(it.n.correlacao, 2)}<br>${it.n.dias} dias comparados`;
+  barras(document.getElementById("gErro"), ms.map(x => ({ ...x, v: x.n.erro_medio })), { min: 0, max: 5, rotulo: v => fmt(v, 2), corDe: () => "--accent", dicaDe });
+  const vmax = 60;
+  barras(document.getElementById("gVies"), ms.map(x => ({ ...x, v: x.n.vies_pct })), { min: -40, max: vmax, rotulo: pct, corDe: it => it.v < 0 ? "--under" : "--over", dicaDe });
+}
+
+function desenharModelos() {
+  const el = document.getElementById("modelos"); el.innerHTML = "";
+  for (const m of Object.keys(D.modelos)) {
+    const on = est.sel.includes(m), b = document.createElement("button");
+    b.type = "button"; b.className = "chip"; b.id = "mod-" + m; b.style.setProperty("--c", `var(${COR[m]})`);
+    b.innerHTML = `<i></i>${CURTO[m]}`; b.setAttribute("aria-pressed", on); b.disabled = !on && est.sel.length >= 3;
+    b.onclick = () => { est.sel = on ? est.sel.filter(x => x !== m) : [...est.sel, m]; desenharModelos(); desenharSerie(); };
+    el.append(b);
+  }
+  const p = document.getElementById("periodos"); p.innerHTML = "";
+  for (const pr of PERIODOS) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.id = "per-" + pr.id; b.textContent = pr.nome;
+    b.style.setProperty("--c", "var(--accent)"); b.setAttribute("aria-pressed", est.periodo === pr.id);
+    b.onclick = () => { est.periodo = pr.id; desenharModelos(); desenharSerie(); };
+    p.append(b);
+  }
+}
+
+function desenharSerie() {
+  const pr = { ...PERIODOS.find(p => p.id === est.periodo) };
+  if (!pr.ini) { const n = pr.id === "mes" ? 30 : 365, f = new Date(); pr.fim = "9999"; f.setDate(f.getDate() - n); pr.ini = f.toISOString().slice(0, 10); }
+  const idx = D.dias.map((d, i) => [d, i]).filter(([d]) => d >= pr.ini && d <= pr.fim).map(([, i]) => i);
+  const labels = idx.map(i => dataBR(D.dias[i]));
+  const ds = [{ type: "bar", label: "Medido", data: idx.map(i => D.medido[i]), backgroundColor: cor("--obs"), borderRadius: 3, barPercentage: .9, categoryPercentage: .9, order: 2 }];
+  for (const m of est.sel) ds.push({ type: "line", label: CURTO[m], data: idx.map(i => D.prev[m][est.k][i]), borderColor: cor(COR[m]), backgroundColor: cor(COR[m]), borderWidth: 2, pointRadius: idx.length > 120 ? 0 : 2.5, pointHoverRadius: 5, tension: 0, spanGaps: false, order: 1 });
+  document.getElementById("legenda").innerHTML = `<span><i class="barra" style="--c: var(--obs)"></i>Medido</span>` + est.sel.map(m => `<span><i style="--c: var(${COR[m]})"></i>${D.modelos[m]}</span>`).join("");
+  const opcoes = {
+    responsive: true, maintainAspectRatio: false, animation: false,
+    interaction: { mode: "index", intersect: false },
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${c.raw == null ? "sem dado" : fmt(c.raw) + " mm"}` } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: cor("--muted"), autoSkip: true, maxTicksLimit: 10, maxRotation: 0 }, border: { color: cor("--line") } },
+      y: { beginAtZero: true, grid: { color: cor("--grid") }, border: { display: false }, ticks: { color: cor("--muted") }, title: { display: true, text: "mm por dia", color: cor("--muted") } },
+    },
+  };
+  if (grafico) grafico.destroy();
+  grafico = new Chart(document.getElementById("gSerie"), { data: { labels, datasets: ds }, options: opcoes });
+}
+
+function desenharFortes() {
+  const ms = Object.keys(D.modelos);
+  const dias = D.dias.map((d, i) => i).filter(i => D.medido[i] != null && D.medido[i] >= 30);
+  let h = `<thead><tr><th>Dia</th><th>Medido</th>${ms.map(m => `<th>${CURTO[m]}</th>`).join("")}</tr></thead><tbody>`;
+  for (const i of dias) h += `<tr><td>${dataBR(D.dias[i])}</td><td><b>${fmt(D.medido[i])}</b></td>${ms.map(m => { const v = D.prev[m][est.k][i]; return `<td class="${v != null && v >= 20 ? "ok" : ""}">${fmt(v)}</td>`; }).join("")}</tr>`;
+  h += `<tr><td>Acertos</td><td></td>${ms.map(m => { const vs = dias.map(i => D.prev[m][est.k][i]).filter(v => v != null); return `<td><b>${vs.filter(v => v >= 20).length}</b> de ${vs.length}</td>`; }).join("")}</tr>`;
+  document.getElementById("tFortes").innerHTML = h + "</tbody>";
+}
+
+function desenharTabela() {
+  const ms = Object.keys(D.modelos).sort((a, b) => notas(a).erro_medio - notas(b).erro_medio);
+  let h = `<thead><tr><th>Modelo</th><th>Erro (mm/dia)</th><th>Viés</th><th>Correlação</th><th>Dias fortes previstos</th><th>Alarme falso</th><th>Dias</th></tr></thead><tbody>`;
+  for (const m of ms) { const n = notas(m); h += `<tr class="${m === "best_match" ? "site" : ""}"><td>${D.modelos[m]}</td><td>${fmt(n.erro_medio, 2)}</td><td>${pct(n.vies_pct)}</td><td>${fmt(n.correlacao, 2)}</td><td>${n.acerto_fortes == null ? "–" : fmt(n.acerto_fortes * 100, 0) + "% de " + n.dias_fortes}</td><td>${n.alarme_falso == null ? "–" : fmt(n.alarme_falso * 100, 0) + "%"}</td><td>${n.dias}</td></tr>`; }
+  document.getElementById("tNotas").innerHTML = h + "</tbody>";
+}
+
+function tudo() { desenharRanking(); desenharSerie(); desenharFortes(); desenharTabela(); if (real.regs.length) desenharReal(); }
+fetch("chuva.json").then(r => r.json()).then(d => {
+  D = d;
+  document.getElementById("periodoChuva").textContent = `Bacia do Rio Paraitinga · ${dataBR(d.periodo[0])} a ${dataBR(d.periodo[1])}`;
+  document.getElementById("atualizado").textContent = `Última atualização: ${dataBR(d.atualizado)}.`;
+  seg(document.getElementById("antecedencia"), [["d1", "1 dia antes"], ["d2", "2 dias"], ["d3", "3 dias"]], "k", tudo);
+  seg(document.getElementById("escala"), [["bacia", "Bacia"], ["pontos", "Pontos"]], "escala", desenharTabela);
+  achados(); desenharModelos(); tudo();
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", tudo);
+  new MutationObserver(tudo).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+});
+
+// ---- robô de previsões (Supabase: só o resumo, sem dados pessoais)
+const SUPABASE = "https://smlhkifwlbqsvfsixkvo.supabase.co", CHAVE = "sb_publishable_FvMdZ86fu1QYZ1HLEfMmwg_awn-6rhu";
+async function robo() {
+  const el = document.getElementById("tRobo");
+  try {
+    const r = await fetch(`${SUPABASE}/rest/v1/rpc/monitora_previsoes_resumo`, { method: "POST", headers: { apikey: CHAVE, "Content-Type": "application/json" }, body: "{}" });
+    if (!r.ok) throw new Error(`Supabase respondeu ${r.status}`);
+    const ls = await r.json(), agora = Date.now();
+    const quando = t => { const m = Math.round((agora - new Date(t)) / 6e4); return m < 60 ? `há ${m} min` : m < 2880 ? `há ${Math.round(m / 60)} h` : `há ${Math.round(m / 1440)} dias`; };
+    const hora = t => new Date(t).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    let h = `<thead><tr><th>Rio</th><th>Situação</th><th>Última previsão</th><th>Leitura usada</th><th>Nível</th><th>Últimas 24 h</th><th>Total</th></tr></thead><tbody>`;
+    for (const l of ls) {
+      const min = (agora - new Date(l.ultima_feita)) / 6e4, ok = min < 90;
+      h += `<tr><td>${l.bacia[0].toUpperCase() + l.bacia.slice(1)}</td><td><span class="estado" style="--c: var(${ok ? "--hit" : "--over"})">${ok ? "Registrando" : "Parado"}</span></td><td>${quando(l.ultima_feita)}</td><td>${hora(l.ultima_leitura)}</td><td>${fmt(l.nivel_cm / 100, 2)} m</td><td>${l.nas_24h}</td><td>${l.total}</td></tr>`;
+    }
+    el.innerHTML = h + "</tbody>";
+  } catch (e) {
+    el.innerHTML = `<tbody><tr><td>Não foi possível consultar o Supabase (${e.message}). Tente recarregar a página.</td></tr></tbody>`;
+  }
+}
+robo(); setInterval(robo, 5 * 60e3);
+
+// ---- nível real × previsto (previsões registradas pelo robô)
+const real = { rio: "paraitinga", regs: [], i: null, grafico: null };
+const hhmm = t => new Date(t).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+async function carregarReal() {
+  try {
+    const r = await fetch(`${SUPABASE}/rest/v1/rpc/monitora_previsoes_linhas`, { method: "POST", headers: { apikey: CHAVE, "Content-Type": "application/json" }, body: JSON.stringify({ p_bacia: real.rio, p_desde: "2026-11-26T00:00:00Z" }) });
+    if (!r.ok) throw new Error(`Supabase respondeu ${r.status}`);
+    const ultimaAntes = real.i === real.regs.length - 1;
+    real.regs = (await r.json()).map(l => ({ t: new Date(l.leitura_em).getTime(), y: l.nivel_cm / 100, linha: l.linha || [] }));
+    const qual = document.getElementById("qual");
+    qual.max = Math.max(0, real.regs.length - 1);
+    if (real.i == null || ultimaAntes || real.i >= real.regs.length) real.i = real.regs.length - 1;   // acompanha a mais nova
+    qual.value = real.i;
+    desenharReal();
+  } catch (e) {
+    document.getElementById("realNota").textContent = `Não foi possível consultar o Supabase (${e.message}).`;
+  }
+}
+function desenharReal() {
+  const regs = real.regs, nota = document.getElementById("realNota");
+  if (!regs.length) { nota.textContent = "Ainda não há previsões registradas para este rio."; if (real.grafico) real.grafico.destroy(); real.grafico = null; return; }
+  const sel = regs[real.i];
+  document.getElementById("qualTxt").textContent = hhmm(sel.t);
+  const pts = (r, k) => [{ x: r.t, y: r.y }, ...r.linha.map(p => ({ x: r.t + p[0] * 36e5, y: p[k] / 100 }))];
+  const ds = [];
+  // outras previsões, uma a cada 3 h (a primeira de cada bloco), só a parte provável
+  let ultimo = -Infinity;
+  for (const r of regs) if (r !== sel && r.t - ultimo >= 3 * 36e5) { ultimo = r.t; ds.push({ data: pts(r, 2), borderColor: cor("--grid"), borderWidth: 1, pointRadius: 0, order: 5, tipo: "outra" }); }
+  ds.push({ label: "faixa mín", data: pts(sel, 1), borderWidth: 0, pointRadius: 0, fill: false, order: 4, tipo: "faixa" });
+  ds.push({ label: "faixa máx", data: pts(sel, 3), borderWidth: 0, pointRadius: 0, fill: "-1", backgroundColor: cor("--faixa"), order: 4, tipo: "faixa" });
+  ds.push({ label: "Previsão", data: pts(sel, 2), borderColor: cor("--m1"), borderWidth: 2, borderDash: [6, 4], pointRadius: 0, order: 2 });
+  ds.push({ label: "Nível real", data: regs.map(r => ({ x: r.t, y: r.y })), borderColor: cor("--fg"), borderWidth: 2, pointRadius: 0, order: 1 });
+  const fimReal = regs.at(-1).t, xmax = Math.max(fimReal, sel.t + 48 * 36e5);
+  const opcoes = {
+    responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
+    interaction: { mode: "nearest", axis: "x", intersect: false },
+    plugins: { legend: { display: false }, tooltip: { filter: c => !c.dataset.tipo, callbacks: { title: c => hhmm(c[0].parsed.x), label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y, 2)} m` } } },
+    scales: {
+      x: { type: "linear", min: regs[0].t - 36e5, max: xmax, grid: { color: cor("--grid") }, border: { color: cor("--line") }, ticks: { color: cor("--muted"), maxTicksLimit: 8, callback: v => new Date(v).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit" }) + "h" } },
+      y: { grid: { color: cor("--grid") }, border: { display: false }, ticks: { color: cor("--muted"), callback: v => fmt(v, 1) + " m" } },
+    },
+  };
+  if (real.grafico) real.grafico.destroy();
+  real.grafico = new Chart(document.getElementById("gReal"), { type: "line", data: { datasets: ds }, options: opcoes });
+  // quanto a previsão escolhida errou nas horas que já passaram
+  const depois = regs.filter(r => r.t > sel.t);
+  const erros = !depois.length ? [] : sel.linha.map(p => { const alvo = sel.t + p[0] * 36e5, perto = depois.reduce((m, r) => Math.abs(r.t - alvo) < Math.abs(m.t - alvo) ? r : m, depois[0]); return Math.abs(perto.t - alvo) <= 30 * 6e4 ? { h: p[0], prev: p[2] / 100, real: perto.y, dentro: perto.y >= p[1] / 100 && perto.y <= p[3] / 100 } : null; }).filter(Boolean);
+  nota.textContent = erros.length
+    ? "Já dá para conferir: " + erros.map(e => `${e.h} h depois, previsto ${fmt(e.prev, 2)} m, real ${fmt(e.real, 2)} m${e.dentro ? "" : " (fora da faixa)"}`).join("; ") + "."
+    : `${regs.length} previsões registradas. Esta ainda não pode ser conferida: as horas previstas não chegaram.`;
+}
+document.getElementById("qual").addEventListener("input", e => { real.i = +e.target.value; desenharReal(); });
+est.rioReal = "paraitinga";
+seg(document.getElementById("rioReal"), [["paraitinga", "Paraitinga"], ["paraibuna", "Paraibuna"], ["ribeira", "Ribeira"]], "rioReal", () => { real.rio = est.rioReal; real.i = null; carregarReal(); });
+carregarReal(); setInterval(carregarReal, 5 * 60e3);
+</script>
+</body>
+</html>

@@ -23,3 +23,6 @@ playstore/pacote/
 android/node_modules/
 android/projeto/
 android/package-lock.json
+
+# página de checagem (não é gerada pelo montar_site.py)
+!public/admin/index.html
