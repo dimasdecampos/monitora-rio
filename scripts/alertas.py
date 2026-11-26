@@ -127,7 +127,7 @@ def probabilidade(modelo, ref, rio_acima, pluv=None):
     pm = modelo["passarela"]; pts = modelo["pontos"]
     base = "https://api.open-meteo.com/v1/forecast?" + urllib.parse.urlencode({
         "latitude": ",".join(str(p["lat"]) for p in pts), "longitude": ",".join(str(p["lon"]) for p in pts),
-        "hourly": "precipitation", "past_days": 31, "forecast_days": 3, "timezone": "America/Sao_Paulo"})
+        "hourly": "precipitation", "past_days": 31, "forecast_days": 8, "timezone": "America/Sao_Paulo"})
     d = obter(base)
     if not d: return None
     d = d if isinstance(d, list) else [d]
@@ -140,7 +140,72 @@ def probabilidade(modelo, ref, rio_acima, pluv=None):
     versao = "B" if dc6 is not None and dc12 is not None and rio_acima and (datetime.now(timezone.utc) - rio_acima[-1][0]) < timedelta(hours=2) else "A"
     com_pluv = "P" if versao == "A" else versao + "P"   # A → P, B → BP (pluviômetro rio acima)
     if pluv and f"pesos_{com_pluv}" in pm: versao = com_pluv
-    return calculadora(pm, versao, ref, f48, p24, p72, api, dc6, dc12, pluv), f48
+    ctx = dict(tempo=tempo, media=media, versao=versao, dc6=dc6, dc12=dc12, p24=p24, p72=p72, api=api, pluv=pluv)
+    return calculadora(pm, versao, ref, f48, p24, p72, api, dc6, dc12, pluv), f48, ctx
+
+
+def tendencia_atual(serie, agora=None):
+    """Subida (ou descida) atual da régua, em m/h, pela última hora de leituras — igual a tendenciaAtual no painel."""
+    agora = agora or datetime.now(timezone.utc)
+    t1, v1 = serie[-1]
+    if (agora - t1) > timedelta(hours=2): return 0.0
+    antes = [(t, v) for t, v in serie if t1 - timedelta(hours=2) <= t <= t1 - timedelta(minutes=50)]
+    if not antes: return 0.0
+    t0, v0 = antes[-1]
+    r = (v1 - v0) / 100 / ((t1 - t0).total_seconds() / 3600)
+    return max(-.3, min(.3, r))
+
+
+def sem_subir_sem_chuva(vals, pode_subir):
+    """Junta prazos vizinhos (média) quando a curva sobe sem chuva entre eles — igual a semSubirSemChuva no painel."""
+    blocos = []
+    for j, v in enumerate(vals):
+        blocos.append([v, 1, j])
+        while len(blocos) > 1 and not pode_subir[blocos[-1][2]] and blocos[-1][0] / blocos[-1][1] > blocos[-2][0] / blocos[-2][1]:
+            s, n, _ = blocos.pop(); blocos[-1][0] += s; blocos[-1][1] += n
+    return [s / n for s, n, _ in blocos for _ in range(n)]
+
+
+def trajetoria(modelo, serie, ctx, agora=None):
+    """Linha de previsão da régua principal (1 h a 7 dias) — mesma conta de linhaPrevista no painel
+    (scripts/testar_previsao.py confere). Devolve [(horas, mín, provável, máx)] em metros, ou None."""
+    tr = modelo["passarela"].get("trajetoria")
+    if not tr or not serie: return None
+    tempo, media, f = ctx["tempo"], ctx["media"], modelo["fator_previsao"]
+    t1, H0 = serie[-1]; y0 = H0 / 100
+    hora = t1.astimezone(BRT).strftime("%Y-%m-%dT%H:00")
+    if hora not in tempo: return None
+    i = tempo.index(hora)
+    if i < 720: return None
+    S = lambda a, b: sum(media[max(0, a):max(0, b)])
+    xa, xb, xs, xn = math.log1p(S(i - 24, i + 1)), math.log1p(S(i - 72, i + 1)), S(i - 720, i - 72) / 100, H0 / 100
+    dc6 = ctx["dc6"] if "B" in ctx["versao"] and ctx["dc6"] is not None else 0
+    piso = max(0, min(v for _, v in serie) / 100 - .1)
+    hs, lo, md, hi = [], [], [], []
+    for pz in tr["prazos"]:
+        h = pz["h"]
+        if i + h >= len(tempo): break
+        ra, rf = math.log1p(S(i + 1, i + h + 1) * f), math.log1p(S(i + h - 23, i + h + 1) * f)
+        v = [1, xn, xn * xn, xa, xb, xs, ra, rf, ra * xs, rf * xs, ra * xn, xa * (24 / (h + 24)), max(dc6, 0) / 100 * (24 / (h + 24))]
+        p = sum(w * x for w, x in zip(pz["pesos"], v))
+        q = next(fx for fx in pz["faixas"] if p <= fx["ate"])["q"]
+        hs.append(h); lo.append(max(piso, y0 + (p + q[1]) / 100)); md.append(max(piso, y0 + (p + q[3]) / 100)); hi.append(y0 + (p + q[5]) / 100)
+    if not hs: return None
+    pode = [j > 0 and S(i + hs[j - 1] + 1, i + h + 1) * f >= 5 for j, h in enumerate(hs)]
+    lo, md, hi = (sem_subir_sem_chuva(c, pode) for c in (lo, md, hi))
+    lo = [min(a, b) for a, b in zip(lo, md)]; hi = [max(a, b) for a, b in zip(hi, md)]
+    # primeiras horas: continua a tendência atual, freando, e passa aos poucos para o modelo até o 1º prazo
+    r, H1 = tendencia_atual(serie, agora), hs[0]
+    out = []
+    for h in range(1, H1):
+        w = (h / H1) ** 2
+        lin = lambda c: y0 + (c - y0) * h / H1
+        tend = lambda tau: y0 + r * tau * (1 - math.exp(-h / tau))
+        m_ = (1 - w) * tend(3) + w * lin(md[0])
+        l_ = (1 - w) * min(y0, tend(3)) + w * lin(lo[0])
+        h_ = (1 - w) * max(y0, tend(4.5)) + w * lin(hi[0])
+        out.append((h, max(piso, min(l_, m_)), max(piso, m_), max(h_, m_)))
+    return out + list(zip(hs, lo, md, hi))
 
 
 def calculadora(pm, versao, ref, f48, p24, p72, api, dc6=None, dc12=None, pluv=None):
@@ -278,9 +343,14 @@ def verificar(bacia, mandar):
         prox = next(((k, n, cot_p[k]) for k, n in reversed(COTAS) if k in cot_p and nivel < cot_p[k]), None)
         p = f48 = None
         if r and prox:
-            chance, f48 = r
+            chance, f48, _ = r
             p = chance(prox[2] - nivel)
             print(f"{bacia}: previsão {p*100:.0f}% de chegar a {prox[1]} ({br(prox[2])} m); chuva prevista 48 h {f48:.0f} mm")
+        if r:
+            try:
+                registrar_previsao(bacia, estado, modelo, cid, cot_p, r, agitado=bool(atual) or (p or 0) >= .1 or (d3 or 0) >= 5)
+            except Exception as e:   # o registro é só para estudo: nunca atrapalha os avisos
+                print(f"::warning::{bacia}: previsão não registrada: {e!r}")
         # gatilho rio acima: subida forte numa régua a horas da cidade avisa a atenção mesmo com chance baixa
         # (testado só para a atenção: scripts/modelo_cheias/gatilho_rio_acima.py); funciona mesmo sem a previsão de chuva
         gat = cfg["previsao"].get("gatilho")
@@ -309,6 +379,32 @@ def verificar(bacia, mandar):
     print(f"{bacia}: {nome(P)} {br(nivel)} m às {hora}; cota: {estado['cota']}; {falhas} aviso(s) sem entregar")
     gravar()
     return falhas
+
+
+def registrar_previsao(bacia, estado, modelo, serie, cotas, r, agitado):
+    """Guarda no Supabase (tabela monitora_previsao) a previsão feita agora: a linha do painel e a chance de
+    chegar a cada cota em 48 h, com as entradas do modelo. Depois dá para comparar com o que o rio fez.
+    Com o rio calmo, uma por hora; em cota, subindo ou com chance de cheia, a cada rodada (~10 min)."""
+    token = os.environ.get("MONITORA_PUSH_TOKEN")
+    if not token or not serie: return
+    t1, nivel = serie[-1]
+    if not agitado and time.time() - estado.get("previsao_registrada", 0) < 3300: return
+    chance, f48, ctx = r
+    linha = trajetoria(modelo, serie, ctx)
+    tempo, media, f = ctx["tempo"], ctx["media"], modelo["fator_previsao"]
+    i = tempo.index(t1.astimezone(BRT).strftime("%Y-%m-%dT%H:00")) if t1.astimezone(BRT).strftime("%Y-%m-%dT%H:00") in tempo else None
+    dados = {
+        "modelo": modelo.get("gerado") or modelo.get("versao"),
+        "entradas": {k: (round(ctx[k], 2) if isinstance(ctx[k], float) else ctx[k]) for k in ("versao", "dc6", "dc12", "p24", "p72", "api", "pluv")},
+        "f48": round(f48, 1),
+        "chuva_dias": [round(sum(media[i + 1 + 24 * d:i + 25 + 24 * d]) * f, 1) for d in range(7)] if i is not None else None,
+        "chances_48h": {k: round(chance(v - nivel), 3) for k, v in cotas.items() if v > nivel},
+        "linha": [[h, round(lo * 100, 1), round(md * 100, 1), round(hi * 100, 1)] for h, lo, md, hi in linha] if linha else None,
+        "tendencia_cm_h": round(tendencia_atual(serie) * 100, 1),
+    }
+    supabase_rpc("monitora_registrar_previsao", {"p_token": token, "p_bacia": bacia, "p_leitura_em": t1.isoformat(), "p_nivel": nivel, "p_dados": dados})
+    estado["previsao_registrada"] = time.time()
+    print(f"{bacia}: previsão registrada ({len(dados['linha'] or [])} pontos na linha)")
 
 
 def supabase_rpc(funcao, dados):
