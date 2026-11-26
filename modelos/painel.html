@@ -1421,6 +1421,27 @@ function interp(dados, x) {
   const a = dados[j - 1], b = dados[j];
   return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x);
 }
+// subida (ou descida) atual da régua mostrada, em m/h, pela última hora de leituras
+function tendenciaAtual(ultimo) {
+  const ls = comNivel(cache[estado.estacao]?.leituras || []).map(l => ({ x: ms(l), y: l.nivel / 100 }));
+  if (Date.now() - ultimo.x > 2 * 36e5) return 0;
+  const antes = ls.filter(l => l.x <= ultimo.x - 50 * 6e4 && l.x >= ultimo.x - 2 * 36e5).at(-1);
+  if (!antes) return 0;
+  const r = (ultimo.y - antes.y) / ((ultimo.x - antes.x) / 36e5);
+  return Math.max(-.3, Math.min(.3, r));
+}
+// junta prazos vizinhos (média) quando a curva sobe onde não pode subir (sem chuva entre eles)
+function semSubirSemChuva(pts, c, podeSubir) {
+  const blocos = [];
+  pts.forEach((p, j) => {
+    blocos.push({ s: p[c], n: 1, ini: j });
+    while (blocos.length > 1 && !podeSubir[blocos.at(-1).ini] && blocos.at(-1).s / blocos.at(-1).n > blocos.at(-2).s / blocos.at(-2).n) {
+      const b = blocos.pop(), a = blocos.at(-1); a.s += b.s; a.n += b.n;
+    }
+  });
+  let j = 0;
+  for (const b of blocos) for (let t = 0; t < b.n; t++) pts[j++][c] = b.s / b.n;
+}
 function linhaPrevista(ultimo) {
   const m = prev.modelo, ref = prev.ref, d = prev.dados;
   if (!m?.passarela?.trajetoria || !ref || !d || !REGUAS_CIDADE.includes(estado.estacao)) return null;
@@ -1432,16 +1453,36 @@ function linhaPrevista(ultimo) {
   const f = m.fator_previsao, soma = (a, b) => d.media.slice(Math.max(0, a), Math.max(0, b)).reduce((s, v) => s + v, 0);
   const x = { a: Math.log1p(soma(i - 24, i + 1)), b: Math.log1p(soma(i - 72, i + 1)), s: soma(i - 720, i - 72) / 100, n: ref.H0 / 100 };
   // a linha parte da última leitura da estação mostrada e soma a variação prevista
-  const pts = [{ x: ultimo.x, lo: ultimo.y, md: ultimo.y, hi: ultimo.y }];
+  const piso = Math.max(0, minimo - .1);   // não deixa a previsão abaixo do mínimo recente
+  const mod = [], hs = [];
   for (const pz of m.passarela.trajetoria.prazos) {
     if (i + pz.h >= d.tempo.length) break;
     const ra = Math.log1p(soma(i + 1, i + pz.h + 1) * f), rf = Math.log1p(soma(i + pz.h - 23, i + pz.h + 1) * f);
     const v = [1, x.n, x.n * x.n, x.a, x.b, x.s, ra, rf, ra * x.s, rf * x.s, ra * x.n, x.a * (24 / (pz.h + 24)), Math.max(ref.dc6 || 0, 0) / 100 * (24 / (pz.h + 24))];
     const p = pz.pesos.reduce((s, w, k) => s + w * v[k], 0);
     const q = pz.faixas.find(fx => p <= fx.ate).q;
-    const piso = Math.max(0, minimo - .1);   // não deixa a previsão abaixo do mínimo recente
-    pts.push({ x: ultimo.x + pz.h * 36e5, lo: Math.max(piso, ultimo.y + k * (p + q[1]) / 100), md: Math.max(piso, ultimo.y + k * (p + q[3]) / 100), hi: ultimo.y + k * (p + q[5]) / 100 });
+    hs.push(pz.h);
+    mod.push({ x: ultimo.x + pz.h * 36e5, lo: Math.max(piso, ultimo.y + k * (p + q[1]) / 100), md: Math.max(piso, ultimo.y + k * (p + q[3]) / 100), hi: ultimo.y + k * (p + q[5]) / 100 });
   }
+  if (!mod.length) return null;
+  // cada prazo é uma conta separada: sem chuva prevista entre dois prazos o rio não volta a subir,
+  // então junta (média) os prazos que sobem sem chuva — tira o vaivém da curva e da faixa
+  const podeSubir = hs.map((h, j) => j > 0 && soma(i + hs[j - 1] + 1, i + h + 1) * f >= 5);
+  for (const c of ["lo", "md", "hi"]) semSubirSemChuva(mod, c, podeSubir);
+  for (const p of mod) { p.lo = Math.min(p.lo, p.md); p.hi = Math.max(p.hi, p.md); }
+  // primeiras horas: o modelo só começa no 1º prazo (6 h) e não usa a subida da própria régua;
+  // continua a tendência atual, freando, e passa aos poucos para o modelo até o 1º prazo
+  const pts = [{ x: ultimo.x, lo: ultimo.y, md: ultimo.y, hi: ultimo.y }];
+  const r = tendenciaAtual(ultimo), H1 = hs[0], p1 = mod[0];
+  for (let h = 1; h < H1; h++) {
+    const w = (h / H1) ** 2, lin = c => ultimo.y + (p1[c] - ultimo.y) * h / H1;
+    const tend = tau => ultimo.y + r * tau * (1 - Math.exp(-h / tau));
+    const md = (1 - w) * tend(3) + w * lin("md");
+    const lo = (1 - w) * Math.min(ultimo.y, tend(3)) + w * lin("lo");
+    const hi = (1 - w) * Math.max(ultimo.y, tend(4.5)) + w * lin("hi");
+    pts.push({ x: ultimo.x + h * 36e5, lo: Math.max(piso, Math.min(lo, md)), md: Math.max(piso, md), hi: Math.max(hi, md) });
+  }
+  pts.push(...mod);
   const agoraH = d.tempo.indexOf(horaLocal(new Date()));
   const chuva = d.tempo.map((t, j) => ({ x: new Date(t + ":00").getTime() + 18e5, y: d.media[j] * f, j })).filter(p => p.j > agoraH && p.y > 0);
   return { pts, chuva };
@@ -1499,9 +1540,9 @@ function desenharAgora(manterJanela) {
   }
   if (previsto) {
     const azulClaro = tok("--s1") + "2e";
-    ds.push({ label: "prev mín", tipo: "prev-lo", data: previsto.pts.map(p => ({ x: p.x, y: p.lo })), borderWidth: 0, pointRadius: 0, fill: false, order: 5, tension: .3 });
-    ds.push({ label: "prev máx", tipo: "prev-hi", data: previsto.pts.map(p => ({ x: p.x, y: p.hi })), borderWidth: 0, pointRadius: 0, fill: "-1", backgroundColor: azulClaro, order: 5, tension: .3 });
-    ds.push({ label: "Previsão", tipo: "prev-md", data: previsto.pts.map(p => ({ x: p.x, y: p.md })), borderColor: tok("--s1"), borderWidth: 2, borderDash: [6, 4], pointRadius: 0, order: 1, tension: .3, marcarCursor: true });
+    ds.push({ label: "prev mín", tipo: "prev-lo", data: previsto.pts.map(p => ({ x: p.x, y: p.lo })), borderWidth: 0, pointRadius: 0, fill: false, order: 5, cubicInterpolationMode: "monotone" });
+    ds.push({ label: "prev máx", tipo: "prev-hi", data: previsto.pts.map(p => ({ x: p.x, y: p.hi })), borderWidth: 0, pointRadius: 0, fill: "-1", backgroundColor: azulClaro, order: 5, cubicInterpolationMode: "monotone" });
+    ds.push({ label: "Previsão", tipo: "prev-md", data: previsto.pts.map(p => ({ x: p.x, y: p.md })), borderColor: tok("--s1"), borderWidth: 2, borderDash: [6, 4], pointRadius: 0, order: 1, cubicInterpolationMode: "monotone", marcarCursor: true });
   }
   // mantém a borda direita do gráfico de chuva igual à do nível (inclusive ao girar o celular)
   const sincronizar = { id: "sincronizar", afterLayout(ch) {
