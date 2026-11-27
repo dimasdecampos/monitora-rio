@@ -419,22 +419,34 @@ function desenharGrafico(ls) {
   const visiveis = [...(prox ? [prox] : []), ...cl].filter(n => n.cm / 100 <= max + .01);
   const ds = [{ data: pts, order: 0, borderColor: tok("--acento"), borderWidth: 4, pointRadius: 0, tension: .25, fill: "start",
                 backgroundColor: tok("--acento") + "33" }];
-  for (const n of visiveis) ds.push({ data: [{ x: ini, y: n.cm / 100 }, { x: agora, y: n.cm / 100 }], order: 1, borderColor: tok(n.cor) + "b3",
+  const fimX = agora + 2.5 * 36e5;   // um pouco depois de agora: a linha vertical "agora" não fica colada na borda
+  for (const n of visiveis) ds.push({ data: [{ x: ini, y: n.cm / 100 }, { x: fimX, y: n.cm / 100 }], order: 1, borderColor: tok(n.cor) + "b3",
                                       borderWidth: 1.5, borderDash: [10, 8], pointRadius: 0, fill: false });
-  // linha do nível de agora: referência para comparar com as cotas e as faixas da cidade
-  const yAgora = pts.at(-1).y;
-  ds.push({ data: [{ x: ini, y: yAgora }, { x: agora, y: yAgora }], order: 2, borderColor: tok("--tinta") + "cc", borderWidth: 1.5, borderDash: [3, 5], pointRadius: 0, fill: false });
-  $("#leg").innerHTML = `<span><i style="background:${tok("--acento")}"></i>Nível</span><span><i style="background:${tok("--tinta")}"></i>Agora ${fmt(yAgora, 2)} m</span>` +
+  $("#leg").innerHTML = `<span><i style="background:${tok("--acento")}"></i>Nível</span>` +
     visiveis.slice().reverse().map(n => `<span><i style="background:${tok(n.cor)}"></i>${n.nome} ${fmt(n.cm / 100, 2)} m</span>`).join("");
   const fs = Math.max(11, Math.round(Math.min(innerWidth, innerHeight) * .016));
   const casas = max - min < 1.5 ? 2 : 1;
+  // linha vertical "agora" com o rótulo no topo (igual à do painel)
+  const linhaAgora = {
+    id: "agora",
+    afterDatasetsDraw(c) {
+      const { ctx, chartArea: a, scales: { x } } = c, px = Math.round(x.getPixelForValue(agora)) + .5;
+      ctx.save(); ctx.strokeStyle = tok("--tinta-2"); ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
+      ctx.beginPath(); ctx.moveTo(px, a.top); ctx.lineTo(px, a.bottom); ctx.stroke(); ctx.setLineDash([]);
+      ctx.font = `700 ${fs}px system-ui`;
+      const w = ctx.measureText("agora").width + 12, h = fs + 6, lx = Math.min(Math.max(px - w / 2, a.left), a.right - w);
+      ctx.fillStyle = tok("--tinta-2"); ctx.beginPath(); ctx.roundRect(lx, a.top + 2, w, h, h / 2); ctx.fill();
+      ctx.fillStyle = tok("--superficie"); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("agora", lx + w / 2, a.top + 2 + h / 2);
+      ctx.restore();
+    },
+  };
   const cfg = {
-    type: "line", data: { datasets: ds },
+    type: "line", data: { datasets: ds }, plugins: [linhaAgora],
     options: {
       animation: false, responsive: true, maintainAspectRatio: false, events: [],
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
       scales: {
-        x: { type: "linear", min: ini, max: agora, grid: { color: tok("--grade") }, border: { display: false },
+        x: { type: "linear", min: ini, max: fimX, grid: { color: tok("--grade") }, border: { display: false },
              ticks: { color: tok("--tinta-2"), font: { size: fs }, maxRotation: 0,
                       callback: v => { const d = new Date(v); return d.getHours() === 0 ? d.toLocaleDateString("pt-BR", { weekday: "short", day: "numeric" }) : `${d.getHours()}h`; } },
              // marcas de hora cheia a cada 6 h, alinhadas ao relógio local
