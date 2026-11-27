@@ -379,7 +379,7 @@ quando o Chapéu passa da atenção ou sobe rápido com a cidade alta.
 **Chuva na bacia** (botão no gráfico): barras empilhadas por região — Cunha (Est. de Cunha
 e Rio Jacuí), Lagoinha (2 réguas), Perto da cidade (Estrada do Ribeira e Passarela) e
 Ribeirão do Chapéu (2 réguas). Cada região é a média dos seus pluviômetros (SP Águas)
-e a barra é a **soma das regiões**; no futuro, previsão Open-Meteo nos mesmos pontos.
+e a barra é a **média das regiões** (cada fatia é a parte de uma); no futuro, previsão Open-Meteo nos mesmos pontos.
 A legenda (recolhida) lista as regiões da que mais choveu para a que menos; tocar liga
 ou desliga a região.
 

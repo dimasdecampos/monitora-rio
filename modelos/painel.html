@@ -1079,7 +1079,7 @@ function desenharStats() {
   const mm = v => `${fmt(v, v < 10 ? 1 : 0)}<small> mm</small>`;
   const cartaoChuva = (h, rotPrev, rotMed, medida, extra) => {
     const p = chuvaPrevistaBacia(h);
-    if (p != null) return [`Chuva prevista ${rotPrev}`, mm(p), `Na bacia, próximas ${rotPrev}` + (temChuva ? `<br>Medida nas últimas ${rotMed}: <b>${fmt(medida, medida < 10 ? 1 : 0)} mm</b>` : "")];
+    if (p != null) return [`Chuva prevista ${rotPrev}`, mm(p), `Na bacia, ${h > 24 ? "próximos" : "próximas"} ${rotPrev}` + (temChuva ? `<br>Medida ${h > 24 ? "nos últimos" : "nas últimas"} ${rotMed}: <b>${fmt(medida, medida < 10 ? 1 : 0)} mm</b>` : "")];
     return temChuva ? [`Chuva ${rotMed}`, mm(medida), extra] : null;
   };
   const cards = [
@@ -1337,7 +1337,7 @@ function formatoTempo(v, larguraDias) {
   if (larguraDias <= 4) return `${d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")} ${d.getHours()}h`;
   return `${d.getDate()} ${MESES[d.getMonth()]}`;
 }
-// ---- chuva na bacia: soma das regiões que fazem o rio subir (medida + prevista) ----
+// ---- chuva na bacia: média das regiões que fazem o rio subir (medida + prevista) ----
 const bacia = { quando: 0, regioes: null, carregando: null };
 const CORES_REGIAO = ["--s1", "--s2", "--s3", "--s4"];
 const somaPorDia = pts => {
@@ -1402,13 +1402,14 @@ function desenharLegChuva(a, b) {
   const ch = graficos.chuva; if (!ch || !ch.data.datasets[0]?.regiao) { $("#legChuva").innerHTML = ""; return; }
   const ocultas = new Set(ler("regioesOcultas", []));
   const linhas = bacia.regioes.map(r => {
-    const soma = tipo => ch.data.datasets.filter(d => d.regiao === r && d.tipo === tipo).flatMap(d => d.data).filter(p => p.x >= a && p.x <= b).reduce((s, p) => s + p.y, 0);
+    const soma = tipo => ch.data.datasets.filter(d => d.regiao === r && d.tipo === tipo).flatMap(d => d.real).filter(p => p.x >= a && p.x <= b).reduce((s, p) => s + p.y, 0);
     return { r, med: soma("med"), prv: soma("prv") };
   }).sort((x, y) => (y.med + y.prv) - (x.med + x.prv));
-  const total = linhas.filter(l => !ocultas.has(l.r.curto)).reduce((s, l) => s + l.med + l.prv, 0);
+  const ligadas = linhas.filter(l => !ocultas.has(l.r.curto));
+  const total = ligadas.reduce((s, l) => s + l.med + l.prv, 0) / (ligadas.length || 1);
   const topo = linhas.find(l => !ocultas.has(l.r.curto));
   $("#legChuva").innerHTML = `<details id="legChuvaDet"${ler("legChuvaAberta", false) ? " open" : ""}>
-    <summary><span>Chuva por região · soma <b>${fmt(total, 0)} mm</b>${topo ? ` · mais chuva: <b>${topo.r.curto}</b>` : ""}</span></summary>
+    <summary><span>Chuva por região · média <b>${fmt(total, 0)} mm</b>${topo ? ` · mais chuva: <b>${topo.r.curto}</b>` : ""}</span></summary>
     <div class="chips">` + linhas.map(l => `<button data-reg="${l.r.curto}" aria-pressed="${!ocultas.has(l.r.curto)}">
       <i style="background:${tok(l.r.cor)}"></i><span>${l.r.nome} · <b>${fmt(l.med + l.prv, 0)} mm</b>
       <small>${l.prv >= .5 ? `${fmt(l.med, 0)} medidos + ${fmt(l.prv, 0)} previstos · ` : ""}${l.r.chegada}</small></span></button>`).join("") +
@@ -1419,14 +1420,18 @@ function aplicarRegioesOcultas() {
   const ch = graficos.chuva; if (!ch || !ch.data.datasets[0]?.regiao) return;
   const ocultas = new Set(ler("regioesOcultas", []));
   ch.data.datasets.forEach((d, k) => ch.setDatasetVisibility(k, !ocultas.has(d.regiao.curto)));
+  // cada fatia da barra é a chuva da região dividida pelas regiões ligadas: a barra inteira é a média
+  const n = regioesLigadas();
+  for (const d of ch.data.datasets) d.data = d.real.map(p => ({ x: p.x, y: p.y / n }));
 }
+const regioesLigadas = () => bacia.regioes.filter(r => !ler("regioesOcultas", []).includes(r.curto)).length || 1;
 
 function chuvaBaciaEm(alvo, futuro) {
   const porDia = $("#rotChuva").textContent.includes("dia"), tol = porDia ? 864e5 : 36e5;
   const itens = graficos.chuva.data.datasets.filter((d, k) => d.regiao && d.tipo === (futuro ? "prv" : "med") && graficos.chuva.isDatasetVisible(k)).map(d => {
-    const q = d.data.length ? pontoEm(d.data, alvo) : null; return { d, v: q && Math.abs(q.x - alvo) < tol ? q.y : 0 };
+    const q = d.real.length ? pontoEm(d.real, alvo) : null; return { d, v: q && Math.abs(q.x - alvo) < tol ? q.y : 0 };
   });
-  const total = itens.reduce((s, i) => s + i.v, 0);
+  const total = itens.reduce((s, i) => s + i.v, 0) / (itens.length || 1);   // média das regiões ligadas
   return `<span><b>${fmt(total, 1)} mm</b>${futuro ? " previstos" : ""} na bacia ${porDia ? "no dia" : "na hora"}</span>` +
     itens.map(i => `<span><i class="barra" style="background:${i.d.backgroundColor}"></i>${i.d.regiao.curto} <b>${fmt(i.v, 1)}</b></span>`).join("");
 }
@@ -1652,9 +1657,9 @@ function desenharAgora(manterJanela) {
     opc.plugins.hoje = { x: Date.now() };
     const barra = { barPercentage: 1, categoryPercentage: 1, maxBarThickness: 14 };
     const dsChuva = modoBacia
-      ? bacia.regioes.flatMap(r => [   // barras empilhadas: a altura total é a soma das regiões
-          { label: r.nome, regiao: r, tipo: "med", data: r.med, backgroundColor: tok(r.cor), stack: "bacia", borderColor: tok("--superficie"), borderWidth: { top: 1 }, borderSkipped: "bottom", ...barra },
-          { label: r.nome + " (prevista)", regiao: r, tipo: "prv", data: r.prv, backgroundColor: `color-mix(in srgb, ${tok(r.cor)} 40%, transparent)`, stack: "bacia", borderColor: tok("--superficie"), borderWidth: { top: 1 }, borderSkipped: "bottom", ...barra },
+      ? bacia.regioes.flatMap(r => [   // barras empilhadas: a altura total é a média das regiões
+          { label: r.nome, regiao: r, tipo: "med", real: r.med, data: r.med, backgroundColor: tok(r.cor), stack: "bacia", borderColor: tok("--superficie"), borderWidth: { top: 1 }, borderSkipped: "bottom", ...barra },
+          { label: r.nome + " (prevista)", regiao: r, tipo: "prv", real: r.prv, data: r.prv, backgroundColor: `color-mix(in srgb, ${tok(r.cor)} 40%, transparent)`, stack: "bacia", borderColor: tok("--superficie"), borderWidth: { top: 1 }, borderSkipped: "bottom", ...barra },
         ])
       : [
           { label: "Chuva", data: chuvaHora, backgroundColor: tok("--chuva"), borderRadius: 2, grouped: false, ...barra },
@@ -1673,7 +1678,8 @@ function desenharAgora(manterJanela) {
     if (graficos.chuva) {
       const porDia = (b - a) / 864e5 > 7, dss = graficos.chuva.data.datasets;
       if (modoBacia) {
-        for (const d of dss) d.data = d.tipo === "med" ? (porDia ? d.regiao.medDia : d.regiao.med) : (porDia ? d.regiao.prvDia : d.regiao.prv);
+        for (const d of dss) d.real = d.tipo === "med" ? (porDia ? d.regiao.medDia : d.regiao.med) : (porDia ? d.regiao.prvDia : d.regiao.prv);
+        aplicarRegioesOcultas();
       } else {
         dss[0].data = porDia ? chuvaDia : chuvaHora; dss[1].data = porDia ? chuvaPrevDia : chuvaPrevHora;
       }
@@ -1681,7 +1687,7 @@ function desenharAgora(manterJanela) {
       dss.forEach((d, k) => { if (!graficos.chuva.isDatasetVisible(k)) return;
         for (const p of d.data) if (p.x >= a && p.x <= b) totais.set(p.x, modoBacia ? (totais.get(p.x) || 0) + p.y : Math.max(totais.get(p.x) || 0, p.y)); });
       graficos.chuva.options.scales.y.max = Math.max(2, Math.ceil(Math.max(0, ...totais.values()) * 1.15));
-      $("#rotChuva").textContent = modoBacia ? `Chuva na bacia (mm por ${porDia ? "dia" : "hora"}, soma das 4 regiões)` : porDia ? "Chuva (mm por dia)" : "Chuva (mm por hora)";
+      $("#rotChuva").textContent = modoBacia ? `Chuva na bacia (mm por ${porDia ? "dia" : "hora"}, ${regioesLigadas() < bacia.regioes.length ? "média das regiões marcadas" : `média das ${bacia.regioes.length} regiões`})` : porDia ? "Chuva (mm por dia)" : "Chuva (mm por hora)";
       graficos.chuva.update("none");
       desenharLegChuva(a, b);
     } else $("#legChuva").innerHTML = "";
@@ -2363,7 +2369,7 @@ async function desenharRioAcima() {
   }
   $("#rChapeu").innerHTML = rioAcima.represa ? `<span class="pill"><i style="background:${tok(rioAcima.represa[1])}"></i>Represamento: ${rioAcima.represa[0]}</span><span>${rioAcima.represa[2]}</span>` : "";
   $("#rResumo").innerHTML = `<i style="background:${tok(resumo[1])}"></i>${resumo[0]}`;
-  $("#rSub").textContent = `${resumo[2]} · ${config.textos?.rio_acima || "SP Águas"}`;
+  $("#rSub").textContent = `${resumo[2]} ${(config.textos?.rio_acima || "SP Águas").replace(/\.?$/, ".")}`;
   rioAcima.trecho = trecho;
   desenharImpactos(); verificarAvisos();
 }
@@ -2395,7 +2401,7 @@ async function desenharImpactos() {
   const cor = !pior ? "--bom" : pior.tipo === "registro" ? "--inundacao" : cotasDe(estacoes[P]).find(c => Math.abs(c.cm - pior.cm) < 1)?.cor || "--atencao";
   $("#iResumo").innerHTML = buscando ? `<i style="background:${tok("--neutro")}"></i>Buscando leitura…`
     : `<i style="background:${tok(cor)}"></i>${pior ? pior.titulo.replace(" (cota oficial)", "") : "Abaixo da atenção"}`;
-  $("#iSub").textContent = `Régua ${apelido(P)} · agora ${agora != null ? fmt(agora / 100, 2) + " m" : buscando ? "buscando a leitura ao vivo" : "sem leitura"}${provavel != null ? ` · previsão 48 h: provável ${fmt(provavel / 100, 2)} m` : ""}`;
+  $("#iSub").textContent = `Régua ${apelido(P)} · agora ${agora != null ? fmt(agora / 100, 2) + " m" : buscando ? "buscando a leitura ao vivo" : "sem leitura"}${provavel != null ? ` · previsão 48 h: pico provável ${fmt(provavel / 100, 2)} m` : ""}`;
   // sem lugares marcados (bacia nova): só a escada de níveis, sem mapa
   const semMapa = !impactos.lugares?.length;
   $("#cardImpacto .mapa-box").hidden = semMapa; $("#cardImpacto .impacto").classList.toggle("so-escada", semMapa);
