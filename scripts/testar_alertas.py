@@ -20,12 +20,17 @@ enviados = []        # textos que o robô mandou nesta rodada
 chega = [True]       # False = todos os canais falham
 
 
+forma = {}           # {codigo: função(minutos atrás) -> cm}: régua com subida/descida (ex.: pico e descida)
+
+
 def serie(cod):
-    """14 h de leituras paradas no nível atual (sem subida: não dispara os avisos de rio acima)."""
+    """14 h de leituras paradas no nível atual (sem subida: não dispara os avisos de rio acima),
+    ou com a forma dada em `forma`."""
     v = niveis.get(cod)
     if v is None: return []
     fim = datetime.fromtimestamp(relogio[0], timezone.utc)
-    return [(fim - timedelta(minutes=10 * k), float(v)) for k in range(84, -1, -1)]
+    f = forma.get(cod, lambda m: v)
+    return [(fim - timedelta(minutes=10 * k), float(f(10 * k))) for k in range(84, -1, -1)]
 
 
 alertas.time = types.SimpleNamespace(time=lambda: relogio[0], sleep=lambda s: None)
@@ -92,6 +97,20 @@ for bacia in comum.bacias():
             for t, n in enviados: print("     ", n, t.replace("\n", " | "))
     else:
         print(f"{bacia}: {len(passos)} rodadas simuladas, avisos como esperado")
+
+    # pico e descida: em cota, o rio subiu até um pico 4 h atrás e já baixou 20 cm → "começou a baixar", uma vez só
+    pico_cm = al + 40
+    forma[P] = lambda m: pico_cm - abs(m - 240) * 0.1 if m < 240 else pico_cm - (m - 240) * 0.1
+    for oque, esperado in [("passou do pico e baixa", {"📉 alerta"}), ("continua baixando: não repete", set())]:
+        try:
+            saiu, _ = rodada(bacia, P, pico_cm - 24, 10)
+        except Exception as e:
+            print(f"ERRO {bacia}: {oque}: o robô quebrou ({e!r})"); erros += 1; break
+        if not esperado <= set(saiu) or ("📉" in "".join(saiu)) != bool(esperado):
+            erros += 1; print(f"ERRO {bacia}: {oque}: esperava {esperado or 'nenhum 📉'}, saiu {saiu or 'nenhum aviso'}")
+    else:
+        print(f"{bacia}: pico e descida, aviso \"começou a baixar\" como esperado")
+    forma.clear()
 
 if not testadas:
     sys.exit("nenhuma bacia com cotas para testar")

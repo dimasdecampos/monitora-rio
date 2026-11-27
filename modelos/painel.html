@@ -297,6 +297,7 @@
   .prob.ja b { font-size: 13px; color: var(--tinta-2); }
   .prev-frase { margin: 0; font-size: 14px; color: var(--tinta-2); }
   .prev-frase strong { color: var(--tinta); }
+  .prev-frase .nota-ra { color: var(--tinta-3); font-size: 12.5px; }
   .dias-chuva { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; align-items: end; height: 118px; }
   .dia-ch { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; height: 100%; font-size: 12px; color: var(--tinta-2); min-width: 0; }
   .dia-ch .col { width: 100%; max-width: 30px; border-radius: 4px 4px 2px 2px; background: var(--chuva); min-height: 2px; position: relative; }
@@ -1469,13 +1470,15 @@ function entradasRioAcima(pas, barro, cunha) {
   }
   return e;
 }
-function linhaPrevista(ultimo) {
+// cod: régua da cidade em que a linha é desenhada (padrão: a mostrada no gráfico)
+function linhaPrevista(ultimo, cod = estado.estacao) {
   const m = prev.modelo, ref = prev.ref, d = prev.dados;
-  if (!m?.passarela?.trajetoria || !ref || !d || !REGUAS_CIDADE.includes(estado.estacao)) return null;
+  if (!m?.passarela?.trajetoria || !ref || !d || !REGUAS_CIDADE.includes(cod)) return null;
   // o modelo trabalha na régua principal: converte a variação para a régua mostrada
-  const k = estado.estacao === P ? 1 : config.conversoes[estado.estacao][1];
+  const k = cod === P ? 1 : config.conversoes[cod][1];
   // não deixa a previsão abaixo do mínimo das últimas 72 h (o robô de avisos usa a mesma janela)
-  const minimo = Math.min(...comNivel(cache[estado.estacao]?.leituras || []).filter(l => ms(l) >= ultimo.x - 72 * 36e5).map(l => l.nivel / 100), ultimo.y);
+  const leituras = cache[cod]?.leituras || (cod === P ? rioAcima.dados[P] : null) || [];
+  const minimo = Math.min(...comNivel(leituras).filter(l => ms(l) >= ultimo.x - 72 * 36e5).map(l => l.nivel / 100), ultimo.y);
   const i = d.tempo.indexOf(horaLocal(new Date(ref.t)));
   if (i < 720) return null;
   const f = m.fator_previsao, soma = (a, b) => d.media.slice(Math.max(0, a), Math.max(0, b)).reduce((s, v) => s + v, 0);
@@ -2097,6 +2100,23 @@ async function desenharPrevisao() {
   }
 }
 
+// pico das próximas 48 h pela linha das réguas rio acima, na régua principal (cm); null sem essas réguas
+function picoDaLinha(ref) {
+  if (!ref?.ra || !prev.modelo?.passarela?.rio_acima) return null;
+  const l = linhaPrevista({ x: ref.t, y: ref.H0 / 100 }, P);
+  const ps = l?.pts.filter(p => p.x <= ref.t + 48 * 36e5);
+  if (!ps?.length) return null;
+  const pico = ps.reduce((a, b) => b.md > a.md ? b : a);
+  const em24 = ps.find(p => p.x >= ref.t + 24 * 36e5) || ps.at(-1);
+  return { md: pico.md * 100, x: pico.x, hi: Math.max(...ps.map(p => p.hi)) * 100, em24: em24.md * 100 };
+}
+// "por volta das 17h", "amanhã por volta das 3h", "no sábado por volta das 8h"
+function quandoTexto(t) {
+  const d = new Date(t + 30 * 6e4), hoje = new Date(), h = d.getHours();   // arredonda para a hora cheia
+  const dias = Math.round((new Date(d).setHours(0, 0, 0, 0) - new Date(hoje).setHours(0, 0, 0, 0)) / 864e5);
+  const dia = dias <= 0 ? "" : dias === 1 ? "amanhã " : `${["no domingo", "na segunda", "na terça", "na quarta", "na quinta", "na sexta", "no sábado"][d.getDay()]} `;
+  return `${dia}por volta das ${h}h`;
+}
 function renderizarPrevisao(ref) {
   const m = prev.modelo, { tempo, media, membros } = prev.dados, fator = m.fator_previsao, H0 = ref.H0;
   let i = tempo.indexOf(horaLocal(new Date()));
@@ -2118,7 +2138,11 @@ function renderizarPrevisao(ref) {
   // resultado na régua da cidade escolhida; para outras estações, na régua principal
   const reguaCod = REGUAS_CIDADE.includes(estado.estacao) ? estado.estacao : P;
   const paraRegua = cm => reguaCod === P ? cm : conv(reguaCod, cm);
-  prev.pico = { agora: H0, provavel: H0 + g50, alto: H0 + g10 };   // na régua principal (usado em "o que alaga")
+  // com as réguas rio acima transmitindo, o pico vem da linha de previsão (vê a água que já desce o rio;
+  // o modelo de chuva acima não vê e, numa cheia em curso, dizia "fica perto do nível atual")
+  const picoRA = picoDaLinha(ref);
+  prev.pico = picoRA ? { agora: H0, provavel: picoRA.md, alto: Math.max(picoRA.hi, H0 + g10), quando: picoRA.x, rioAcima: true }
+    : { agora: H0, provavel: H0 + g50, alto: H0 + g10 };   // na régua principal (usado em "o que alaga")
   const naRegua = cm => fmt(paraRegua(cm) / 100, 2);
 
   // nível de risco: olha a próxima cota que ainda não foi passada
@@ -2172,9 +2196,15 @@ function renderizarPrevisao(ref) {
           <b>${ja ? "✓ já" : p < .01 ? "<1%" : fmt(p * 100, 0) + "%"}</b></div>`;
       }).join("")}
     </div>
-    <p class="prev-frase">${g50 < 10
-      ? `O rio deve <strong>ficar perto do nível atual</strong> (${naRegua(H0)} m)`
-      : `Pico mais provável: <strong>${naRegua(H0 + g50)} m</strong>`}${g10 > g50 + 5 ? `; num cenário de mais chuva, pode chegar a <strong>${naRegua(H0 + g10)} m</strong>` : ""}.
+    <p class="prev-frase">${picoRA
+      ? (picoRA.md > H0 + 3
+        ? `Pico provável: <strong>${naRegua(picoRA.md)} m</strong> ${quandoTexto(picoRA.x)}`
+        : `O rio deve <strong>baixar</strong>: cerca de <strong>${naRegua(picoRA.em24)} m</strong> em 24 h`)
+        + (prev.pico.alto > Math.max(picoRA.md, H0) + 5 ? `; pode chegar a <strong>${naRegua(prev.pico.alto)} m</strong> (9 em 10 chances de ficar abaixo disso)` : "")
+        + `. <span class="nota-ra">Pelas réguas rio acima e a chuva prevista.</span>`
+      : (g50 < 10
+        ? `O rio deve <strong>ficar perto do nível atual</strong> (${naRegua(H0)} m)`
+        : `Pico mais provável: <strong>${naRegua(H0 + g50)} m</strong>`) + (g10 > g50 + 5 ? `; num cenário de mais chuva, pode chegar a <strong>${naRegua(H0 + g10)} m</strong>` : "") + "."}
       ${gatilho ? `<br>🌊 <strong>${apelido(gatilho.cod)} subiu ${fmt(gatilho.sobe, 0)} cm em ${gatilho.horas} h</strong>${estacoes[gatilho.cod]?.rio_acima?.horas_ate_cidade ? `: essa água chega à cidade em cerca de ${estacoes[gatilho.cod].rio_acima.horas_ate_cidade} h` : ""}. Subidas assim vieram antes de todas as cheias de ${config.previsao.gatilho.teste?.periodo || "2024–2026"}, mesmo quando a chance pela chuva era baixa.` : ""}
       ${idade > 3 ? `<span class="aviso-atraso">Atenção: a última leitura do rio é de ${ha(idade)}.</span>` : ""}</p>
     <div>

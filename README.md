@@ -407,7 +407,11 @@ ou desliga a região.
 - **Robô de avisos:** `scripts/alertas.py` roda a cada ~10 min (`.github/workflows/alertas.yml`)
   para todas as bacias. Avisa quando a régua principal muda de cota, a água sobe ≥ 20 cm
   em 3 h rio acima (com tempo de chegada), há risco de represamento ou a previsão passa de
-  30%. Cada tipo de aviso se repete no máximo a cada 6–12 h. Sem nenhum canal configurado,
+  30%. Em cheia (acima da atenção): **previsão do pico** ("deve parar de subir por volta das
+  17h, perto de 4,38 m"), pela linha das réguas rio acima, a cada 6 h enquanto ainda sobe, e
+  **começou a baixar** (pico e hora), uma vez por pico, quando o rio já desceu ≥ 10 cm do máximo
+  das últimas 12 h e cai ≥ 5 cm em 3 h. Uma régua rio acima sem leitura há mais de 2 h não conta
+  como subindo. Cada tipo de aviso se repete no máximo a cada 6–12 h. Sem nenhum canal configurado,
   roda em modo de teste e só registra as mensagens.
   Um aviso só conta como dado quando chega por pelo menos um canal: se todos falharem, ele
   é tentado de novo na próxima rodada, e a rodada fica vermelha no GitHub (que manda e-mail).

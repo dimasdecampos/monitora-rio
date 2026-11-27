@@ -166,6 +166,14 @@ def sem_subir_sem_chuva(vals, pode_subir):
     return [s / n for s, n, _ in blocos for _ in range(n)]
 
 
+def quando_texto(t):
+    """"por volta das 17h", "amanhã por volta das 3h", "no sábado por volta das 8h" (hora de Brasília)."""
+    local = (t + timedelta(minutes=30)).astimezone(BRT)
+    dias = (local.date() - datetime.now(BRT).date()).days
+    dia = "" if dias <= 0 else "amanhã " if dias == 1 else ["na segunda ", "na terça ", "na quarta ", "na quinta ", "na sexta ", "no sábado ", "no domingo "][local.weekday()]
+    return f"{dia}por volta das {local.hour}h"
+
+
 def variaveis_rio_acima(e, r24, rfut):
     """Variáveis da linha pelas réguas rio acima (1 a 24 h) — igual a variaveisRioAcima no painel e a
     variaveis em scripts/modelo_cheias/rio_acima.py. e = {"p", "b", "c"}: nível agora e h horas antes (cm)."""
@@ -405,6 +413,19 @@ def verificar(bacia, mandar):
             print(f"{bacia}: previsão {p*100:.0f}% de chegar a {prox[1]} ({br(prox[2])} m); chuva prevista 48 h {f48:.0f} mm")
         ra = modelo["passarela"].get("rio_acima")
         if r and ra: r[2]["ra"] = entradas_rio_acima(cid, s.get(ra["estacao"]), s.get(ra["cunha"]))
+        # em cheia (acima da atenção): até quando o rio sobe, pela linha das réguas rio acima
+        nv_cheia = (atual[0] if atual else None) or anterior
+        if nv_cheia and r and r[2].get("ra"):
+            try: linha = trajetoria(modelo, cid, r[2])
+            except Exception as e: linha = None; print(f"::warning::{bacia}: linha não calculada: {e!r}")
+            pico = max((p for p in linha or [] if p[0] <= 48), key=lambda p: p[2], default=None)
+            if pico and pico[2] * 100 > nivel + 3 and pode("pico", 6):
+                hi = max(p[3] for p in linha if p[0] <= 48) * 100
+                quando = quando_texto(cid[-1][0] + timedelta(hours=pico[0]))
+                avisar(f"⏫ *{rio}: previsão do pico*\n{nome(P)} em {br(nivel)} m às {hora}{tend}. "
+                       f"Deve parar de subir {quando}, perto de *{br(pico[2] * 100)} m*"
+                       f"{f' (pode chegar a {br(hi)} m)' if hi > pico[2] * 100 + 5 else ''}.\n"
+                       f"Previsão pelas réguas rio acima e a chuva prevista; pode mudar se chover forte.", "pico", nv_cheia)
         if r:
             try:
                 registrar_previsao(bacia, estado, modelo, cid, cot_p, r, agitado=bool(atual) or (p or 0) >= .1 or (d3 or 0) >= 5)
@@ -430,6 +451,16 @@ def verificar(bacia, mandar):
             else:
                 texto = f"🌧️ *Previsão: {p*100:.0f}% de chance de {prox[1].lower()}*\nNas próximas 48 h, {nome(P)} pode chegar a {br(prox[2])} m (agora {br(nivel)} m). Chuva prevista na bacia: {f48:.0f} mm."
             avisar(texto, "prev-" + prox[0], prox[0])
+
+    # 5) em cheia: o rio passou do pico e começou a baixar (uma vez por pico)
+    nv_cheia = (atual[0] if atual else None) or estado.get("cota")
+    janela = [(t, v) for t, v in cid if t >= cid[-1][0] - timedelta(hours=12)]
+    if nv_cheia and janela and d3 is not None:
+        t_max, v_max = max(janela, key=lambda x: x[1])
+        if v_max - nivel >= 10 and d3 <= -5 and estado.get("pico_baixando") != t_max.timestamp() and pode("baixando", 6):
+            if avisar(f"📉 *{rio} começou a baixar*\nPico de *{br(v_max)} m* às {t_max.astimezone(BRT):%H:%M}; "
+                      f"agora {br(nivel)} m às {hora} ({d3:+.0f} cm em 3 h).", "baixando", nv_cheia):
+                estado["pico_baixando"] = t_max.timestamp()
 
     if os.environ.get("TESTE") == "1":
         sit = atual[1] if atual else "Normal" if cot_p else "sem cotas"
