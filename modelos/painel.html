@@ -2307,18 +2307,6 @@ async function desenharRioAcima() {
 
 // ================= o que alaga com cada nível =================
 let impactos = null, mapa = null, marcadores = [];
-const escHtml = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-// ruas que alagam, editadas na /admin (scripts/supabase/monitora_ruas.sql); null se não der para buscar
-const ruasEditadas = { dados: null, quando: 0 };
-async function carregarRuas() {
-  if (Date.now() - ruasEditadas.quando < 10 * 60e3) return ruasEditadas.dados;
-  ruasEditadas.quando = Date.now();
-  try {
-    const r = await fetch(`${PUSH.url}/rest/v1/rpc/monitora_ruas_listar`, { method: "POST", headers: { apikey: PUSH.chave, "Content-Type": "application/json" }, body: JSON.stringify({ p_bacia: BACIA }) });
-    ruasEditadas.dados = r.ok ? (await r.json()).filter(l => l.ativo && (l.linhas || l.area || l.lat != null)) : null;
-  } catch { ruasEditadas.dados = null; }
-  return ruasEditadas.dados;
-}
 async function desenharImpactos() {
   const card = $("#cardImpacto");
   if (!config.impactos) { card.hidden = true; return; }
@@ -2355,24 +2343,14 @@ async function desenharImpactos() {
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(mapa);
     L.circleMarker([p.lat, p.lon], { radius: 7, color: "#fff", weight: 2, fillColor: tok("--acento"), fillOpacity: 1 }).addTo(mapa).bindPopup(`Régua ${apelido(P)} (${p.operadora})`);
   }
-  // trechos de rua (linhas) e praças (área) pintados pela situação; lugares sem traçado ficam como ponto.
-  // Os que alagam primeiro são desenhados por cima. Lista editada na /admin (Supabase); sem ela, a do impactos.json.
-  const remotas = await carregarRuas();
-  const lugares = remotas?.length ? remotas : impactos.lugares;
   marcadores.forEach(m => m.remove());
-  const ordem = lugares.slice().sort((a, b) => b.cm - a.cm);
-  // contorno branco de todas as ruas primeiro, para um trecho não cobrir a cor do vizinho
-  const contornos = ordem.filter(l => l.linhas).map(l => L.polyline(l.linhas, { color: "#fff", weight: 10, opacity: .9, lineCap: "round", lineJoin: "round", interactive: false }).addTo(mapa));
-  marcadores = contornos.concat(ordem.map(l => {
+  marcadores = impactos.lugares.map(l => {
     const st = agora != null && agora >= l.cm ? "--inundacao" : alto != null && alto >= l.cm ? "--alerta" : "--mediana";
-    const nome = l.nome.split(" · ")[0];   // trechos pintados na /admin: "Rua X · id"
-    const popup = `<strong>${escHtml(nome)}</strong><br>Alaga com a régua ${apelido(P)} a partir de ${l.aproximado ? "cerca de " : ""}${fmt(l.cm / 100, 2)} m${l.obs ? `<br><span style="opacity:.8">${escHtml(l.obs)}</span>` : ""}`;
-    if (l.linhas) return L.polyline(l.linhas, { color: tok(st), weight: 6, opacity: 1, lineCap: "round", lineJoin: "round" }).addTo(mapa).bindPopup(popup);
-    if (l.area) return L.polygon(l.area, { color: "#fff", weight: 2, fillColor: tok(st), fillOpacity: .75 }).addTo(mapa).bindPopup(popup);
-    return L.circleMarker([l.lat, l.lon], { radius: 9, color: "#fff", weight: 2, fillColor: tok(st), fillOpacity: .95 }).addTo(mapa).bindPopup(popup);
-  }));
-  if (!mapa._enquadrado) {   // enquadra os lugares registrados e a régua
-    mapa.fitBounds(L.latLngBounds([...lugares.flatMap(l => l.linhas ? l.linhas.flat() : l.area || [[l.lat, l.lon]]), [estacoes[P].lat, estacoes[P].lon]]), { padding: [24, 24] });
+    return L.circleMarker([l.lat, l.lon], { radius: 9, color: "#fff", weight: 2, fillColor: tok(st), fillOpacity: .95 })
+      .addTo(mapa).bindPopup(`<strong>${l.nome}</strong><br>Alagou com a régua ${apelido(P)} em cerca de ${fmt(l.cm / 100, 2)} m`);
+  });
+  if (!mapa._enquadrado) {   // enquadra os pontos registrados e a régua
+    mapa.fitBounds(L.latLngBounds([...impactos.lugares.map(l => [l.lat, l.lon]), [estacoes[P].lat, estacoes[P].lon]]), { padding: [24, 24] });
     mapa._enquadrado = true;
   }
   setTimeout(() => mapa.invalidateSize(), 50);

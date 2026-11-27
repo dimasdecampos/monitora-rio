@@ -384,10 +384,10 @@ ou desliga a região.
   Rua dos Presottos começa a alagar, visto em 26/11/2026; 3,95 m: ruas da beira do rio, 2021;
   ~4,60 m: ruas do centro, 2024 — aproximado; 5,36 m: Praça da Matriz, 2022), ruas no mapa e
   linha do tempo das cheias desde 1863.
-- **Mapa "O que alaga" pintado na /admin.** Em *Pintar o que alaga* (`/admin/`), escolha o nível e
+- **Pintura do que alaga na /admin (em teste; o mapa do painel ainda usa os pontos do impactos.json).** Em *Pintar o que alaga* (`/admin/`), escolha o nível e
   pinte as ruas com o pincel (borracha e desfazer também); a pintura gruda nos trechos das ruas do
   OpenStreetMap (`public/paraitinga/ruas_osm.json`, entre esquinas e até ~60 m) e é gravada sozinha
-  no Supabase (tabela `monitora_ruas`, SQL em `scripts/supabase/monitora_ruas.sql`). O painel mostra
+  no Supabase (tabela `monitora_ruas`, SQL em `scripts/supabase/monitora_ruas.sql`). Quando o painel passar a usar, mostrará
   cada trecho pela situação (atingido agora, pode ser atingido em 48 h, não atingido); sem nada
   pintado ou sem o Supabase, usa as ruas inteiras do `impactos.json`. Gravar exige a senha da /admin,
   separada do token do robô (só o hash fica no banco; como definir está no começo do SQL).
