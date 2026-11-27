@@ -390,9 +390,10 @@ ou desliga a região.
   ~4,60 m: ruas do centro, 2024 — aproximado; 5,36 m: Praça da Matriz, 2022), ruas no mapa e
   linha do tempo das cheias desde 1863.
 - **Até onde a água chegou (na /admin, em teste).** Informe o nível da Passarela e marque no mapa (satélite ou
-  ruas) até onde a água chega com ele, tocando no lugar ou por "Marcar onde estou" (GPS). Uma malha de
-  triângulos liga os pontos ao centro do rio (`public/paraitinga/rio.json`) e desenha a água para qualquer
-  nível: até 3,00 m dentro da calha; sem ponto num raio de ~180 m, nada é desenhado. Os pontos ficam no
+  ruas) até onde a água chega com ele, tocando no lugar ou por "Marcar onde estou" (GPS). A mancha
+  vai do centro do rio (`public/paraitinga/rio.json`) até cada ponto, sem passar dele; pontos do mesmo lado a
+  menos de ~220 m (ao longo do rio) se ligam, e abaixo do nível marcado ela recua proporcionalmente até a
+  calha (3,00 m). Os pontos ficam no
   Supabase (tabela `monitora_ruas`, nomes `Ponto · …`; SQL em `scripts/supabase/monitora_ruas.sql`), com a
   senha da /admin. O mapa "O que alaga" do painel ainda usa o `impactos.json`.
 - `public/<bacia>/estatisticas.json` (gerado por `scripts/estatisticas.py`, para a régua
