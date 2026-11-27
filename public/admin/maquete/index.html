@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>São Luiz do Paraitinga em 3D</title>
+<style>
+  :root { --sky: #bcd7ee; --ink: #2b2118; --paper: rgba(255, 250, 240, .92); --accent: #b5552f; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--sky); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  canvas#cena { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  .painel { position: fixed; top: 16px; left: 16px; max-width: min(340px, calc(100vw - 32px)); background: var(--paper);
+    border-radius: 14px; padding: 14px 16px; box-shadow: 0 6px 24px rgba(40, 30, 20, .22); backdrop-filter: blur(6px); }
+  .painel h1 { margin: 0; font: 600 1.35rem/1.15 Georgia, "Times New Roman", serif; letter-spacing: .01em; }
+  .painel p { margin: 6px 0 10px; font-size: .82rem; line-height: 1.4; opacity: .8; }
+  .lugares { display: flex; flex-wrap: wrap; gap: 6px; }
+  .lugares button { font: inherit; font-size: .78rem; padding: 5px 10px; border-radius: 999px; border: 1px solid rgba(43, 33, 24, .25);
+    background: #fff; color: var(--ink); cursor: pointer; }
+  .lugares button:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+  #rotulos { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  .rotulo { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); white-space: nowrap; font-size: .74rem; font-weight: 600;
+    padding: 3px 8px; border-radius: 6px; background: rgba(255, 252, 245, .9); box-shadow: 0 1px 6px rgba(0, 0, 0, .25);
+    transition: opacity .2s; will-change: transform; }
+  .rotulo::after { content: ""; position: absolute; left: 50%; top: 100%; width: 1px; height: 14px; background: rgba(43, 33, 24, .55); }
+  .creditos { position: fixed; right: 10px; bottom: 8px; font-size: .68rem; background: rgba(255, 255, 255, .7); padding: 2px 8px; border-radius: 6px; }
+  .creditos a { color: inherit; }
+  .dica { position: fixed; left: 16px; bottom: 12px; font-size: .72rem; background: rgba(255, 255, 255, .7); padding: 3px 9px; border-radius: 6px; }
+  #carregando { position: fixed; inset: 0; display: grid; place-items: center; background: var(--sky); font: 600 1.1rem Georgia, serif; z-index: 5; transition: opacity .6s; }
+  .embutida .painel, .embutida .dica { display: none; } /* dentro do painel /admin (simulação de enchente) */
+  @media (max-width: 600px) { .painel p, .dica { display: none; } .painel h1 { font-size: 1.1rem; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="cena"></canvas>
+<div id="rotulos"></div>
+<div class="painel">
+  <h1>São Luiz do Paraitinga</h1>
+  <p>Maquete 3D do centro histórico e do vale do Rio Paraitinga, montada com ruas, relevo e construções do mapa aberto.</p>
+  <div class="lugares" id="lugares"></div>
+</div>
+<div class="dica">Arraste para girar · role para aproximar · botão direito para mover</div>
+<div class="creditos">Mapa © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · Relevo: Terrain Tiles (Mapzen/AWS)</div>
+<div id="carregando">Montando a cidade…</div>
+<script type="module" src="main.js"></script>
+</body>
+</html>
