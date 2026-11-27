@@ -118,16 +118,18 @@
   .rodape b { color: var(--tinta); }
   .rodape .dir { margin-left: auto; }
 
-  /* tela em pé (celular, tablet ou monitor vertical): cabe na tela, sem rolar; o gráfico fica com o que sobrar */
+  /* tela em pé (celular, tablet ou monitor vertical): a primeira tela vai até o fim do gráfico (altura dele
+     calculada em ajustarEmPe); rio acima e chuva ficam abaixo, rolando a página */
   @media (max-aspect-ratio: 1/1) {
-    body { font-size: 12px; }
-    .tela { height: 100dvh; padding: 10px 10px max(8px, env(safe-area-inset-bottom)); gap: 8px; }
+    body { font-size: 12px; overflow-y: auto; }
+    .tela { height: auto; min-height: 100dvh; padding: 10px 10px max(8px, env(safe-area-inset-bottom)); gap: 8px; }
     .topo { gap: 6px 12px; }
     .topo h1 { font-size: 15px; } #tCidade { display: none; }
     .vivo { font-size: 12px; } .vivo i { width: 7px; height: 7px; } .botoes { display: none; }
     .relogio b { font-size: 20px; } .relogio span { display: none; }
-    .corpo { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 8px; }
-    .lado { display: grid; grid-template-rows: minmax(0, 1fr) auto auto; gap: 8px; }
+    .corpo { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+    .lado { display: flex; flex-direction: column; gap: 8px; }
+    .grafico { flex: none; height: var(--altura-grafico, 55vh); }
     .card { padding: 10px 12px; border-radius: 10px; }
     .rot { font-size: 10.5px; }
     .agora { gap: 8px; }
@@ -143,7 +145,7 @@
     .regua .cota { width: 16px; border-top-width: 2px; } .regua .cota span { left: 20px; font-size: 0; } .regua .cota span b { font-size: 10.5px; }
     .grafico .cab { flex-wrap: wrap; gap: 2px 8px; }
     .grafico .leg { margin-left: 0; flex-wrap: wrap; gap: 2px 10px; font-size: 10.5px; } .grafico .leg i { width: 10px; height: 3px; margin-right: 3px; }
-    .grafico .area { flex: 1; height: auto; min-height: 80px; margin-top: 4px; }
+    .grafico .area { flex: 1; height: auto; min-height: 0; margin-top: 4px; }
     .acima { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; margin-top: 5px; }
     .est { padding: 4px 6px; border-left-width: 3px; border-radius: 6px; }
     .est .n { font-size: 9.5px; } .est b { font-size: 14px; } .est .d { font-size: 10px; } .est .t { display: none; }
@@ -152,10 +154,6 @@
     .card .rot { line-height: 1.2; }
     .rodape { font-size: 10px; flex-wrap: wrap; gap: 2px 8px; } .rodape > span:first-child { display: none; }
   }
-  /* celular: dica para entrar em tela cheia (o navegador só deixa depois de um toque) */
-  .dica-tela { position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 9;
-               background: var(--superficie-2); color: var(--tinta); border: 1px solid var(--borda); border-radius: 999px;
-               padding: 8px 16px; font-size: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.4); pointer-events: none; }
 </style>
 </head>
 <body>
@@ -484,7 +482,7 @@ function marcarVivo(tipo, txt) { $("#vivo").className = "vivo " + tipo; $("#vivo
 
 // ---------- ciclo ----------
 let ultimo = null;
-function desenharTudo() { if (!ultimo) return; desenharAgora(ultimo[P] || [], ultimo.chuva); desenharGrafico(ultimo[P] || []); desenharAcima(ultimo); }
+function desenharTudo() { if (!ultimo) return; desenharAgora(ultimo[P] || [], ultimo.chuva); ajustarEmPe(); desenharGrafico(ultimo[P] || []); desenharAcima(ultimo); }
 // chuva prevista: pedida junto com as réguas (que podem demorar) e, se o Open-Meteo falhar
 // (ex.: 503 passageiro), tenta de novo em 30 s, 1 min, 1,5 min… em vez de ficar com "—" até a próxima rodada
 let chuvaTentativa = null;
@@ -521,27 +519,18 @@ let ocioso;
 const acordar = () => { document.body.classList.remove("ocioso"); clearTimeout(ocioso); ocioso = setTimeout(() => document.body.classList.add("ocioso"), 4000); };
 ["mousemove", "keydown", "touchstart"].forEach(ev => addEventListener(ev, acordar));
 
-// tela cheia; no celular, também vira para deitado (o formato do modo TV)
-const celular = matchMedia("(pointer: coarse)").matches;
-async function telaCheia() {
-  if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); return; }
-  try { await document.documentElement.requestFullscreen({ navigationUI: "hide" }); } catch { return; }
-  if (celular) try { await screen.orientation?.lock?.("landscape"); } catch {}
-}
-document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement) try { screen.orientation?.unlock?.(); } catch {} });
-$("#bTela").onclick = telaCheia;
-// no celular, o primeiro toque em qualquer lugar entra em tela cheia (o botão fica escondido com o celular em pé)
-if (celular && document.documentElement.requestFullscreen) {
-  const dica = document.createElement("div"); dica.className = "dica-tela"; dica.textContent = "Toque na tela para ver em tela cheia";
-  document.body.append(dica);
-  const entrar = ev => { if (ev.target.closest("button, a")) return; removeEventListener("click", entrar); dica.remove(); telaCheia(); };
-  addEventListener("click", entrar);
-  setTimeout(() => dica.remove(), 12e3);
-}
+$("#bTela").onclick = () => document.fullscreenElement ? document.exitFullscreen().catch(() => {}) : document.documentElement.requestFullscreen?.({ navigationUI: "hide" }).catch(() => {});
 function aplicarTema(t) { document.documentElement.dataset.theme = t; guardar("tema", t); desenharTudo(); }
 $("#bTema").onclick = () => aplicarTema(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
 addEventListener("keydown", e => { if (e.key === "f" || e.key === "F") $("#bTela").click(); });
-let redim; addEventListener("resize", () => { clearTimeout(redim); redim = setTimeout(() => ultimo && desenharGrafico(ultimo[P] || []), 200); });
+// em pé: o gráfico vai até o fim da primeira tela (rio acima e chuva ficam abaixo, rolando)
+function ajustarEmPe() {
+  const g = $(".grafico");
+  if (!matchMedia("(max-aspect-ratio: 1/1)").matches) { g.style.removeProperty("--altura-grafico"); document.documentElement.style.removeProperty("--altura-grafico"); return; }
+  const topo = g.getBoundingClientRect().top + scrollY;
+  document.documentElement.style.setProperty("--altura-grafico", Math.max(200, innerHeight - topo - 10) + "px");
+}
+let redim; addEventListener("resize", () => { clearTimeout(redim); redim = setTimeout(() => { ajustarEmPe(); ultimo && desenharGrafico(ultimo[P] || []); }, 200); });
 
 (async function iniciar() {
   document.documentElement.dataset.theme = new URLSearchParams(location.search).get("tema") || ler("tema", "dark");
