@@ -389,6 +389,10 @@ ou desliga a região.
   Rua dos Presottos começa a alagar, visto em 26/11/2026; 3,95 m: ruas da beira do rio, 2021;
   ~4,60 m: ruas do centro, 2024 — aproximado; 5,36 m: Praça da Matriz, 2022), ruas no mapa e
   linha do tempo das cheias desde 1863.
+- **Água simulada em 2D (teste, na /admin).** No mapa de *Pintar o que alaga*, a água azul sobe plana sobre o
+  relevo (`public/paraitinga/relevo.json`, um ponto a cada ~20 m) e só ocupa o que está abaixo do nível e ligado
+  ao rio; água em `zero da régua (740,5 m de altitude, ajustável) + nível`. As bordas são aproximadas. Substitui a
+  seção em 3D (a maquete em `public/admin/maquete/` ficou no repositório, sem uso na tela).
 - **Pintura do que alaga na /admin (em teste; o mapa do painel ainda usa os pontos do impactos.json).** Em *Pintar o que alaga* (`/admin/`), escolha o nível e
   pinte as ruas com o pincel (borracha e desfazer também); a pintura gruda nos trechos das ruas do
   OpenStreetMap (`public/paraitinga/ruas_osm.json`, entre esquinas e até ~60 m) e é gravada sozinha

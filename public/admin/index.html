@@ -101,18 +101,6 @@ code { font-size: 13px; }
 .pleg { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); }
 .pleg span { display: inline-flex; align-items: center; gap: 6px; }
 .pleg i { width: 18px; height: 6px; border-radius: 3px; background: var(--c); display: inline-block; }
-/* enchente em 3D */
-.e3d { position: relative; height: min(70vh, 600px); min-height: 360px; border-radius: 10px; border: 1px solid var(--line); overflow: hidden; background: #bcd7ee; }
-.e3d iframe { width: 100%; height: 100%; border: 0; display: block; }
-.e3d .ecarregando { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 600; color: #15232c; background: #bcd7ee; }
-.e3d .ecarregando.falhou { align-content: center; gap: 10px; padding: 20px; text-align: center; }
-.e3d .ecarregando small { font-weight: 500; opacity: .75; max-width: 46ch; overflow-wrap: anywhere; }
-.e3d .eselo { position: absolute; left: 10px; top: 10px; background: rgba(255, 250, 240, .93); color: #15232c; border-radius: 8px; padding: 5px 11px; font-size: 13.5px; box-shadow: 0 2px 10px rgba(0, 0, 0, .18); pointer-events: none; }
-.enivel { font-family: var(--f-display); font-size: 34px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; min-width: 4.2ch; }
-#eSlider { flex: 1; min-width: 180px; }
-#eResumo td { white-space: normal; }
-.ecal { display: grid; gap: 8px; align-content: start; }
-.ecal input { font: inherit; font-size: 14px; width: 96px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); }
 </style>
 </head>
 <body>
@@ -140,27 +128,16 @@ code { font-size: 13px; }
         <button class="btn" id="pImportar" type="button" hidden>Começar com o que o site mostra hoje</button>
         <span id="pStatus">Carregando…</span>
       </div>
+      <div class="pbarra">
+        <label style="display: inline-flex; gap: 6px; align-items: center"><input type="checkbox" id="aLigar" checked> Água simulada (teste)</label>
+        <input type="range" id="aNivel" min="0" max="1500" step="1" value="0" aria-label="Nível da água simulada na régua da Passarela, em centímetros" style="flex: 1; min-width: 140px">
+        <b id="aTxt" style="font-variant-numeric: tabular-nums">–</b>
+        <button class="btn" id="aAgora" type="button">Nível de agora</button>
+      </div>
+      <p class="nota" id="aNota">Carregando o relevo…</p>
       <div class="pmapa" id="pMapa" role="application" aria-label="Mapa para pintar as ruas que alagam"></div>
       <div class="pleg" id="pLeg"></div>
-    </div>
-  </section>
-
-  <section id="enchente3d">
-    <div class="cab">
-      <div><h2>Enchente em 3D <span class="eyebrow">teste</span></h2><p class="nota">A água sobe plana a partir do rio sobre o relevo de satélite (um ponto a cada ~20 m) e só ocupa o que está abaixo do nível e ligado ao rio. As bordas e as profundidades são aproximadas: o relevo de satélite pega também telhados e árvores. Os botões trazem as cotas oficiais e os registros do <code>impactos.json</code> para comparar.</p></div>
-    </div>
-    <div class="painel controles">
-      <div class="linha"><label for="eSlider">Régua</label><span class="enivel"><span id="eM">0,00</span> m</span><span class="estado" id="eCota" style="--c: var(--hit)">Normal</span>
-        <input type="range" id="eSlider" min="0" max="1500" step="1" value="0" aria-label="Nível na régua da Passarela, em centímetros"></div>
-      <div class="linha"><label>Cotas</label><div class="chips" id="eCotas"></div></div>
-      <div class="linha"><label>Registros</label><div class="chips" id="eRegistros"></div></div>
-      <div class="linha"><button class="btn" id="eAgora" type="button">Nível de agora</button><span class="nota" id="eAgoraTxt"></span></div>
-      <div class="e3d"><iframe id="e3d" src="maquete/?embed" title="Maquete 3D de São Luiz do Paraitinga com a simulação da água" loading="lazy"></iframe><div class="ecarregando" id="eCarregando">Montando a cidade…</div><div class="eselo" id="eSelo" hidden></div></div>
-      <div class="dois">
-        <div class="tabela"><table><tbody id="eResumo"><tr><td>Carregando a maquete…</td></tr></tbody></table></div>
-        <div class="nota ecal"><p><b>Calibração.</b> A água fica em <b>zero da régua + nível</b>. O zero padrão (740,5 m de altitude no relevo) faz a Rua dos Presottos molhar perto de 3,05 m e a Praça da Matriz perto de 5,36 m, como nos registros; o relevo não acerta os dois exatamente.</p>
-          <p class="pbarra"><label for="eZero">Zero da régua</label><input type="number" id="eZero" step="0.1"> m <button class="btn" id="eZeroPadrao" type="button">Padrão</button></p></div>
-      </div>
+      <p class="nota">A água azul é uma estimativa: sobe plana sobre o relevo de satélite (um ponto a cada ~20 m) e só ocupa o que está abaixo do nível e ligado ao rio. As bordas são aproximadas. <span class="pbarra" style="display: inline-flex">Zero da régua <input type="number" id="aZero" step="0.1"> m de altitude</span></p>
     </div>
   </section>
 
@@ -523,6 +500,7 @@ function legenda() {
   el.querySelector("#pVerTodos").onchange = e => { PT.verTodos = e.target.checked; redesenharTudo(); };
 }
 function escolherNivel(cm) {
+  AG.por(cm);   // a água simulada acompanha o nível escolhido
   PT.nivel = cm; document.getElementById("pOutro").value = "";
   if (est.pModo === "mover" && PT.ok) { est.pModo = "pincel"; modos(); }
   chipsNiveis(); redesenharTudo();
@@ -698,6 +676,7 @@ async function iniciarPintura() {
     t.camada = t.tipo === "ponto" ? L.circleMarker([t.lat, t.lon], estilo(t)) : t.tipo === "area" ? L.polygon(t.area, estilo(t)) : L.polyline(t.linhas, { ...estilo(t), lineCap: "round" });
     t.camada.addTo(PT.mapa).bindTooltip(dica_(t), { sticky: true });
   }
+  AG.iniciar(PT.mapa);
   // pincel: eventos de ponteiro (mouse, dedo e caneta)
   const el = document.getElementById("pMapa");
   const ponto = e => PT.mapa.mouseEventToContainerPoint(e);
@@ -715,88 +694,88 @@ async function iniciarPintura() {
   if (erroLeitura) status(erroLeitura, true);
   else if (!PT.ok) status(salvos.length ? "Entre com a senha para pintar." : "Nada pintado ainda. Entre com a senha para começar.");
 }
-iniciarPintura();
-</script>
-<script>
-// Enchente em 3D: a maquete (maquete/, a mesma de slparaitinga.com/cidade3d) recebe o nível e devolve o que a água alcança.
-(() => {
-  const ZERO_PADRAO = 740.5, CHAVE = "enchente3d-zero";
-  const COTAS = [{ nome: "Atenção", cm: 191.9, cor: "#fab219" }, { nome: "Alerta", cm: 231.9, cor: "#ec835a" }, { nome: "Emergência", cm: 272, cor: "#d03b3b" }, { nome: "Transbordamento", cm: 312, cor: "#8b1a1a" }];
-  const $ = id => document.getElementById(id), m2 = cm => (cm / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const n1 = (v, d = 1) => v.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
-  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+// ---- água simulada em 2D: "banheira conectada" sobre o relevo (mesma conta da maquete 3D)
+const AG = (() => {
+  const ZERO_PADRAO = 740.5, CHAVE = "enchente3d-zero", FINO = 6;   // FINO: pontos desenhados entre dois pontos do relevo
+  const $ = id => document.getElementById(id);
   let zero = ZERO_PADRAO; try { const v = parseFloat(localStorage.getItem(CHAVE)); if (Number.isFinite(v)) zero = v; } catch {}
-  let cm = 0, cidade = null, pendente = false;
-  const slider = $("eSlider"), campoZero = $("eZero"); campoZero.value = zero;
+  let R = null, T = null, sementes = [], mapa = null, camada = null, limites = null, cm = null, pendente = false;
+  const tela = document.createElement("canvas");
 
   function desenhar() {
     pendente = false;
-    const cota = [...COTAS].reverse().find(c => cm >= c.cm);
-    $("eM").textContent = m2(cm); $("eCota").textContent = cota ? cota.nome : "Normal"; $("eCota").style.setProperty("--c", cota ? cota.cor : "var(--hit)");
-    if (!cidade) return;
-    const alt = zero + cm / 100, r = cidade.enchente(alt);
-    $("eSelo").hidden = false; $("eSelo").innerHTML = `<b>${m2(cm)} m</b> na régua · água a ${n1(alt)} m de altitude`;
-    const fundos = r.lugares.filter(l => l.prof > .05).sort((a, b) => b.prof - a.prof);
-    $("eResumo").innerHTML = `<tr><td>Área alagada</td><td><b>${n1(r.area / 1e6, 2)} km²</b></td></tr>
-      <tr><td>Construções com água acima do piso <span class="nota">(de ${r.totalCasas.toLocaleString("pt-BR")} na maquete; parte é desenhada ao longo das ruas)</span></td><td><b>${r.casas.toLocaleString("pt-BR")}</b></td></tr>
-      ${fundos.length ? fundos.map(l => `<tr><td>${esc(l.nome)}</td><td>${n1(l.prof)} m de água</td></tr>`).join("") : '<tr><td colspan="2" class="nota">Nenhum dos pontos marcados (igrejas, praças, prefeitura…) fica embaixo d’água.</td></tr>'}`;
+    if (cm == null || !T || !mapa) return;
+    if (!$("aLigar").checked) { camada?.remove(); camada = null; $("aNota").textContent = "Água simulada desligada."; return; }
+    const nivel = zero + cm / 100, { nx, ny, data } = T, f = new Uint8Array(nx * ny), fila = [];
+    const entra = k => { if (!f[k] && data[k] < nivel) { f[k] = 1; fila.push(k); } };
+    for (const k of sementes) entra(k);
+    while (fila.length) {
+      const k = fila.pop(), i = k % nx, j = (k - i) / nx;
+      if (i > 0) entra(k - 1); if (i < nx - 1) entra(k + 1); if (j > 0) entra(k - nx); if (j < ny - 1) entra(k + nx);
+    }
+    // pinta com o relevo interpolado (borda suave), só nas células que tocam um ponto alagado
+    const g = tela.getContext("2d"), img = g.createImageData(tela.width, tela.height), px = img.data;
+    for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) {
+      const k = j * nx + i;
+      if (!(f[k] || f[k + 1] || f[k + nx] || f[k + nx + 1])) continue;
+      for (let b = 0; b < FINO; b++) for (let a = 0; a < FINO; a++) {
+        const u = (a + .5) / FINO, v = (b + .5) / FINO;
+        const h = data[k] * (1 - u) * (1 - v) + data[k + 1] * u * (1 - v) + data[k + nx] * (1 - u) * v + data[k + nx + 1] * u * v;
+        if (h >= nivel) continue;
+        const o = ((j * FINO + b) * tela.width + i * FINO + a) * 4, t = Math.min(1, (nivel - h) / 5);   // mais fundo, mais escuro
+        px[o] = 70 - 50 * t; px[o + 1] = 150 - 80 * t; px[o + 2] = 235 - 75 * t; px[o + 3] = 120 + 70 * t;
+      }
+    }
+    g.putImageData(img, 0, 0);
+    const url = tela.toDataURL();
+    camada ? camada.setUrl(url) : camada = L.imageOverlay(url, limites, { pane: "agua", interactive: false }).addTo(mapa);
+    let pontos = 0; for (const v of f) pontos += v;
+    const area = pontos * (T.x1 - T.x0) / (nx - 1) * (T.z1 - T.z0) / (ny - 1);
+    $("aNota").textContent = `Com ${fmt(cm / 100, 2)} m na régua: cerca de ${fmt(area / 1e6, 2)} km² com água (incluindo o leito do rio).`;
   }
   const pedir = () => { if (!pendente) { pendente = true; requestAnimationFrame(desenhar); } };
-  const irPara = v => { cm = Math.max(0, Math.min(1500, Math.round(v))); slider.value = cm; pedir(); };
-  const chip = (txt, v, c) => { const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.innerHTML = (c ? `<i style="--c:${c}"></i>` : "") + esc(txt); b.onclick = () => irPara(v); return b; };
+  function por(v) { cm = Math.max(0, Math.min(1500, Math.round(v))); $("aNivel").value = cm; $("aTxt").textContent = `${fmt(cm / 100, 2)} m`; pedir(); }
 
-  slider.oninput = () => irPara(+slider.value);
-  COTAS.forEach(c => $("eCotas").append(chip(`${c.nome} · ${m2(c.cm)} m`, c.cm, c.cor)));
-  fetch("../paraitinga/impactos.json").then(r => r.json()).then(imp => {
-    for (const n of imp.niveis.filter(n => n.tipo === "registro").sort((a, b) => a.cm - b.cm)) $("eRegistros").append(chip(`${m2(n.cm)} m · ${n.titulo}`, n.cm));
-    const maior = parseFloat(String(imp.maior?.texto || "").replace(",", ".").replace(/[^\d.]/g, ""));
-    if (maior) $("eRegistros").append(chip(`${imp.maior.ano} · ${imp.maior.texto}`, maior * 100));
-  }).catch(e => console.warn("[enchente3d] impactos", e));
-  campoZero.onchange = () => { const v = parseFloat(campoZero.value); if (Number.isFinite(v)) { zero = v; try { localStorage.setItem(CHAVE, v); } catch {} pedir(); } };
-  $("eZeroPadrao").onclick = () => { zero = ZERO_PADRAO; campoZero.value = zero; try { localStorage.removeItem(CHAVE); } catch {} pedir(); };
-  $("eAgora").onclick = async () => {
-    const txt = $("eAgoraTxt"); txt.textContent = "Lendo a régua…";
-    try { // régua da Passarela (SP Águas, estação 664), últimas 6 h
-      const iso = d => d.toISOString().slice(0, 16), agora = Date.now();
-      const r = await fetch(`https://cth.daee.sp.gov.br/sibh/api/v2/measurements?station_prefix_ids[]=664&start_date=${iso(new Date(agora - 6 * 36e5))}&end_date=${iso(new Date(agora + 36e5))}`);
+  async function agora() {
+    try {   // régua da Passarela (SP Águas, estação 664), últimas 6 h
+      const iso = d => d.toISOString().slice(0, 16), t = Date.now();
+      const r = await fetch(`https://cth.daee.sp.gov.br/sibh/api/v2/measurements?station_prefix_ids[]=664&start_date=${iso(new Date(t - 6 * 36e5))}&end_date=${iso(new Date(t + 36e5))}`);
       if (!r.ok) throw new Error("SP Águas " + r.status);
-      const ls = ((await r.json()).measurements || []).filter(m => m.value != null && +m.value >= 0)
-        .map(m => ({ t: new Date(`${m.date.replace(/\//g, "-").replace(" ", "T")}:00Z`), cm: +m.value })).sort((a, b) => a.t - b.t);
-      const u = ls.at(-1); if (!u) throw new Error("sem leitura");
-      txt.textContent = `Leitura das ${u.t.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" })}: ${m2(u.cm)} m`; irPara(u.cm);
-    } catch (e) { console.warn("[enchente3d]", e); txt.textContent = "Não deu para ler a régua agora."; }
-  };
-  // a maquete só carrega quando a seção aparece na tela (iframe lazy); quando termina, expõe window.__cidade
-  const iframe = $("e3d");
-  // se não montar, diz o motivo e oferece tentar de novo. O tempo só conta com a seção à vista (o iframe é lazy).
-  const aviso = $("eCarregando"), LIMITE = 60e3;
-  let visivel = false, passou = 0, falhou = false, semMaquete = false;
-  new IntersectionObserver(es => { visivel = es.at(-1).isIntersecting; }).observe(iframe);
-  const semWebGL = () => { try { return !document.createElement("canvas").getContext("webgl2"); } catch { return true; } };
-  function falha(motivo) {
-    falhou = true; aviso.classList.add("falhou");
-    aviso.innerHTML = `<div>Não deu para montar a cidade em 3D.</div><small>${esc(motivo)}</small><button type="button" class="btn forte">Tentar de novo</button>`;
-    aviso.querySelector("button").onclick = () => {
-      falhou = semMaquete = false; passou = 0; aviso.classList.remove("falhou"); aviso.textContent = "Montando a cidade…";
-      iframe.src = "maquete/?embed&t=" + Date.now();
-    };
+      const ls = ((await r.json()).measurements || []).filter(m => m.value != null && +m.value >= 0).sort((a, b) => a.date.localeCompare(b.date));
+      if (!ls.length) throw new Error("sem leitura");
+      por(+ls.at(-1).value);
+    } catch (e) { console.warn("[agua2d]", e); $("aNota").textContent = "Não deu para ler a régua agora."; }
   }
-  iframe.addEventListener("load", () => {   // carregou outra coisa no lugar (ex.: página de erro durante a publicação)
-    try { const d = iframe.contentDocument; semMaquete = d.URL !== "about:blank" && !d.getElementById("cena"); } catch { semMaquete = true; }
-  });
-  (function esperar() {
-    let w = null, c = null, erro = null; try { w = iframe.contentWindow; c = w && w.__cidade; erro = w && w.__erro; } catch {}
-    if (c && c.enchente) { cidade = c; aviso.remove(); c.voar && c.voar(-20, 140, 900, 1); return pedir(); }
-    if (visivel && !document.hidden) passou += 400;
-    if (!falhou) {
-      if (erro) falha(semWebGL() ? "Este navegador está sem gráficos 3D (WebGL)." : erro);
-      else if (semMaquete) falha("A página da maquete não abriu. Pode ser uma publicação em andamento ou a internet.");
-      else if (passou >= LIMITE) falha(semWebGL() ? "Este navegador está sem gráficos 3D (WebGL)." : "Passou de 1 minuto sem terminar. Confira a internet.");
+
+  async function iniciar(m) {
+    mapa = m;
+    const p = mapa.createPane("agua"); p.style.zIndex = 350; p.style.pointerEvents = "none";   // por baixo das ruas pintadas
+    try { R = await (await fetch("../paraitinga/relevo.json")).json(); }
+    catch (e) { $("aNota").textContent = "Não deu para carregar o relevo."; return; }
+    T = R.relevo;
+    const { lat, lon } = R.origem, mLon = 111320 * Math.cos(lat * Math.PI / 180);
+    limites = [[lat - T.z1 / 111320, lon + T.x0 / mLon], [lat - T.z0 / 111320, lon + T.x1 / mLon]];
+    tela.width = (T.nx - 1) * FINO; tela.height = (T.ny - 1) * FINO;
+    const dx = (T.x1 - T.x0) / (T.nx - 1), dz = (T.z1 - T.z0) / (T.ny - 1), s = new Set();
+    for (const r of R.rios) for (let k = 0; k + 3 < r.length; k += 2) {
+      const n = Math.ceil(Math.hypot(r[k + 2] - r[k], r[k + 3] - r[k + 1]) / 5);
+      for (let q = 0; q <= n; q++) {
+        const i = Math.round((r[k] + (r[k + 2] - r[k]) * q / n - T.x0) / dx), j = Math.round((r[k + 1] + (r[k + 3] - r[k + 1]) * q / n - T.z0) / dz);
+        if (i >= 0 && j >= 0 && i < T.nx && j < T.ny) s.add(j * T.nx + i);
+      }
     }
-    setTimeout(esperar, 400);   // continua olhando: se terminar depois, o aviso some
-  })();
-  desenhar();
+    sementes = [...s];
+    cm == null ? agora() : pedir();
+  }
+
+  $("aNivel").oninput = e => por(+e.target.value);
+  $("aLigar").onchange = pedir;
+  $("aAgora").onclick = agora;
+  $("aZero").value = zero;
+  $("aZero").onchange = e => { const v = parseFloat(e.target.value); if (Number.isFinite(v)) { zero = v; try { localStorage.setItem(CHAVE, v); } catch {} pedir(); } };
+  return { iniciar, por };
 })();
+iniciarPintura();
 </script>
 </body>
 </html>
