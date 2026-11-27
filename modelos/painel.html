@@ -2083,6 +2083,7 @@ async function desenharPrevisao() {
       await (prev.busca ??= buscarPrevisao().then(t => prev.quando = t).finally(() => prev.busca = null));   // uma busca por vez
     const ref = await nivelDeReferencia();
     if (!ref) throw new Error("sem leitura recente do rio");
+    if (config.impactos) impactos ??= await fetch(config.impactos).then(r => r.json()).catch(() => null);   // níveis da cidade no cartão
     prev.ref = ref;
     renderizarPrevisao(ref); desenharStats();
     desenharImpactos(); verificarAvisos(); desenharFontes(); if (estado.vista === "graficos") desenharVisoes();
@@ -2108,7 +2109,17 @@ function picoDaLinha(ref) {
   if (!ps?.length) return null;
   const pico = ps.reduce((a, b) => b.md > a.md ? b : a);
   const em24 = ps.find(p => p.x >= ref.t + 24 * 36e5) || ps.at(-1);
-  return { md: pico.md * 100, x: pico.x, hi: Math.max(...ps.map(p => p.hi)) * 100, em24: em24.md * 100 };
+  return { md: pico.md * 100, x: pico.x, lo: Math.max(...ps.map(p => p.lo)) * 100, hi: Math.max(...ps.map(p => p.hi)) * 100, em24: em24.md * 100 };
+}
+// chance (0–1) de a linha rio acima chegar a L cm em 48 h, pela faixa dela: o máximo da borda de baixo
+// (1 em 10), da provável (5 em 10) e da de cima (9 em 10), ligados por retas; acima da borda de cima, cai rápido
+function chanceDaLinha(pico, L) {
+  if (!pico) return 0;
+  const { lo, md, hi } = pico;
+  if (L <= lo) return .9;
+  if (L <= md) return .5 + .4 * (md - L) / Math.max(1, md - lo);
+  if (L <= hi) return .1 + .4 * (hi - L) / Math.max(1, hi - md);
+  return .1 * Math.exp(-(L - hi) / 15);
 }
 // "por volta das 17h", "amanhã por volta das 3h", "no sábado por volta das 8h"
 function quandoTexto(t) {
@@ -2129,18 +2140,24 @@ function renderizarPrevisao(ref) {
   const chance = G => fs.reduce((s, f) => s + chanceDeSubir(H0, x, f, G), 0) / fs.length;
   const chanceNivel = L => fs.reduce((s, f) => s + chanceDeChegar(H0, x, f, L), 0) / fs.length;
 
+  // com as réguas rio acima transmitindo, o pico vem da linha de previsão (vê a água que já desce o rio;
+  // o modelo de chuva acima não vê e, numa cheia em curso, dizia "fica perto do nível atual")
+  const picoRA = picoDaLinha(ref);
+  // chance de chegar a um nível: a maior entre o modelo de chuva e a faixa da linha rio acima
+  const chanceTotal = cm => Math.max(chanceNivel(cm), chanceDaLinha(picoRA, cm));
   // cotas da régua principal (onde o modelo trabalha), da mais baixa para a mais alta
   const linhas = cotasDe(estacoes[P]).reverse().map(n => ({ ...n, cesp: n.cm }));   // cotas da régua principal
-  const probs = Object.fromEntries(linhas.map(n => [n.chave, chanceNivel(n.cesp)]));
+  const probs = Object.fromEntries(linhas.map(n => [n.chave, chanceTotal(n.cesp)]));
+  // níveis da cidade acima das cotas (impactos.json → "previsao"): só mostram a chance, não mudam o risco nem os avisos
+  const maiorCota = Math.max(...linhas.map(n => n.cesp));
+  const extras = (impactos?.niveis || []).filter(n => n.previsao && n.cm > maiorCota).sort((a, b) => a.cm - b.cm)
+    .map(n => ({ chave: "imp" + n.cm, nome: n.previsao, cesp: n.cm, cor: "--inundacao", p: chanceTotal(n.cm) }));
   // pico provável (50%) e cenário pessimista (10%) — em cm acima do nível atual
   const subida = alvo => { for (let G = 5; G <= 700; G += 5) if (chance(G) < alvo) return G - 5; return 700; };
   const g50 = subida(.5), g10 = subida(.1);
   // resultado na régua da cidade escolhida; para outras estações, na régua principal
   const reguaCod = REGUAS_CIDADE.includes(estado.estacao) ? estado.estacao : P;
   const paraRegua = cm => reguaCod === P ? cm : conv(reguaCod, cm);
-  // com as réguas rio acima transmitindo, o pico vem da linha de previsão (vê a água que já desce o rio;
-  // o modelo de chuva acima não vê e, numa cheia em curso, dizia "fica perto do nível atual")
-  const picoRA = picoDaLinha(ref);
   prev.pico = picoRA ? { agora: H0, provavel: picoRA.md, alto: Math.max(picoRA.hi, H0 + g10), quando: picoRA.x, rioAcima: true }
     : { agora: H0, provavel: H0 + g50, alto: H0 + g10 };   // na régua principal (usado em "o que alaga")
   const naRegua = cm => fmt(paraRegua(cm) / 100, 2);
@@ -2189,8 +2206,8 @@ function renderizarPrevisao(ref) {
   $("#pSub").textContent = `${config.rio} em ${config.cidade} · ${apelido(reguaCod)} · ${cenarios.length >= 5 ? `${cenarios.length} cenários de chuva (GFS)` : "previsão de chuva Open-Meteo"} · ${prev.dados.copia ? "previsão das" : "atualizado"} ${new Date(prev.quando).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}${prev.dados.copia ? " (Open-Meteo fora do ar; tentando de novo)" : ""}`;
   $("#pCorpo").innerHTML = `
     <div class="probs" role="list" aria-label="Chance de passar de cada cota em 48 horas">
-      ${linhas.map(n => {
-        const p = probs[n.chave], ja = H0 >= n.cesp;
+      ${[...linhas, ...extras].map(n => {
+        const p = n.p ?? probs[n.chave], ja = H0 >= n.cesp;
         return `<div class="prob${ja ? " ja" : ""}" role="listitem"><span class="nome"><i style="background:${tok(n.cor)}"></i><span>${n.nome}<small>${naRegua(n.cesp)} m</small></span></span>
           <span class="trilho"><span class="enche" style="width:${ja ? 100 : Math.max(1.5, p * 100)}%;background:${tok(n.cor)}"></span></span>
           <b>${ja ? "✓ já" : p < .01 ? "<1%" : fmt(p * 100, 0) + "%"}</b></div>`;
