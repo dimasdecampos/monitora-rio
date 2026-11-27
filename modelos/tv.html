@@ -284,9 +284,18 @@ function classificar(e, cm) {
 
 // soma da chuva prevista (mm) nas próximas 24 h e de 24 a 48 h, em cada ponto
 async function previsaoNosPontos(pts) {
-  const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pts.map(x => x.lat).join(",")}&longitude=${pts.map(x => x.lon).join(",")}&hourly=precipitation&forecast_days=3&timezone=America%2FSao_Paulo`);
-  if (!r.ok) throw new Error("Open-Meteo");
-  const d = [].concat(await r.json()), tempo = d[0].hourly.time;
+  // o Open-Meteo às vezes responde 503 ("service is overloaded"): tenta de novo e, se não vier,
+  // usa a última resposta boa guardada nesta TV (até 6 h)
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${pts.map(x => x.lat).join(",")}&longitude=${pts.map(x => x.lon).join(",")}&hourly=precipitation&forecast_days=3&timezone=America%2FSao_Paulo`;
+  const pedir = async () => { const r = await fetch(url, { signal: AbortSignal.timeout?.(20e3) }); if (!r.ok) throw new Error("Open-Meteo " + r.status); return [].concat(await r.json()).map(x => ({ hourly: { time: x.hourly.time, precipitation: x.hourly.precipitation } })); };
+  let d;
+  try { d = await pedir().catch(() => new Promise(r => setTimeout(r, 3000)).then(pedir)); guardar("chuva-prevista", JSON.stringify({ url, quando: Date.now(), d })); }
+  catch (e) {
+    let c = null; try { c = JSON.parse(ler("chuva-prevista", "null")); } catch {}
+    if (!c || c.url !== url || Date.now() - c.quando > 6 * 36e5) throw e;
+    d = c.d;
+  }
+  const tempo = d[0].hourly.time;
   const agora = new Date(), chave = `${agora.getFullYear()}-${p2(agora.getMonth() + 1)}-${p2(agora.getDate())}T${p2(agora.getHours())}:00`;
   const i = tempo.findLastIndex(t => t <= chave);
   return d.map(x => { const v = x.hourly.precipitation, soma = (a, b) => v.slice(a, b).reduce((s, y) => s + (y ?? 0), 0); return { p24: soma(i + 1, i + 25), p48: soma(i + 25, i + 49) }; });
@@ -426,9 +435,11 @@ function marcarVivo(tipo, txt) { $("#vivo").className = "vivo " + tipo; $("#vivo
 // ---------- ciclo ----------
 let ultimo = null;
 function desenharTudo() { if (!ultimo) return; desenharAgora(ultimo[P] || [], ultimo.chuva); desenharGrafico(ultimo[P] || []); desenharAcima(ultimo); }
-async function atualizar() {
-  try { ultimo = await buscarTudo(); desenharTudo(); }
-  catch (err) { marcarVivo("erro", "Sem conexão com a fonte de dados · tentando de novo"); }
+// chuva prevista: pedida junto com as réguas (que podem demorar) e, se o Open-Meteo falhar
+// (ex.: 503 passageiro), tenta de novo em 30 s, 1 min, 1,5 min… em vez de ficar com "—" até a próxima rodada
+let chuvaTentativa = null;
+async function atualizarChuva(tentativa = 0) {
+  clearTimeout(chuvaTentativa);
   try {
     const c = await chuvaPrevista();
     const mm = v => `${fmt(v, v < 10 ? 1 : 0)}<small> mm</small>`;
@@ -438,7 +449,14 @@ async function atualizar() {
       $("#cPrev1").innerHTML = `<b>${mm(c.p24)}</b><span>prevista na bacia, próximas 24 h</span>`;
       $("#cPrev2").innerHTML = `<b>${mm(c.p48)}</b><span>prevista na bacia, 24 a 48 h</span>`;
     }
-  } catch {}
+  } catch {
+    if (tentativa < 4) chuvaTentativa = setTimeout(() => atualizarChuva(tentativa + 1), 30e3 * (tentativa + 1));
+  }
+}
+async function atualizar() {
+  atualizarChuva();
+  try { ultimo = await buscarTudo(); desenharTudo(); }
+  catch (err) { marcarVivo("erro", "Sem conexão com a fonte de dados · tentando de novo"); }
 }
 function relogio() {
   const d = new Date();

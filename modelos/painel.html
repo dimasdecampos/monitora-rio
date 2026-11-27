@@ -1964,10 +1964,20 @@ async function buscarPrevisao() {
   prev.modelo ??= await (await fetch(config.previsao.modelo)).json();
   const m = prev.modelo, lat = m.pontos.map(p => p.lat).join(","), lon = m.pontos.map(p => p.lon).join(",");
   const base = `latitude=${lat}&longitude=${lon}&hourly=precipitation&timezone=America%2FSao_Paulo`;
+  // o Open-Meteo às vezes responde 503 ("service is overloaded"): tenta de novo uma vez e, se não vier,
+  // usa a última previsão boa guardada neste aparelho (até 6 h); o painel segue tentando buscar uma nova
+  const limite = () => AbortSignal.timeout?.(20e3);   // sobrecarregado, o Open-Meteo pode não responder nunca
+  const pedir = async () => { const r = await fetch(`https://api.open-meteo.com/v1/forecast?${base}&past_days=31&forecast_days=8`, { signal: limite() }); if (!r.ok) throw new Error(`Open-Meteo ${r.status}`); return r.json(); };
   const [det, ens] = await Promise.all([
-    fetch(`https://api.open-meteo.com/v1/forecast?${base}&past_days=31&forecast_days=8`).then(r => { if (!r.ok) throw new Error(`Open-Meteo ${r.status}`); return r.json(); }),
-    fetch(`https://ensemble-api.open-meteo.com/v1/ensemble?${base}&models=gfs025&forecast_days=3`).then(r => r.ok ? r.json() : null).catch(() => null),
+    pedir().catch(() => new Promise(r => setTimeout(r, 3000)).then(pedir)).catch(e => e),
+    fetch(`https://ensemble-api.open-meteo.com/v1/ensemble?${base}&models=gfs025&forecast_days=3`, { signal: limite() }).then(r => r.ok ? r.json() : null).catch(() => null),
   ]);
+  if (det instanceof Error) {
+    const copia = ler("previsao-copia", null);
+    if (!copia || Date.now() - copia.quando > 6 * 36e5 || !copia.tempo?.length) throw det;
+    prev.dados = { tempo: copia.tempo, media: copia.media, membros: copia.membros || [], copia: true };
+    return copia.quando;
+  }
   const pts = [].concat(det), tempo = pts[0].hourly.time;
   const media = tempo.map((_, i) => pts.reduce((s, p) => s + (p.hourly.precipitation[i] ?? 0), 0) / pts.length);
   let membros = [];
@@ -1978,6 +1988,8 @@ async function buscarPrevisao() {
     }));
   }
   prev.dados = { tempo, media, membros };
+  const arred = v => Math.round(v * 100) / 100;
+  guardar("previsao-copia", { quando: Date.now(), tempo, media: media.map(arred), membros: membros.map(m => ({ tempo: m.tempo, serie: m.serie.map(arred) })) });
   // frequência histórica de cheias por mês (régua principal)
   if (!prev.sazonal) {
     const dias = cache[P]?.diario || await buscarDiario(P);
@@ -1985,6 +1997,7 @@ async function buscarPrevisao() {
     for (const r of dias) if (r.nmax != null) { const k = r.d.slice(0, 7); porAnoMes.set(k, Math.max(porAnoMes.get(k) || 0, r.nmax)); }
     prev.sazonal = porAnoMes;
   }
+  return Date.now();   // hora da previsão (com a cópia guardada, a hora em que ela foi buscada)
 }
 
 // chuva medida no pluviômetro (config do modelo: "pluviometro") nas últimas 6, 12, 24 e 72 h, contadas
@@ -2062,17 +2075,24 @@ async function desenharPrevisao() {
   if (!config.previsao) { card.hidden = true; return; }
   card.hidden = false;
   try {
-    if (!prev.dados || Date.now() - prev.quando > 30 * 60e3)
-      await (prev.busca ??= buscarPrevisao().then(() => prev.quando = Date.now()).finally(() => prev.busca = null));   // uma busca por vez
+    if (!prev.dados || prev.dados.copia || Date.now() - prev.quando > 30 * 60e3)
+      await (prev.busca ??= buscarPrevisao().then(t => prev.quando = t).finally(() => prev.busca = null));   // uma busca por vez
     const ref = await nivelDeReferencia();
     if (!ref) throw new Error("sem leitura recente do rio");
     prev.ref = ref;
     renderizarPrevisao(ref); desenharStats();
     desenharImpactos(); verificarAvisos(); desenharFontes(); if (estado.vista === "graficos") desenharVisoes();
     if (estado.modo === "agora" && cache[estado.estacao]) desenharAgora(true);   // acrescenta a linha de previsão ao gráfico
+    // com a cópia guardada (Open-Meteo fora do ar), tenta buscar uma previsão nova a cada minuto, por até 10 min
+    if (prev.dados.copia && (prev.falhas = (prev.falhas || 0) + 1) <= 10) { clearTimeout(prev.retentar); prev.retentar = setTimeout(desenharPrevisao, 60e3); }
+    else if (!prev.dados.copia) prev.falhas = 0;
   } catch (e) {
     $("#pRisco").innerHTML = `<i style="background:${tok("--neutro")}"></i>indisponível`;
     $("#pCorpo").innerHTML = `<span class="prev-carregando">Não foi possível calcular agora (${e.message}). Tentaremos de novo em instantes.</span>`;
+    // falha passageira (ex.: Open-Meteo 503): tenta de novo em 20 s, 40 s, 1 min… em vez de esperar a rodada de 15 min
+    prev.falhas = (prev.falhas || 0) + 1;
+    clearTimeout(prev.retentar);
+    if (prev.falhas <= 5) prev.retentar = setTimeout(desenharPrevisao, 20e3 * prev.falhas);
   }
 }
 
@@ -2141,7 +2161,7 @@ function renderizarPrevisao(ref) {
   const idade = (Date.now() - ref.t) / 36e5;
   const t = m.passarela.teste;
 
-  $("#pSub").textContent = `${config.rio} em ${config.cidade} · ${apelido(reguaCod)} · ${cenarios.length >= 5 ? `${cenarios.length} cenários de chuva (GFS)` : "previsão de chuva Open-Meteo"} · atualizado ${new Date(prev.quando).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  $("#pSub").textContent = `${config.rio} em ${config.cidade} · ${apelido(reguaCod)} · ${cenarios.length >= 5 ? `${cenarios.length} cenários de chuva (GFS)` : "previsão de chuva Open-Meteo"} · ${prev.dados.copia ? "previsão das" : "atualizado"} ${new Date(prev.quando).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}${prev.dados.copia ? " (Open-Meteo fora do ar; tentando de novo)" : ""}`;
   $("#pCorpo").innerHTML = `
     <div class="probs" role="list" aria-label="Chance de passar de cada cota em 48 horas">
       ${linhas.map(n => {
