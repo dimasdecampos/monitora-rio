@@ -48,6 +48,11 @@
 <div class="dica">Arraste para girar · role para aproximar · botão direito para mover</div>
 <div class="creditos">Mapa © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · Relevo: Terrain Tiles (Mapzen/AWS)</div>
 <div id="carregando">Montando a cidade…</div>
-<script type="module" src="main.js"></script>
+<script>
+// guarda o motivo se a maquete não montar (a /admin mostra o aviso). Antes do módulo, para pegar falhas ao carregá-lo.
+addEventListener("error", e => { if (!window.__cidade) window.__erro = e.message || "não baixou " + (e.target?.src || "um arquivo").split("/").pop(); }, true);
+addEventListener("unhandledrejection", e => { if (!window.__cidade) window.__erro = String(e.reason?.message || e.reason); });
+</script>
+<script type="module" src="main.js" onerror="window.__erro = 'não baixou a maquete ou a biblioteca 3D'"></script>
 </body>
 </html>

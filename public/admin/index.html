@@ -105,6 +105,8 @@ code { font-size: 13px; }
 .e3d { position: relative; height: min(70vh, 600px); min-height: 360px; border-radius: 10px; border: 1px solid var(--line); overflow: hidden; background: #bcd7ee; }
 .e3d iframe { width: 100%; height: 100%; border: 0; display: block; }
 .e3d .ecarregando { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 600; color: #15232c; background: #bcd7ee; }
+.e3d .ecarregando.falhou { align-content: center; gap: 10px; padding: 20px; text-align: center; }
+.e3d .ecarregando small { font-weight: 500; opacity: .75; max-width: 46ch; overflow-wrap: anywhere; }
 .e3d .eselo { position: absolute; left: 10px; top: 10px; background: rgba(255, 250, 240, .93); color: #15232c; border-radius: 8px; padding: 5px 11px; font-size: 13.5px; box-shadow: 0 2px 10px rgba(0, 0, 0, .18); pointer-events: none; }
 .enivel { font-family: var(--f-display); font-size: 34px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; min-width: 4.2ch; }
 #eSlider { flex: 1; min-width: 180px; }
@@ -766,10 +768,32 @@ iniciarPintura();
   };
   // a maquete só carrega quando a seção aparece na tela (iframe lazy); quando termina, expõe window.__cidade
   const iframe = $("e3d");
+  // se não montar, diz o motivo e oferece tentar de novo. O tempo só conta com a seção à vista (o iframe é lazy).
+  const aviso = $("eCarregando"), LIMITE = 60e3;
+  let visivel = false, passou = 0, falhou = false, semMaquete = false;
+  new IntersectionObserver(es => { visivel = es.at(-1).isIntersecting; }).observe(iframe);
+  const semWebGL = () => { try { return !document.createElement("canvas").getContext("webgl2"); } catch { return true; } };
+  function falha(motivo) {
+    falhou = true; aviso.classList.add("falhou");
+    aviso.innerHTML = `<div>Não deu para montar a cidade em 3D.</div><small>${esc(motivo)}</small><button type="button" class="btn forte">Tentar de novo</button>`;
+    aviso.querySelector("button").onclick = () => {
+      falhou = semMaquete = false; passou = 0; aviso.classList.remove("falhou"); aviso.textContent = "Montando a cidade…";
+      iframe.src = "maquete/?embed&t=" + Date.now();
+    };
+  }
+  iframe.addEventListener("load", () => {   // carregou outra coisa no lugar (ex.: página de erro durante a publicação)
+    try { const d = iframe.contentDocument; semMaquete = d.URL !== "about:blank" && !d.getElementById("cena"); } catch { semMaquete = true; }
+  });
   (function esperar() {
-    let c = null; try { c = iframe.contentWindow && iframe.contentWindow.__cidade; } catch {}
-    if (c && c.enchente) { cidade = c; $("eCarregando").remove(); c.voar && c.voar(-20, 140, 900, 1); return pedir(); }
-    setTimeout(esperar, 400);
+    let w = null, c = null, erro = null; try { w = iframe.contentWindow; c = w && w.__cidade; erro = w && w.__erro; } catch {}
+    if (c && c.enchente) { cidade = c; aviso.remove(); c.voar && c.voar(-20, 140, 900, 1); return pedir(); }
+    if (visivel && !document.hidden) passou += 400;
+    if (!falhou) {
+      if (erro) falha(semWebGL() ? "Este navegador está sem gráficos 3D (WebGL)." : erro);
+      else if (semMaquete) falha("A página da maquete não abriu. Pode ser uma publicação em andamento ou a internet.");
+      else if (passou >= LIMITE) falha(semWebGL() ? "Este navegador está sem gráficos 3D (WebGL)." : "Passou de 1 minuto sem terminar. Confira a internet.");
+    }
+    setTimeout(esperar, 400);   // continua olhando: se terminar depois, o aviso some
   })();
   desenhar();
 })();
