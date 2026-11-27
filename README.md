@@ -335,6 +335,30 @@ modelo. Erro médio com previsão real: 10 cm em 1 dia, 15 cm em 2 dias, 21 cm e
 ("fica como está": 13, 20 e 29 cm). A faixa acertou 81–87% das vezes. Não acerta bem o
 tamanho de subidas grandes.
 
+**Primeiras 24 h pelas réguas rio acima (desde nov/2026).** Na cheia de 26–27/11/2026 a linha por chuva
+mostrou o rio descendo o tempo todo enquanto ele subia mais de 1 m (às 19h10 de 26/11, com 3,18 m,
+previu 2,93 m em 12 h; foi a 4,06 m). Ela só via a régua de Cunha, que já baixava, e a chuva medida foi
+moderada (17–69 mm em 27 h nos pluviômetros da bacia): só as réguas viram a onda do Jacuí e de Lagoinha.
+Agora, com Barro Vermelho e Cunha transmitindo, as primeiras 24 h vêm de uma regressão por hora
+(`scripts/modelo_cheias/rio_acima.py`) com o nível e a subida da Passarela (1, 3 e 6 h), de Barro Vermelho
+(3, 6 e 12 h) e de Cunha (6 e 12 h) e a chuva prevista; depois de 24 h vale a linha por chuva, deslocada
+para continuar de onde a outra termina. Sem essas réguas, volta a linha por chuva. A faixa vem dos erros
+do treino, separados para rio calmo e rio agitado (alto ou mexendo ±10 cm em 3 h).
+
+Teste: treino 2024–2025, teste 2026 (cheias de janeiro a novembro), erro médio com o rio agitado:
+
+| Prazo | Rio acima | Linha por chuva | Fica como está | Faixa acertou |
+|---|---|---|---|---|
+| 6 h | 5,6 cm | 20,1 cm | 22,0 cm | 78% |
+| 12 h | 10,5 cm | 33,3 cm | 38,5 cm | 75% |
+| 24 h | 26,0 cm | 45,9 cm | 61,7 cm | 74% |
+
+Perto do pico ela tende a passar uns 10 cm do real. Testados no mesmo protocolo, sem ganho
+(experimento de nov/2026): chuva medida nos pluviômetros das réguas com a intensidade (máximo em 1 h),
+chuva antecedente e umidade do solo (ERA5), temperatura, umidade do ar, pressão e vento, e árvores de
+decisão (gradient boosting) no lugar da regressão (piores: 15–17 cm em 12 h, com poucas cheias para
+aprender). As variáveis extras só melhoram um pouco o pico em 24 h (57 → 48 cm) e pioram o resto.
+
 **Depois de 7 dias** o gráfico não prevê: previsão de chuva para semanas ou meses não é
 confiável o bastante. O gráfico vai só até o fim da previsão.
 

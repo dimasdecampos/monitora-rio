@@ -166,6 +166,32 @@ def sem_subir_sem_chuva(vals, pode_subir):
     return [s / n for s, n, _ in blocos for _ in range(n)]
 
 
+def variaveis_rio_acima(e, r24, rfut):
+    """Variáveis da linha pelas réguas rio acima (1 a 24 h) — igual a variaveisRioAcima no painel e a
+    variaveis em scripts/modelo_cheias/rio_acima.py. e = {"p", "b", "c"}: nível agora e h horas antes (cm)."""
+    p, b, c = e["p"], e["b"], e["c"]
+    n = p[0] / 100; db3, db6 = (b[0] - b[3]) / 100, (b[0] - b[6]) / 100; rf = math.log1p(rfut)
+    return [1, n, n * n, (p[0] - p[1]) / 100, (p[0] - p[3]) / 100, (p[0] - p[6]) / 100, b[0] / 100, db3, db6, (b[0] - b[12]) / 100,
+            max(db3, 0) * n, max(db6, 0) * n, (c[0] - c[6]) / 100, (c[0] - c[12]) / 100, math.log1p(r24), rf, rf * n]
+
+
+def valor_antes(serie, h):
+    """Nível h horas antes da última leitura (a leitura mais perto, até 30 min de diferença) — igual a valorAntes no painel."""
+    alvo = serie[-1][0] - timedelta(hours=h)
+    t, v = min(serie, key=lambda x: abs((x[0] - alvo).total_seconds()))
+    return v if abs((t - alvo).total_seconds()) <= 1800 else None
+
+
+def entradas_rio_acima(pas, barro, cunha, agora=None):
+    """Entradas da linha rio acima, ou None se alguma régua estiver sem leitura recente — igual a entradasRioAcima no painel."""
+    agora = agora or datetime.now(timezone.utc); e = {}
+    for k, s_, hs in (("p", pas, (0, 1, 3, 6)), ("b", barro, (0, 3, 6, 12)), ("c", cunha, (0, 6, 12))):
+        if not s_ or agora - s_[-1][0] > timedelta(hours=2): return None
+        e[k] = {h: valor_antes(s_, h) for h in hs}
+        if any(v is None for v in e[k].values()): return None
+    return e
+
+
 def trajetoria(modelo, serie, ctx, agora=None):
     """Linha de previsão da régua principal (1 h a 7 dias) — mesma conta de linhaPrevista no painel
     (scripts/testar_previsao.py confere). Devolve [(horas, mín, provável, máx)] em metros, ou None."""
@@ -180,7 +206,8 @@ def trajetoria(modelo, serie, ctx, agora=None):
     S = lambda a, b: sum(media[max(0, a):max(0, b)])
     xa, xb, xs, xn = math.log1p(S(i - 24, i + 1)), math.log1p(S(i - 72, i + 1)), S(i - 720, i - 72) / 100, H0 / 100
     dc6 = ctx["dc6"] if "B" in ctx["versao"] and ctx["dc6"] is not None else 0
-    piso = max(0, min(v for _, v in serie) / 100 - .1)
+    # não deixa a previsão abaixo do mínimo das últimas 72 h (o painel usa a mesma janela)
+    piso = max(0, min(v for t, v in serie if t >= t1 - timedelta(hours=72)) / 100 - .1)
     hs, lo, md, hi = [], [], [], []
     for pz in tr["prazos"]:
         h = pz["h"]
@@ -191,6 +218,32 @@ def trajetoria(modelo, serie, ctx, agora=None):
         q = next(fx for fx in pz["faixas"] if p <= fx["ate"])["q"]
         hs.append(h); lo.append(max(piso, y0 + (p + q[1]) / 100)); md.append(max(piso, y0 + (p + q[3]) / 100)); hi.append(y0 + (p + q[5]) / 100)
     if not hs: return None
+    # com Barro Vermelho e Cunha transmitindo: 1 a 24 h pelas réguas rio acima (scripts/modelo_cheias/rio_acima.py);
+    # depois, a linha por chuva, deslocada para continuar de onde a rio acima termina — igual ao painel
+    ra, e = modelo["passarela"].get("rio_acima"), ctx.get("ra")
+    if ra and e:
+        agit = e["p"][0] > 150 or abs(e["p"][0] - e["p"][3]) > 10
+        r24 = S(i - 23, i + 1); novos = []
+        for pz in ra["prazos"]:
+            h = pz["h"]
+            if i + h >= len(tempo): break
+            v = variaveis_rio_acima(e, r24, S(i + 1, i + h + 1) * f)
+            p = sum(w * x for w, x in zip(pz["pesos"], v))
+            q = next(fx for fx in pz["faixas"]["agitado" if agit else "calmo"] if p <= fx["ate"])["q"]
+            novos.append([h, max(piso, y0 + (p + q[1]) / 100), max(piso, y0 + (p + q[3]) / 100), y0 + (p + q[5]) / 100])
+        out = [list(x) for x in novos]
+        if novos and novos[-1][0] in hs:
+            fim = novos[-1]; j24 = hs.index(fim[0]); velho = list(zip(lo, md, hi))
+            dv = [fim[1 + c] - velho[j24][c] for c in range(3)]; ant = fim
+            for j in range(j24 + 1, len(hs)):
+                s_ = math.exp(-(hs[j] - fim[0]) / 36); sobe = S(i + hs[j - 1] + 1, i + hs[j] + 1) * f >= 5
+                pt = [hs[j]]
+                for c in range(3):
+                    x = velho[j][c] + dv[c] * s_
+                    pt.append(x if sobe else min(x, ant[1 + c]))
+                pt[2] = max(piso, pt[2]); pt[1] = max(piso, min(pt[1], pt[2])); pt[3] = max(pt[3], pt[2])
+                out.append(pt); ant = pt
+        return [(h, min(a, m_), m_, max(b, m_)) for h, a, m_, b in out]
     pode = [j > 0 and S(i + hs[j - 1] + 1, i + h + 1) * f >= 5 for j, h in enumerate(hs)]
     lo, md, hi = (sem_subir_sem_chuva(c, pode) for c in (lo, md, hi))
     lo = [min(a, b) for a, b in zip(lo, md)]; hi = [max(a, b) for a, b in zip(hi, md)]
@@ -265,7 +318,8 @@ def verificar(bacia, mandar):
     if cfg.get("previsao", {}) and cfg["previsao"].get("rio_acima"): extras.append(cfg["previsao"]["rio_acima"])
     if cfg.get("previsao", {}).get("gatilho"): extras.append(cfg["previsao"]["gatilho"]["estacao"])
     codigos = list(dict.fromkeys([P, *acima, *extras]))
-    s = leituras_sibh([EST[c] for c in codigos if EST[c]["fonte"] == "spaguas"])
+    # 74 h: a linha de previsão usa o mínimo das últimas 72 h (igual ao painel) e as réguas rio acima até 12 h antes
+    s = leituras_sibh([EST[c] for c in codigos if EST[c]["fonte"] == "spaguas"], horas=74)
     for c in codigos:
         if EST[c]["fonte"] == "ana": s[c] = leituras_ana(c)
 
@@ -346,6 +400,8 @@ def verificar(bacia, mandar):
             chance, f48, _ = r
             p = chance(prox[2] - nivel)
             print(f"{bacia}: previsão {p*100:.0f}% de chegar a {prox[1]} ({br(prox[2])} m); chuva prevista 48 h {f48:.0f} mm")
+        ra = modelo["passarela"].get("rio_acima")
+        if r and ra: r[2]["ra"] = entradas_rio_acima(cid, s.get(ra["estacao"]), s.get(ra["cunha"]))
         if r:
             try:
                 registrar_previsao(bacia, estado, modelo, cid, cot_p, r, agitado=bool(atual) or (p or 0) >= .1 or (d3 or 0) >= 5)
@@ -396,6 +452,7 @@ def registrar_previsao(bacia, estado, modelo, serie, cotas, r, agitado):
     dados = {
         "modelo": modelo.get("gerado") or modelo.get("versao"),
         "entradas": {k: (round(ctx[k], 2) if isinstance(ctx[k], float) else ctx[k]) for k in ("versao", "dc6", "dc12", "p24", "p72", "api", "pluv")},
+        "rio_acima": ctx.get("ra"),
         "f48": round(f48, 1),
         "chuva_dias": [round(sum(media[i + 1 + 24 * d:i + 25 + 24 * d]) * f, 1) for d in range(7)] if i is not None else None,
         "chances_48h": {k: round(chance(v - nivel), 3) for k, v in cotas.items() if v > nivel},

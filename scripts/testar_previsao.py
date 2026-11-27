@@ -39,8 +39,15 @@ def conferir_linha(bacia, P, modelo):
         versao = rnd.choice(["A", "B", "BP"]); dc6 = rnd.uniform(-40, 120)
         agora = t1 + timedelta(minutes=rnd.choice([3, 30, 150]))
         ctx = dict(tempo=tempo, media=media, versao=versao, dc6=dc6)
+        ra = None
+        if modelo["passarela"].get("rio_acima") and k % 3:   # 2 em 3 casos com as réguas rio acima transmitindo
+            p0, b0, c0 = serie[-1][1], rnd.uniform(150, 600), rnd.uniform(140, 420)
+            ra = {"p": {0: p0, 1: p0 - sobe, 3: p0 - 3 * sobe, 6: p0 - 6 * sobe},
+                  "b": {h: b0 - rnd.uniform(-15, 40) * h / 3 for h in (3, 6, 12)} | {0: b0},
+                  "c": {h: c0 - rnd.uniform(-20, 30) * h / 6 for h in (6, 12)} | {0: c0}}
+            ctx["ra"] = ra
         py = alertas.trajetoria(modelo, serie, ctx, agora)
-        casos.append(dict(tempo=tempo, media=media, ref={"H0": serie[-1][1], "t": t1.timestamp() * 1000, **({"dc6": dc6} if "B" in versao else {})},
+        casos.append(dict(tempo=tempo, media=media, ref={"H0": serie[-1][1], "t": t1.timestamp() * 1000, **({"dc6": dc6} if "B" in versao else {}), **({"ra": ra} if ra else {})},
                           leituras=[{"t": t.isoformat(), "nivel": v} for t, v in serie], agora=agora.timestamp() * 1000,
                           py=[list(p) for p in py] if py else None))
     js = f"""const pad = n => String(n).padStart(2, "0");
@@ -72,7 +79,33 @@ console.log(JSON.stringify(casos.map(c => {{
     return probs
 
 
-erros = 0
+def conferir_entradas():
+    """Confere a leitura das réguas para a linha rio acima (entradasRioAcima × alertas.entradas_rio_acima),
+    com falhas de transmissão e horários quebrados. Devolve quantos problemas achou."""
+    import os
+    rnd = random.Random(3); casos = []
+    for k in range(60):
+        agora = datetime(2026, 3, 1, tzinfo=timezone.utc) + timedelta(minutes=rnd.randint(0, 60 * 24 * 200))
+        def serie():
+            fim = agora - timedelta(minutes=rnd.choice([0, 7, 25, 90, 130]))
+            ls = [(fim - timedelta(minutes=10 * n + rnd.choice([0, 0, 3])), rnd.uniform(50, 500)) for n in range(rnd.choice([10, 90, 120]), -1, -1)]
+            return [x for x in ls if rnd.random() > rnd.choice([0, 0, .3, .8])]
+        s = [serie() for _ in range(3)]
+        py = alertas.entradas_rio_acima(*s, agora)
+        casos.append(dict(agora=agora.timestamp() * 1000, s=[[{"t": t.isoformat(), "nivel": v} for t, v in x] for x in s],
+                          py=json.loads(json.dumps(py)) if py else None))
+    js = f"""const comNivel = ls => ls.filter(l => l.nivel != null), ms = l => new Date(l.t).getTime();
+{html[html.index("function valorAntes"):html.index("function linhaPrevista")]}
+const casos = {json.dumps([{k: v for k, v in c.items() if k != "py"} for c in casos])};
+console.log(JSON.stringify(casos.map(c => {{ Date.now = () => c.agora; return entradasRioAcima(...c.s); }})));"""
+    r = subprocess.run(["node", "-"], input=js, capture_output=True, text=True, encoding="utf-8", env={**os.environ})
+    if r.returncode: print(f"erro ao rodar entradasRioAcima no Node:\n{r.stderr}"); return 1
+    probs = sum(1 for c, pj in zip(casos, json.loads(r.stdout)) if pj != c["py"])
+    print(f"entradas da linha rio acima: {len(casos)} casos ({sum(c['py'] is not None for c in casos)} completos), {probs} diferença(s) painel × robô")
+    return probs
+
+
+erros = conferir_entradas()
 for bacia in comum.bacias():
     cfg = comum.config(bacia)
     if not cfg.get("previsao"): continue

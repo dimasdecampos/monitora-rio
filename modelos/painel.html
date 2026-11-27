@@ -1413,7 +1413,7 @@ function chuvaBaciaEm(alvo, futuro) {
     itens.map(i => `<span><i class="barra" style="background:${i.d.backgroundColor}"></i>${i.d.regiao.curto} <b>${fmt(i.v, 1)}</b></span>`).join("");
 }
 
-// ---- linha de previsão (modelo por prazo, régua da CESP) e faixa típica da época ----
+// ---- linha de previsão (24 h pelas réguas rio acima, depois por chuva) e faixa típica da época ----
 function interp(dados, x) {
   if (!dados.length || x < dados[0].x || x > dados.at(-1).x) return null;
   let j = dados.findIndex(p => p.x >= x);
@@ -1442,12 +1442,39 @@ function semSubirSemChuva(pts, c, podeSubir) {
   let j = 0;
   for (const b of blocos) for (let t = 0; t < b.n; t++) pts[j++][c] = b.s / b.n;
 }
+// variáveis da linha pelas réguas rio acima (1 a 24 h) — mesma conta de variaveis em scripts/modelo_cheias/rio_acima.py
+// e de variaveis_rio_acima em scripts/alertas.py. e = {p, b, c}: nível agora e h horas antes (cm) na Passarela,
+// em Barro Vermelho e em Cunha; r24 = chuva das últimas 24 h; rfut = chuva prevista até o prazo (mm)
+function variaveisRioAcima(e, r24, rfut) {
+  const { p, b, c } = e, n = p[0] / 100, db3 = (b[0] - b[3]) / 100, db6 = (b[0] - b[6]) / 100, rf = Math.log1p(rfut);
+  return [1, n, n * n, (p[0] - p[1]) / 100, (p[0] - p[3]) / 100, (p[0] - p[6]) / 100, b[0] / 100, db3, db6, (b[0] - b[12]) / 100,
+    Math.max(db3, 0) * n, Math.max(db6, 0) * n, (c[0] - c[6]) / 100, (c[0] - c[12]) / 100, Math.log1p(r24), rf, rf * n];
+}
+// nível de uma régua h horas antes da última leitura dela (a leitura mais perto, até 30 min de diferença)
+function valorAntes(ls, h) {
+  const alvo = ms(ls.at(-1)) - h * 36e5;
+  let m = ls[0];
+  for (const l of ls) if (Math.abs(ms(l) - alvo) < Math.abs(ms(m) - alvo)) m = l;
+  return Math.abs(ms(m) - alvo) <= 30 * 6e4 ? m.nivel : null;
+}
+// entradas da linha rio acima, ou null se alguma régua estiver sem leitura recente
+function entradasRioAcima(pas, barro, cunha) {
+  const e = {};
+  for (const [k, ls0, hs] of [["p", pas, [0, 1, 3, 6]], ["b", barro, [0, 3, 6, 12]], ["c", cunha, [0, 6, 12]]]) {
+    const ls = comNivel(ls0 || []);
+    if (!ls.length || Date.now() - ms(ls.at(-1)) > 2 * 36e5) return null;
+    e[k] = {};
+    for (const h of hs) { e[k][h] = valorAntes(ls, h); if (e[k][h] == null) return null; }
+  }
+  return e;
+}
 function linhaPrevista(ultimo) {
   const m = prev.modelo, ref = prev.ref, d = prev.dados;
   if (!m?.passarela?.trajetoria || !ref || !d || !REGUAS_CIDADE.includes(estado.estacao)) return null;
   // o modelo trabalha na régua principal: converte a variação para a régua mostrada
   const k = estado.estacao === P ? 1 : config.conversoes[estado.estacao][1];
-  const minimo = Math.min(...comNivel(cache[estado.estacao]?.leituras || []).map(l => l.nivel / 100), ultimo.y);
+  // não deixa a previsão abaixo do mínimo das últimas 72 h (o robô de avisos usa a mesma janela)
+  const minimo = Math.min(...comNivel(cache[estado.estacao]?.leituras || []).filter(l => ms(l) >= ultimo.x - 72 * 36e5).map(l => l.nivel / 100), ultimo.y);
   const i = d.tempo.indexOf(horaLocal(new Date(ref.t)));
   if (i < 720) return null;
   const f = m.fator_previsao, soma = (a, b) => d.media.slice(Math.max(0, a), Math.max(0, b)).reduce((s, v) => s + v, 0);
@@ -1465,6 +1492,37 @@ function linhaPrevista(ultimo) {
     mod.push({ x: ultimo.x + pz.h * 36e5, lo: Math.max(piso, ultimo.y + k * (p + q[1]) / 100), md: Math.max(piso, ultimo.y + k * (p + q[3]) / 100), hi: ultimo.y + k * (p + q[5]) / 100 });
   }
   if (!mod.length) return null;
+  const agoraH = d.tempo.indexOf(horaLocal(new Date()));
+  const chuva = d.tempo.map((t, j) => ({ x: new Date(t + ":00").getTime() + 18e5, y: d.media[j] * f, j })).filter(p => p.j > agoraH && p.y > 0);
+  // com Barro Vermelho e Cunha transmitindo: 1 a 24 h pelas réguas rio acima (scripts/modelo_cheias/rio_acima.py);
+  // depois, a linha por chuva, deslocada para continuar de onde a rio acima termina (o desvio some aos poucos)
+  const ra = m.passarela.rio_acima, e = ref.ra;
+  if (ra && e) {
+    const agit = e.p[0] > 150 || Math.abs(e.p[0] - e.p[3]) > 10, r24 = soma(i - 23, i + 1), novos = [];
+    for (const pz of ra.prazos) {
+      if (i + pz.h >= d.tempo.length) break;
+      const v = variaveisRioAcima(e, r24, soma(i + 1, i + pz.h + 1) * f);
+      const p = pz.pesos.reduce((s, w, j) => s + w * v[j], 0);
+      const q = pz.faixas[agit ? "agitado" : "calmo"].find(fx => p <= fx.ate).q;
+      novos.push({ h: pz.h, x: ultimo.x + pz.h * 36e5, lo: Math.max(piso, ultimo.y + k * (p + q[1]) / 100), md: Math.max(piso, ultimo.y + k * (p + q[3]) / 100), hi: ultimo.y + k * (p + q[5]) / 100 });
+    }
+    const fimNovo = novos.at(-1), j24 = hs.indexOf(fimNovo?.h);
+    const pts = [{ x: ultimo.x, lo: ultimo.y, md: ultimo.y, hi: ultimo.y }, ...novos];
+    if (j24 >= 0) {
+      const desvio = c => fimNovo[c] - mod[j24][c];
+      const dv = { lo: desvio("lo"), md: desvio("md"), hi: desvio("hi") };
+      let ant = fimNovo;
+      for (let j = j24 + 1; j < hs.length; j++) {
+        const s = Math.exp(-(hs[j] - fimNovo.h) / 36), sobe = soma(i + hs[j - 1] + 1, i + hs[j] + 1) * f >= 5;
+        const pt = { h: hs[j], x: mod[j].x };
+        for (const c of ["lo", "md", "hi"]) { pt[c] = mod[j][c] + dv[c] * s; if (!sobe) pt[c] = Math.min(pt[c], ant[c]); }
+        pt.md = Math.max(piso, pt.md); pt.lo = Math.max(piso, Math.min(pt.lo, pt.md)); pt.hi = Math.max(pt.hi, pt.md);
+        pts.push(pt); ant = pt;
+      }
+    }
+    for (const p of pts) { p.lo = Math.min(p.lo, p.md); p.hi = Math.max(p.hi, p.md); delete p.h; }
+    return { pts, chuva };
+  }
   // cada prazo é uma conta separada: sem chuva prevista entre dois prazos o rio não volta a subir,
   // então junta (média) os prazos que sobem sem chuva — tira o vaivém da curva e da faixa
   const podeSubir = hs.map((h, j) => j > 0 && soma(i + hs[j - 1] + 1, i + h + 1) * f >= 5);
@@ -1483,8 +1541,6 @@ function linhaPrevista(ultimo) {
     pts.push({ x: ultimo.x + h * 36e5, lo: Math.max(piso, Math.min(lo, md)), md: Math.max(piso, md), hi: Math.max(hi, md) });
   }
   pts.push(...mod);
-  const agoraH = d.tempo.indexOf(horaLocal(new Date()));
-  const chuva = d.tempo.map((t, j) => ({ x: new Date(t + ":00").getTime() + 18e5, y: d.media[j] * f, j })).filter(p => p.j > agoraH && p.y > 0);
   return { pts, chuva };
 }
 function faixaTipica(dias, inicio, fim) {
@@ -1989,6 +2045,13 @@ async function nivelDeReferencia() {
     if (a6 != null && a12 != null) Object.assign(ref, { versao: "B", dc6: cu.nivel - a6, dc12: cu.nivel - a12, fonte: `${apelido(P)} + ${apelido(config.previsao.rio_acima)}` });
   }
   const pm = prev.modelo.passarela;
+  // linha das próximas 24 h pelas réguas rio acima (Barro Vermelho e Cunha)
+  if (pm.rio_acima) {
+    const barro = pm.rio_acima.estacao === gat?.estacao ? regGat : await ler(pm.rio_acima.estacao).catch(() => []);
+    const cun = pm.rio_acima.cunha === config.previsao.rio_acima ? cunha : await ler(pm.rio_acima.cunha).catch(() => []);
+    const e = entradasRioAcima(pas, barro, cun);
+    if (e) ref.ra = e;
+  }
   const comPluv = ref.versao === "A" ? "P" : ref.versao + "P";   // A → P, B → BP
   if (pluv && pm["pesos_" + comPluv]) Object.assign(ref, { versao: comPluv, pluv, fonte: `${ref.fonte} + chuva em ${apelido(pm.pluviometro)}` });
   return ref;
