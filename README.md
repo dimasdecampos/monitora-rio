@@ -77,7 +77,12 @@ Os dois se encontram na represa de Paraibuna e formam o Paraíba do Sul.
    `previsao`, `impactos`, `represamento`, `estatisticas`, `textos`, `avisos`,
    `pluviometros` (estações só de chuva, com `id_chuva`), `pontos_chuva` (lugares sem
    pluviômetro, com `codigo` `pt-…`: uma região de chuva com esse código mostra só a
-   previsão), `tv_chuva` (até 2 pontos com a chuva prevista no modo TV) e `chuva_era5`.
+   previsão), `tv_chuva` (até 2 pontos com a chuva prevista no modo TV), `chuva_era5` e
+   `faixas`: `nomes` das cotas oficiais (renomeia no painel, no modo TV e nos avisos) e
+   `cidade`, níveis da cidade acima das cotas (`cm` na régua principal, `nome`, `cor`
+   opcional). No Paraitinga: Ruas do centro (4,60 m) e Praça da Matriz (5,36 m), que aparecem
+   no cartão de previsão com a chance de chegar a elas e, perto ou acima do transbordamento,
+   como linha no gráfico e no modo TV.
 2. Acrescente a bacia em `public/bacias.json`.
 3. Baixe o histórico: `python scripts/coletar.py --bacia <id> --desde 2024-01`,
    a chuva estimada nos pontos (`python scripts/baixar_chuva_era5.py --bacia <id>`)

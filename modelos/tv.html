@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0d0d0d">
+<!-- iPhone: adicionada à tela de início, abre sem a barra do navegador (o Safari do iPhone não tem tela cheia) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Monitor do Rio TV</title>
 <meta name="description" content="Nível do rio em tela cheia, para TV ou monitor, com atualização automática">
 <meta name="robots" content="noindex, follow"><!-- repete o painel; no Google fica só o painel -->
@@ -31,7 +35,8 @@
   body { margin: 0; background: var(--plano); color: var(--tinta); overflow: hidden;
          font: 1.6vmin/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   body.ocioso { cursor: none; }
-  .tela { height: 100vh; display: grid; grid-template-rows: auto 1fr auto; gap: 1.6vmin; padding: 2vmin 2.4vmin; }
+  /* dvh: altura visível de verdade no celular (100vh inclui a barra do navegador) */
+  .tela { height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto 1fr auto; gap: 1.6vmin; padding: 2vmin 2.4vmin; }
 
   /* topo */
   .topo { display: flex; align-items: center; gap: 2vmin; }
@@ -116,7 +121,7 @@
   /* tela em pé (celular, tablet ou monitor vertical) */
   @media (max-aspect-ratio: 1/1) {
     body { overflow: auto; font-size: 2.2vmin; }
-    .tela { height: auto; min-height: 100vh; padding: 16px; }
+    .tela { height: auto; min-height: 100vh; min-height: 100dvh; padding: 16px; }
     .topo { flex-wrap: wrap; gap: 8px 16px; }
     .topo h1 { font-size: 20px; } .vivo { font-size: 14px; } .botoes { display: none; }
     .relogio b { font-size: 28px; } .relogio span { font-size: 12px; }
@@ -127,6 +132,10 @@
     .acima { grid-template-columns: repeat(2, 1fr); }
     .rodape { flex-wrap: wrap; }
   }
+  /* celular: dica para entrar em tela cheia (o navegador só deixa depois de um toque) */
+  .dica-tela { position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 9;
+               background: var(--superficie-2); color: var(--tinta); border: 1px solid var(--borda); border-radius: 999px;
+               padding: 8px 16px; font-size: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.4); pointer-events: none; }
 </style>
 </head>
 <body>
@@ -276,6 +285,10 @@ function variacao(ls, horas) {
   return null;
 }
 const cotasDe = e => COTAS.filter(n => e.cotas_cm?.[n.chave] != null).map(n => ({ ...n, cm: e.cotas_cm[n.chave] }));
+// faixas da cidade acima das cotas (config.faixas.cidade, cm na régua principal), da mais baixa para a mais alta
+const faixasCidade = () => (config.faixas?.cidade || []).map(f => ({ nome: f.nome, cor: f.cor || "--inundacao", cm: f.cm })).sort((a, b) => a.cm - b.cm);
+// perto ou acima da maior cota: a próxima faixa da cidade acima de cm (referência depois do transbordamento)
+const proximaFaixa = (e, cm) => { const topo = cotasDe(e)[0]?.cm; return topo != null && cm > topo - 30 ? faixasCidade().find(f => f.cm > cm) : null; };
 function classificar(e, cm) {
   const cl = cotasDe(e);
   if (!cl.length) return { nome: "Sem cotas", cor: "--tinta-3", chave: "sem" };
@@ -358,7 +371,8 @@ function desenharAgora(ls, chuva) {
   }
 
   // régua vertical com as cotas
-  const cl = cotasDe(e), topo = Math.max((cl[0]?.cm ?? u.v) * 1.15, u.v * 1.08);
+  const prox = proximaFaixa(e, u.v);
+  const cl = [...(prox ? [prox] : []), ...cotasDe(e)], topo = Math.max((cl[0]?.cm ?? u.v) * 1.08, (cotasDe(e)[0]?.cm ?? u.v) * 1.15, u.v * 1.08);
   $("#regua").hidden = !cl.length;
   $("#rAgua").style.height = Math.min(100, u.v / topo * 100) + "%";
   $("#regua").querySelectorAll(".cota").forEach(x => x.remove());
@@ -379,9 +393,10 @@ function desenharGrafico(ls) {
   const pts = ls.filter(l => l.t >= ini).map(l => ({ x: l.t, y: l.v / 100 }));
   if (!pts.length) return;
   const ymax = Math.max(...pts.map(p => p.y)), ymin = Math.min(...pts.map(p => p.y));
-  const max = Math.max(cl.length ? cl.at(-1).cm / 100 + .2 : 0, ymax + Math.max(.15, (ymax - ymin) * .15));
+  const prox = proximaFaixa(e, ymax * 100);   // depois do transbordamento: a próxima faixa da cidade como referência
+  const max = Math.max(cl.length ? cl.at(-1).cm / 100 + .2 : 0, ymax + Math.max(.15, (ymax - ymin) * .15), prox ? prox.cm / 100 + .1 : 0);
   const min = Math.max(0, ymin - Math.max(.3, (ymax - ymin) * .15));
-  const visiveis = cl.filter(n => n.cm / 100 <= max + .01);
+  const visiveis = [...(prox ? [prox] : []), ...cl].filter(n => n.cm / 100 <= max + .01);
   const ds = [{ data: pts, order: 0, borderColor: tok("--acento"), borderWidth: 4, pointRadius: 0, tension: .25, fill: "start",
                 backgroundColor: tok("--acento") + "33" }];
   for (const n of visiveis) ds.push({ data: [{ x: ini, y: n.cm / 100 }, { x: agora, y: n.cm / 100 }], order: 1, borderColor: tok(n.cor) + "b3",
@@ -471,7 +486,23 @@ let ocioso;
 const acordar = () => { document.body.classList.remove("ocioso"); clearTimeout(ocioso); ocioso = setTimeout(() => document.body.classList.add("ocioso"), 4000); };
 ["mousemove", "keydown", "touchstart"].forEach(ev => addEventListener(ev, acordar));
 
-$("#bTela").onclick = () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.().catch(() => {});
+// tela cheia; no celular, também vira para deitado (o formato do modo TV)
+const celular = matchMedia("(pointer: coarse)").matches;
+async function telaCheia() {
+  if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); return; }
+  try { await document.documentElement.requestFullscreen({ navigationUI: "hide" }); } catch { return; }
+  if (celular) try { await screen.orientation?.lock?.("landscape"); } catch {}
+}
+document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement) try { screen.orientation?.unlock?.(); } catch {} });
+$("#bTela").onclick = telaCheia;
+// no celular, o primeiro toque em qualquer lugar entra em tela cheia (o botão fica escondido com o celular em pé)
+if (celular && document.documentElement.requestFullscreen) {
+  const dica = document.createElement("div"); dica.className = "dica-tela"; dica.textContent = "Toque na tela para ver em tela cheia";
+  document.body.append(dica);
+  const entrar = ev => { if (ev.target.closest("button, a")) return; removeEventListener("click", entrar); dica.remove(); telaCheia(); };
+  addEventListener("click", entrar);
+  setTimeout(() => dica.remove(), 12e3);
+}
 function aplicarTema(t) { document.documentElement.dataset.theme = t; guardar("tema", t); desenharTudo(); }
 $("#bTema").onclick = () => aplicarTema(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
 addEventListener("keydown", e => { if (e.key === "f" || e.key === "F") $("#bTela").click(); });
@@ -481,6 +512,7 @@ let redim; addEventListener("resize", () => { clearTimeout(redim); redim = setTi
   document.documentElement.dataset.theme = new URLSearchParams(location.search).get("tema") || ler("tema", "dark");
   relogio(); setInterval(relogio, 10e3); acordar(); manterAcesa();
   config = await fetch("config.json").then(r => r.json());
+  COTAS.forEach(n => n.nome = config.faixas?.nomes?.[n.chave] || n.nome);   // nomes das cotas: config.faixas.nomes
   for (const r of config.rios) for (const e of r.estacoes) estacoes[e.codigo] = e;
   for (const e of [...(config.pluviometros || []), ...(config.pontos_chuva || [])]) if (e.codigo) estacoes[e.codigo] = e;
   P = config.principal;

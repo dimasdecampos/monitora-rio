@@ -301,6 +301,7 @@ def verificar(bacia, mandar):
     Um aviso só conta como dado (e não se repete) depois de chegar por pelo menos um canal;
     se todos falharem, ele é tentado de novo na próxima rodada. Devolve quantos falharam."""
     cfg = comum.config(bacia); EST = comum.estacoes(cfg); P = cfg["principal"]
+    NOMES = dict(COTAS) | ((cfg.get("faixas") or {}).get("nomes") or {})   # nomes das cotas: config.faixas.nomes
     nome = lambda c: EST[c].get("curto") or EST[c]["nome"]
     arq = PASTA_ESTADO / f"{bacia}.json"
     antigo = PASTA_ESTADO / "estado.json"   # formato antigo, de quando só havia o Paraitinga
@@ -348,7 +349,7 @@ def verificar(bacia, mandar):
             else:
                 desde = "Nenhuma leitura nas últimas 14 h."
             if cota:
-                titulo = f"⚠️ *{rio}: régua sem dados durante {dict(COTAS)[cota].lower()}*"
+                titulo = f"⚠️ *{rio}: régua sem dados durante {NOMES[cota].lower()}*"
             else:
                 titulo = f"📡 *{rio}: régua sem dados*"
             if avisar(f"{titulo}\n{nome(P)} parou de transmitir. {desde}\n"
@@ -368,10 +369,11 @@ def verificar(bacia, mandar):
 
     # 1) cota da cidade (sobe na hora; desce só 5 cm abaixo, para não ficar avisando)
     atual = cota_de(nivel, cot_p) if cot_p else None
+    if atual: atual = (atual[0], NOMES[atual[0]], atual[2])
     ordem = [k for k, _ in COTAS]
     anterior = estado.get("cota")
     if anterior and anterior in cot_p and (not atual or ordem.index(atual[0]) > ordem.index(anterior)) and nivel > cot_p[anterior] - 5:
-        atual = (anterior, dict(COTAS)[anterior], cot_p[anterior])
+        atual = (anterior, NOMES[anterior], cot_p[anterior])
     msg = None
     nv_msg = anterior   # baixando: o nível anterior (quem foi avisado da subida fica sabendo da descida)
     if atual and atual[0] != anterior and (not anterior or ordem.index(atual[0]) < ordem.index(anterior)):
@@ -405,7 +407,7 @@ def verificar(bacia, mandar):
         modelo = json.loads((comum.pasta(bacia) / cfg["previsao"]["modelo"]).read_text(encoding="utf-8"))
         pluv = chuva_pluviometro(EST.get(modelo["passarela"].get("pluviometro")))
         r = probabilidade(modelo, nivel, s.get(cfg["previsao"].get("rio_acima"), []), pluv)
-        prox = next(((k, n, cot_p[k]) for k, n in reversed(COTAS) if k in cot_p and nivel < cot_p[k]), None)
+        prox = next(((k, NOMES[k], cot_p[k]) for k, _ in reversed(COTAS) if k in cot_p and nivel < cot_p[k]), None)
         p = f48 = None
         if r and prox:
             chance, f48, _ = r

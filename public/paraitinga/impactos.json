@@ -50,16 +50,14 @@
       "aproximado": true,
       "titulo": "Ruas do centro alagadas",
       "texto": "Em 23/2/2024 (o rio subiu de 3,3 m para 5,1 m ao longo do dia) ao menos cinco ruas do centro alagaram, entre elas Rua dos Presottos, Benedito Pião Sobrinho, Abraão Abdala, Capitão Antônio Carlos, Monsenhor Ignácio Gióia, Cel. Manoel Bento e Eng. Pedro Pereira Rio Branco.",
-      "fonte": "https://www.cbnvale.com.br/sao-luiz-do-paraitinga-em-alerta-risco-de-transbordamento-do-rio-paraitinga/",
-      "previsao": "Ruas do centro"
+      "fonte": "https://www.cbnvale.com.br/sao-luiz-do-paraitinga-em-alerta-risco-de-transbordamento-do-rio-paraitinga/"
     },
     {
       "cm": 536,
       "tipo": "registro",
       "titulo": "Água na Praça da Matriz",
       "texto": "Em 8/2/2022 (pico de 5,36 m) a água chegou à praça em frente à Igreja Matriz; marcas d'água na via de acesso em frente ao Fórum e na Rua Capitão Antônio Carlos; casas atingidas no bairro Orris.",
-      "fonte": "https://ecrie.com.br/sistema/conteudos/arquivo/a_30_0_1_23032023162929.pdf",
-      "previsao": "Praça da Matriz"
+      "fonte": "https://ecrie.com.br/sistema/conteudos/arquivo/a_30_0_1_23032023162929.pdf"
     }
   ],
   "lugares": [
@@ -627,6 +625,5 @@
       "fonte": "SP Águas (SIBH)"
     }
   ],
-  "_definicoes": "Cotas segundo o Manual de Operação das Salas de Situação do Estado de SP (ANA/ProGestão): atenção = risco significativo mas incerto; alerta = perigo iminente, Defesa Civil de prontidão; emergência = situação crítica que demanda ação imediata; extravasamento = rio acima das margens, transbordando. Abaixo da atenção = normal.",
-  "_previsao": "Níveis com \"previsao\" (nome curto) aparecem no cartão Previsão · 48 h depois das cotas, com a chance de chegar a eles."
+  "_definicoes": "Cotas segundo o Manual de Operação das Salas de Situação do Estado de SP (ANA/ProGestão): atenção = risco significativo mas incerto; alerta = perigo iminente, Defesa Civil de prontidão; emergência = situação crítica que demanda ação imediata; extravasamento = rio acima das margens, transbordando. Abaixo da atenção = normal."
 }

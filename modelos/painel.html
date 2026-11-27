@@ -782,6 +782,11 @@ let P, REGUAS_CIDADE = [];   // régua principal da cidade e réguas convertíve
 const apelido = cod => estacoes[cod]?.curto || estacoes[cod]?.nome || cod;
 const temRegioes = () => !!config.regioes_chuva?.length;
 const cotasDe = (est = estacoes[estado.estacao]) => COTAS.filter(n => est?.cotas_cm?.[n.chave] != null).map(n => ({ ...n, cm: est.cotas_cm[n.chave] }));
+// faixas da cidade acima das cotas (config.faixas.cidade, em cm na régua principal), convertidas para a régua cod;
+// só nas réguas da cidade (nas réguas rio acima não fazem sentido)
+const faixasCidade = (cod = estado.estacao) => !REGUAS_CIDADE.includes(cod) ? []
+  : (config.faixas?.cidade || []).map(f => ({ chave: "cidade" + f.cm, nome: f.nome, cor: f.cor || "--inundacao", cmP: f.cm, cm: cod === P ? f.cm : conv(cod, f.cm), cidade: true }))
+      .sort((a, b) => a.cm - b.cm);
 // conversão entre réguas da cidade: régua X = a + b × régua principal (config.conversoes)
 const conv = (cod, p) => { const c = config.conversoes?.[cod]; return c ? c[0] + c[1] * p : p; };
 const desconv = (cod, x) => { const c = config.conversoes?.[cod]; return c ? (x - c[0]) / c[1] : x; };
@@ -1086,7 +1091,7 @@ const pluginCotas = {
     if (!op?.ativo) return;
     const { ctx, chartArea: a, scales: { y } } = c;
     ctx.save();
-    for (const n of cotasDe()) {
+    for (const n of [...cotasDe(), ...faixasCidade()]) {   // cotas oficiais e faixas da cidade (config.faixas)
       const v = n.cm / 100;
       if (v > y.max || v < y.min) continue;
       const py = Math.round(y.getPixelForValue(v)) + .5;
@@ -1299,6 +1304,9 @@ function ajustarY(chart, a, b, incluirCotas) {
   if (incluirCotas) {
     const at = (cotasDe().at(-1)?.cm ?? Infinity) / 100;
     if (at > hi && at - hi < Math.max(.8, (hi - lo) * .6)) hi = at;   // mostra a cota de atenção quando o rio está perto dela
+    // perto ou acima da maior cota: mostra a próxima faixa da cidade (referência depois do transbordamento)
+    const topo = (cotasDe()[0]?.cm ?? Infinity) / 100, prox = faixasCidade().find(f => f.cm / 100 > hi);
+    if (prox && hi > topo - .3) hi = prox.cm / 100;
   }
   const folga = Math.max(.1, (hi - lo) * .12);
   chart.options.scales.y.min = Math.max(0, Math.floor((lo - folga) * 10) / 10);
@@ -2083,7 +2091,6 @@ async function desenharPrevisao() {
       await (prev.busca ??= buscarPrevisao().then(t => prev.quando = t).finally(() => prev.busca = null));   // uma busca por vez
     const ref = await nivelDeReferencia();
     if (!ref) throw new Error("sem leitura recente do rio");
-    if (config.impactos) impactos ??= await fetch(config.impactos).then(r => r.json()).catch(() => null);   // níveis da cidade no cartão
     prev.ref = ref;
     renderizarPrevisao(ref); desenharStats();
     desenharImpactos(); verificarAvisos(); desenharFontes(); if (estado.vista === "graficos") desenharVisoes();
@@ -2148,10 +2155,8 @@ function renderizarPrevisao(ref) {
   // cotas da régua principal (onde o modelo trabalha), da mais baixa para a mais alta
   const linhas = cotasDe(estacoes[P]).reverse().map(n => ({ ...n, cesp: n.cm }));   // cotas da régua principal
   const probs = Object.fromEntries(linhas.map(n => [n.chave, chanceTotal(n.cesp)]));
-  // níveis da cidade acima das cotas (impactos.json → "previsao"): só mostram a chance, não mudam o risco nem os avisos
-  const maiorCota = Math.max(...linhas.map(n => n.cesp));
-  const extras = (impactos?.niveis || []).filter(n => n.previsao && n.cm > maiorCota).sort((a, b) => a.cm - b.cm)
-    .map(n => ({ chave: "imp" + n.cm, nome: n.previsao, cesp: n.cm, cor: "--inundacao", p: chanceTotal(n.cm) }));
+  // faixas da cidade acima das cotas (config.faixas.cidade): só mostram a chance, não mudam o risco nem os avisos
+  const extras = faixasCidade(P).map(n => ({ ...n, cesp: n.cmP, p: chanceTotal(n.cmP) }));
   // pico provável (50%) e cenário pessimista (10%) — em cm acima do nível atual
   const subida = alvo => { for (let G = 5; G <= 700; G += 5) if (chance(G) < alvo) return G - 5; return 700; };
   const g50 = subida(.5), g10 = subida(.1);
@@ -2486,7 +2491,7 @@ async function desenharSazonal() {
   $("#pcardSazonal").innerHTML = `<i style="background:${tok(sm.atencao / sm.anos >= .5 ? "--alerta" : sm.atencao ? "--atencao" : "--bom")}"></i>${MESES[mesAt - 1]}: atenção em ${sm.atencao} de ${sm.anos} anos`;
   $("#scardSazonal").textContent = `Mês mais perigoso: ${MESES[maisCheio.mes - 1]} (emergência em ${maisCheio.emergencia} de ${maisCheio.anos} anos). Em quantos anos a régua ${apelido(P)} passou de cada cota, desde ${estat.desde || "o início do histórico"}.`;
   if (!cardAberto("cardSazonal")) return;
-  const niveis = [["atencao", "Atenção", "--atencao"], ["alerta", "Alerta", "--alerta"], ["emergencia", "Emergência", "--inundacao"], ["extravasamento", "Transbordamento", "--extravasa"]];
+  const niveis = COTAS.slice().reverse().map(n => [n.chave, n.nome, n.chave === "emergencia" ? "--inundacao" : n.cor]);   // nomes de config.faixas.nomes
   const op = opcoesBase();
   op.parsing = true; op.onHover = null;
   op.interaction = { mode: "index", intersect: false };
@@ -2824,6 +2829,7 @@ async function trocarEstacao(cod) {
 
 async function iniciar() {
   config = await (await fetch("config.json")).json();
+  COTAS.forEach(n => n.nome = config.faixas?.nomes?.[n.chave] || n.nome);   // nomes das cotas: config.faixas.nomes
   config.rios.forEach(r => r.estacoes.forEach(e => estacoes[e.codigo] = { ...e, rio: r.nome }));
   // pluviômetros avulsos (só chuva) e pontos sem pluviômetro (só previsão), usados nas regiões de chuva
   (config.pluviometros || []).forEach(e => estacoes[e.codigo] = { ...e, rio: "Pluviômetros", so_chuva: true });

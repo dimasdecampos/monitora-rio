@@ -428,5 +428,13 @@
   "tv_chuva": [
     "pt-bocaina",
     "pt-slp"
-  ]
+  ],
+  "faixas": {
+    "_explicacao": "Nomes das cotas oficiais e faixas da cidade acima delas, na régua principal (cm). Mudar aqui renomeia no painel (gráfico e cartão de previsão), no modo TV e nos avisos do robô. Cor opcional: --inundacao, --extravasa, --alerta…",
+    "nomes": { "atencao": "Atenção", "alerta": "Alerta", "emergencia": "Emergência", "extravasamento": "Transbordamento" },
+    "cidade": [
+      { "cm": 460, "nome": "Ruas do centro" },
+      { "cm": 536, "nome": "Praça da Matriz" }
+    ]
+  }
 }
