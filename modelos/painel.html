@@ -2164,10 +2164,15 @@ function renderizarPrevisao(ref) {
   // com as réguas rio acima transmitindo, o pico vem da linha de previsão (vê a água que já desce o rio;
   // o modelo de chuva acima não vê e, numa cheia em curso, dizia "fica perto do nível atual")
   const picoRA = picoDaLinha(ref);
-  // chance de chegar a um nível: a maior entre o modelo de chuva e a faixa da linha rio acima
-  const chanceTotal = cm => Math.max(chanceNivel(cm), chanceDaLinha(picoRA, cm));
   // cotas da régua principal (onde o modelo trabalha), da mais baixa para a mais alta
   const linhas = cotasDe(estacoes[P]).reverse().map(n => ({ ...n, cesp: n.cm }));   // cotas da régua principal
+  // em cheia e já baixando pela linha rio acima, o modelo de chuva não vale: ele não vê a tendência da
+  // própria régua e dá ~10% de chance de subir 25 cm a partir do nível de agora em qualquer nível. Em
+  // 27/11/2026, com 4,50 m e a linha descendo para 3,40 m em 24 h, dizia "pode chegar a 4,75 m"
+  // (e 16% para as ruas do centro), número que só acompanhava cada nova leitura (sempre agora + 25 cm)
+  const baixandoEmCheia = !!picoRA && H0 >= linhas[0].cesp && picoRA.md <= H0 + 3 && picoRA.em24 < H0 - 10;
+  // chance de chegar a um nível: a maior entre o modelo de chuva e a faixa da linha rio acima
+  const chanceTotal = cm => baixandoEmCheia ? chanceDaLinha(picoRA, cm) : Math.max(chanceNivel(cm), chanceDaLinha(picoRA, cm));
   const probs = Object.fromEntries(linhas.map(n => [n.chave, chanceTotal(n.cesp)]));
   // faixas da cidade acima das cotas (config.faixas.cidade): só mostram a chance, não mudam o risco nem os avisos
   const extras = faixasCidade(P).map(n => ({ ...n, cesp: n.cmP, p: chanceTotal(n.cmP) }));
@@ -2177,7 +2182,7 @@ function renderizarPrevisao(ref) {
   // resultado na régua da cidade escolhida; para outras estações, na régua principal
   const reguaCod = REGUAS_CIDADE.includes(estado.estacao) ? estado.estacao : P;
   const paraRegua = cm => reguaCod === P ? cm : conv(reguaCod, cm);
-  prev.pico = picoRA ? { agora: H0, provavel: picoRA.md, alto: Math.max(picoRA.hi, H0 + g10), quando: picoRA.x, rioAcima: true }
+  prev.pico = picoRA ? { agora: H0, provavel: picoRA.md, alto: baixandoEmCheia ? picoRA.hi : Math.max(picoRA.hi, H0 + g10), quando: picoRA.x, rioAcima: true }
     : { agora: H0, provavel: H0 + g50, alto: H0 + g10 };   // na régua principal (usado em "o que alaga")
   const naRegua = cm => fmt(paraRegua(cm) / 100, 2);
 

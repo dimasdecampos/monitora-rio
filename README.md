@@ -357,7 +357,10 @@ Teste: treino 2024–2025, teste 2026 (cheias de janeiro a novembro), erro médi
 | 12 h | 10,5 cm | 33,3 cm | 38,5 cm | 75% |
 | 24 h | 26,0 cm | 45,9 cm | 61,7 cm | 74% |
 
-Perto do pico ela tende a passar uns 10 cm do real. Testados no mesmo protocolo, sem ganho
+Com o rio acima da atenção e a linha já descendo (mais de 10 cm em 24 h), o "pode chegar a" e as chances
+vêm só da faixa da linha: o modelo de chuva não vê a tendência da régua e dava ~10% de chance de subir
+25 cm a partir do nível de agora (em 27/11/2026, com 4,50 m e a linha indo a 3,40 m, mostrava "pode chegar
+a 4,75 m", número que andava junto com cada leitura). Perto do pico ela tende a passar uns 10 cm do real. Testados no mesmo protocolo, sem ganho
 (experimento de nov/2026): chuva medida nos pluviômetros das réguas com a intensidade (máximo em 1 h),
 chuva antecedente e umidade do solo (ERA5), temperatura, umidade do ar, pressão e vento, e árvores de
 decisão (gradient boosting) no lugar da regressão (piores: 15–17 cm em 12 h, com poucas cheias para
