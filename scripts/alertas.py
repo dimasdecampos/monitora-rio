@@ -378,7 +378,10 @@ def verificar(bacia, mandar):
 
     # 2) água subindo rio acima
     for c in acima:
-        d = variacao(s.get(c, []), 3)
+        serie = s.get(c, [])
+        # régua sem leitura há mais de 2 h: a subida das últimas leituras não diz nada sobre agora
+        if not serie or datetime.now(timezone.utc) - serie[-1][0] > timedelta(hours=2): continue
+        d = variacao(serie, 3)
         if d is not None and d >= 20 and pode("sobe-" + c, 6):
             avisar(f"🌊 *Água subindo em {EST[c]['nome']}*\n+{d:.0f} cm em 3 h ({br(s[c][-1][1])} m). Chega a {cfg['cidade']} em cerca de {EST[c]['rio_acima']['horas_ate_cidade']} h.", "sobe-" + c)
 

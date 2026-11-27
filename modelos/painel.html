@@ -632,6 +632,20 @@
   </div><!-- .direita -->
   </div><!-- .painel -->
 
+  <section class="card largo rio-acima recolhivel" id="cardRio" data-vista="inicio" data-fechado aria-labelledby="tituloRio">
+    <div class="cab" role="button" tabindex="0" aria-expanded="false" aria-controls="corpoRio">
+      <div><h2 id="tituloRio">Rio acima</h2>
+        <p class="sub" id="rSub"></p></div>
+      <span class="lado"><span class="pill" id="rResumo"><i></i>…</span><span class="seta-exp" aria-hidden="true"></span></span>
+    </div>
+    <div class="corpo" id="corpoRio" hidden>
+      <ol class="trecho" id="rTrecho"><li class="prev-carregando">Carregando réguas…</li></ol>
+      <div class="represa" id="rChapeu"></div>
+      <div class="rot" id="rAflRot" style="margin:14px 0 6px">Afluentes</div>
+      <ol class="trecho afl" id="rAfl"></ol>
+    </div>
+  </section>
+
   <section class="card largo recolhivel" id="cardImpacto" data-vista="inicio" aria-labelledby="tituloImpacto">
     <div class="cab" role="button" tabindex="0" aria-expanded="true">
       <div><h2 id="tituloImpacto">O que alaga com cada nível</h2>
@@ -649,19 +663,6 @@
   </section>
 
   <div class="titulo-vista" data-vista="graficos"><h1>Mais gráficos</h1><p>Histórico, comparações e estatísticas do rio. Cada cartão pode ser fechado para reduzir a tela.</p></div>
-  <section class="card largo rio-acima recolhivel" id="cardRio" data-vista="graficos" aria-labelledby="tituloRio">
-    <div class="cab" role="button" tabindex="0" aria-expanded="false" aria-controls="corpoRio">
-      <div><h2 id="tituloRio">Rio acima</h2>
-        <p class="sub" id="rSub"></p></div>
-      <span class="lado"><span class="pill" id="rResumo"><i></i>…</span><span class="seta-exp" aria-hidden="true"></span></span>
-    </div>
-    <div class="corpo" id="corpoRio" hidden>
-      <ol class="trecho" id="rTrecho"><li class="prev-carregando">Carregando réguas…</li></ol>
-      <div class="represa" id="rChapeu"></div>
-      <div class="rot" id="rAflRot" style="margin:14px 0 6px">Afluentes</div>
-      <ol class="trecho afl" id="rAfl"></ol>
-    </div>
-  </section>
 
   <div class="duas" data-vista="graficos">
     <section class="card recolhivel" id="cardAno">
@@ -2251,7 +2252,9 @@ async function desenharRioAcima() {
   const montar = e => {
     const ls = comNivel(rioAcima.dados[e.codigo] || []), u = ls.at(-1);
     const v = variacao(ls, 3), cl = cotasDe(e), st = u ? cl.find(n => u.nivel >= n.cm) : null;
-    return { e, ls, u, dif: v ? v.delta : null, st };
+    // régua sem leitura há mais de 2 h: a subida das últimas leituras não diz nada sobre agora
+    const parada = u && Date.now() - ms(u) > 2 * 36e5;
+    return { e, ls, u, dif: v && !parada ? v.delta : null, st };
   };
   const trecho = lista.filter(e => !e.rio_acima.afluente).sort((a, b) => a.rio_acima.ordem - b.rio_acima.ordem).map(montar);
   trecho.push({ ...montar(cidade), cidade: true });
@@ -2857,11 +2860,11 @@ async function iniciar() {
   new MutationObserver(resumir).observe(filtros, { subtree: true, attributes: true, attributeFilter: ["aria-pressed", "hidden"] });
   $("#metrica").addEventListener("change", resumir);
   mqFiltros.addEventListener("change", abrirNoComputador); abrirNoComputador(); resumir();
-  // cartões recolhíveis: todos começam abertos; o navegador lembra a escolha
+  // cartões recolhíveis: começam abertos (os com data-fechado, fechados); o navegador lembra a escolha
   document.querySelectorAll(".recolhivel").forEach(card => {
     const cab = card.querySelector(".cab"), corpo = card.querySelector(".corpo"), chave = "aberto2-" + card.id;
     const abrir = sim => { cab.setAttribute("aria-expanded", sim); corpo.hidden = !sim; if (sim) setTimeout(() => card.dispatchEvent(new CustomEvent("abriu")), 0); };
-    abrir(ler(chave, true));
+    abrir(ler(chave, !card.hasAttribute("data-fechado")));
     const alternar = () => { const sim = corpo.hidden; abrir(sim); guardar(chave, sim); };
     cab.addEventListener("click", ev => { if (!ev.target.closest("a, li[data-cod]")) alternar(); });
     cab.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); alternar(); } });
