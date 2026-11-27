@@ -1048,7 +1048,7 @@ function desenharHero() {
   const verbo = atrasada ? "estava" : "está";
   if (normal != null) {
     const dif = (u.nivel - normal) / 100;
-    $("#hFrase").innerHTML = `O ${est.rio.replace("Rio ", "rio ")} ${verbo} <strong>${fmt(Math.abs(dif), 2)} m ${dif >= 0 ? "acima" : "abaixo"} do normal</strong> para ${+hoje.slice(8, 10)} de ${MESES[+hoje.slice(5, 7) - 1]} (${fmt(normal / 100, 2)} m).` +
+    $("#hFrase").innerHTML = `O ${est.rio.replace("Rio ", "rio ")} ${verbo} <strong>${fmt(Math.abs(dif), 2)} m ${dif >= 0 ? "acima" : "abaixo"} do normal</strong> para ${+hoje.slice(8, 10)} de ${MESES[+hoje.slice(5, 7) - 1]} (o normal é ${fmt(normal / 100, 2)} m).` +
       (atrasada && !pendente ? ` <span class="aviso-atraso">A estação parou de transmitir; o nível real pode ser outro.</span>` : "") +
       (atrasada && !pendente && estado.estacao !== P && REGUAS_CIDADE.includes(estado.estacao) ? `<br><button class="trocar" data-cod="${P}">Ver a régua ${apelido(P)} →</button>` : "");
   } else $("#hFrase").textContent = "";
