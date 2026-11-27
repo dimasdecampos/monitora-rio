@@ -1,7 +1,7 @@
 // Service worker (vale para todas as bacias): deixa o painel instalável e mostra a última leitura mesmo sem internet.
 // Páginas e dados: rede primeiro (sempre o mais novo), cópia guardada só se a rede falhar.
 // Bibliotecas (CDN) e ícones: cópia guardada primeiro (não mudam).
-const VERSAO = "v4";
+const VERSAO = "v5";
 const CACHE = `monitor-${VERSAO}`;
 const BASICO = ["./", "index.html", "bacias.json", "manifest.webmanifest", "privacidade.html", "icones/icone-192.png"];   // cada painel é guardado na primeira visita
 
@@ -23,8 +23,11 @@ self.addEventListener("fetch", ev => {
     return;
   }
   if (mapa(req.url)) return;   // pedaços do mapa: direto da rede (não enche o celular)
+  // páginas e arquivos do próprio site: confere com o servidor a cada vez (o GitHub Pages deixa o navegador
+  // reusar por 10 min; com isso, uma versão nova do painel ou do impactos.json podia demorar a aparecer)
+  const doSite = new URL(req.url).origin === self.location.origin;
   ev.respondWith(
-    fetch(req).then(r => {
+    (doSite ? fetch(req.url, { cache: "no-cache", credentials: "same-origin" }) : fetch(req)).then(r => {
       if (r.ok) { const copia = r.clone(); caches.open(CACHE).then(k => k.put(req, copia)); }
       return r;
     }).catch(() => caches.match(req, { ignoreSearch: req.mode === "navigate" }).then(c => c || caches.match("index.html")))

@@ -2939,7 +2939,13 @@ async function iniciar() {
   addEventListener("load", () => desenharImpactos());   // o mapa precisa da biblioteca Leaflet
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("../sw.js").catch(() => {});
   $("#cardRio").addEventListener("click", ev => { const li = ev.target.closest("li[data-cod]"); if (li && li.dataset.cod !== estado.estacao) trocarEstacao(li.dataset.cod); });
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) { atualizarAoVivo(); desenharPrevisao(); } });
+  // ao voltar para a página: dados novos; aberta há mais de 6 h (app no celular), recarrega para pegar a versão nova do painel
+  const abertaEm = Date.now();
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) return;
+    if (Date.now() - abertaEm > 6 * 36e5) { location.reload(); return; }
+    atualizarAoVivo(); desenharPrevisao();
+  });
   // se a 1ª leitura ao vivo falhar (rede instável, ANA lenta), tenta de novo em 10 s, 30 s e 1 min, e assim que a internet voltar
   const vivoFalhou = () => [estado.estacao, P].some(cod => cache[cod]?.erroVivo);
   const retentarVivo = () => { if (vivoFalhou()) atualizarAoVivo(); };
