@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/delaunator@5.0.1/delaunator.min.js"></script>
 <style>
 /* Layout: uma coluna de leitura (máx. 1040px); veredito primeiro, depois ranking, série diária, dias fortes e tabela */
 :root {
@@ -108,9 +109,9 @@ code { font-size: 13px; }
 <div class="wrap">
   <div class="topo"><b>Admin · Monitor dos Rios</b><a href="../">Voltar ao site</a></div>
 
-  <section id="pintar">
+  <section id="pontos">
     <div class="cab">
-      <div><h2>Pintar o que alaga</h2><p class="nota">Escolha o nível da régua da Passarela e pinte as ruas que alagam com ele: passe o dedo ou o mouse sobre a rua com o pincel. O mapa mostra em cor só o que é do nível escolhido; o que foi pintado com outro nível fica tracejado e o pincel não mexe nele (para trocar o nível de um trecho, marque "mostrar todos os níveis"). A pintura gruda nos trechos da rua (entre esquinas, até ~60 m) e é gravada sozinha.</p></div>
+      <div><h2>Até onde a água chegou</h2><p class="nota">Informe o nível da régua da Passarela e toque no mapa no lugar até onde a água chega com ele (ou use "Marcar onde estou", na beira da água). Cada ponto refina a mancha: o sistema monta uma malha do centro do rio para fora, passando pelos pontos. Arraste um ponto para ajustar; toque nele para mudar o nível ou apagar. Grava sozinho.</p></div>
     </div>
     <div class="painel controles">
       <div class="pbarra" id="pEntrar">
@@ -120,16 +121,23 @@ code { font-size: 13px; }
         <button class="btn forte" id="pEntrarBtn" type="button">Entrar</button>
         <span id="pMsgSenha" role="status" style="font-size: 13.5px; font-weight: 600"></span>
       </div>
-      <div class="linha"><label>Nível</label><div class="chips" id="pNiveis"></div>
-        <span class="pbarra"><input type="number" id="pOutro" step="0.01" min="0" max="20" placeholder="outro" aria-label="Outro nível em metros"> m</span></div>
       <div class="pbarra">
-        <div class="seg" role="group" aria-label="Ferramenta" id="pModo"></div>
-        <button class="btn" id="pDesfazer" type="button" disabled>Desfazer</button>
-        <button class="btn" id="pImportar" type="button" hidden>Começar com o que o site mostra hoje</button>
-        <span id="pStatus">Carregando…</span>
+        <label for="pCm">Nível do ponto</label>
+        <input type="number" id="pCm" step="0.01" min="0" max="20" inputmode="decimal"> m
+        <button class="btn" id="pAgora" type="button">Nível de agora</button>
+        <button class="btn forte" id="pGps" type="button">Marcar onde estou</button>
+        <button class="btn" id="pDesfazer" type="button" disabled>Desfazer o último</button>
       </div>
-      <div class="pmapa" id="pMapa" role="application" aria-label="Mapa para pintar as ruas que alagam"></div>
+      <div class="linha"><label>Atalhos</label><div class="chips" id="pNiveis"></div></div>
+      <div class="pbarra">
+        <label for="pVer">Ver a cheia em</label>
+        <input type="range" id="pVer" min="300" max="1100" step="1" style="flex: 1; min-width: 140px">
+        <b id="pVerTxt" style="font-variant-numeric: tabular-nums">–</b>
+      </div>
+      <span id="pStatus">Carregando…</span>
+      <div class="pmapa" id="pMapa" role="application" aria-label="Mapa para marcar até onde a água chegou"></div>
       <div class="pleg" id="pLeg"></div>
+      <p class="nota">Azul = água no nível escolhido, calculada só a partir dos pontos marcados. Onde não há ponto por perto, nada é desenhado. Ponto cheio: a água já chega lá nesse nível; ponto vazado: só em nível mais alto. Até 3,00 m a água é considerada dentro da calha. As fotos de satélite são antigas, não mostram a cheia de hoje.</p>
     </div>
   </section>
 
@@ -426,11 +434,15 @@ est.rioReal = "paraitinga";
 seg(document.getElementById("rioReal"), [["paraitinga", "Paraitinga"], ["paraibuna", "Paraibuna"]], "rioReal", () => { real.rio = est.rioReal; real.i = null; carregarReal(); });
 carregarReal(); setInterval(carregarReal, 5 * 60e3);
 
-// ---- pintar o que alaga (Supabase: monitora_ruas; scripts/supabase/monitora_ruas.sql)
-// Cada trecho de rua (entre esquinas, até ~60 m, do ruas_osm.json) vira um registro "Rua X · id" com o nível em que alaga.
-// Lugares sem rua (praça, ponto) ficam com o nome deles. O painel lê monitora_ruas_listar.
-const PT = { bacia: "paraitinga", senha: "", ok: false, nivel: 305, trechos: [], porNome: new Map(), mapa: null, pend: { salvar: new Map(), apagar: new Set() },
-             historico: [], traco: null, pintando: false, timer: null, niveis: [], vazio: false, impactos: null };
+// ---- até onde a água chegou: pontos observados (Supabase: monitora_ruas, nomes "Ponto · …"; scripts/supabase/monitora_ruas.sql)
+// Cada ponto é (lugar, nível da régua em que a água chega ali). A malha liga os pontos ao centro do rio (triângulos) e,
+// para um nível, pinta a parte de cada triângulo cujo nível interpolado é menor ou igual a ele.
+const PT = { bacia: "paraitinga", senha: "", ok: false, mapa: null, pontos: new Map(), rio: [], ancoras: [], ver: 440, agora: null,
+             pend: { salvar: new Map(), apagar: new Set() }, ultimos: [], timer: null };
+const CALHA = 18, BEIRA = 300, LADO_MAX = 180;   // meia largura do rio (m), nível em que sai da calha (cm), maior lado de triângulo (m): limita até onde um ponto se espalha ao longo do rio
+const LAT0 = -23.222, LON0 = -45.311, MLON = 111320 * Math.cos(LAT0 * Math.PI / 180);
+const xy = (lat, lon) => [(lon - LON0) * MLON, (lat - LAT0) * 111320];
+const ll = p => [LAT0 + p[1] / 111320, LON0 + p[0] / MLON];
 const rpc = async (f, dados) => {
   const r = await fetch(`${SUPABASE}/rest/v1/rpc/${f}`, { method: "POST", headers: { apikey: CHAVE, "Content-Type": "application/json" }, body: JSON.stringify(dados) });
   const txt = await r.text();
@@ -439,176 +451,131 @@ const rpc = async (f, dados) => {
 };
 const status = (t, erro) => { const s = document.getElementById("pStatus"); s.textContent = t; s.classList.toggle("erro", !!erro); };
 const escH = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-const metros = (a, b) => Math.hypot((a[0] - b[0]) * 111320, (a[1] - b[1]) * 111320 * Math.cos(a[0] * Math.PI / 180));
-const hashId = s => { let h = 2166136261; for (const c of s) { h ^= c.codePointAt(0); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
-// cor pelo nível: amarelo (baixo) → vermelho → vinho (alto)
-function corNivel(cm) {
-  const t = Math.max(0, Math.min(1, (cm - 190) / (540 - 190)));
-  return `hsl(${Math.round(48 - 52 * t)}, 85%, ${Math.round(56 - 26 * t)}%)`;
-}
-const nomeRua = n => n.split(" · ")[0];
+const mt = cm => fmt(cm / 100, 2) + " m";
+const corNivel = cm => `hsl(${Math.round(48 - 52 * Math.max(0, Math.min(1, (cm - 300) / 300)))}, 90%, ${Math.round(55 - 22 * Math.max(0, Math.min(1, (cm - 300) / 300)))}%)`;
+const lerCm = txt => { const v = parseFloat(String(txt).replace(",", ".")); return v > 0 && v < 20 ? Math.round(v * 1000) / 10 : null; };
 
-// trechos: corta cada rua nas esquinas (ponto usado por 2+ ruas) e a cada ~60 m
-function montarTrechos(ruas) {
-  const usos = new Map(), k = p => p[0] + "," + p[1];
-  for (const r of ruas) for (const p of r.pts) usos.set(k(p), (usos.get(k(p)) || 0) + 1);
-  const out = [];
-  for (const r of ruas) {
-    let corte = [r.pts[0]], acc = 0;
-    for (let i = 1; i < r.pts.length; i++) {
-      const p = r.pts[i]; acc += metros(r.pts[i - 1], p); corte.push(p);
-      if (i === r.pts.length - 1 || usos.get(k(p)) > 1 || acc >= 60) {
-        const rua = r.nome || "Via sem nome", id = hashId(rua + k(corte[0]) + k(p) + corte.length);
-        out.push({ nome: `${rua} · ${id}`, rua, linhas: [corte], cm: null, tipo: "trecho" });
-        corte = [p]; acc = 0;
-      }
+// centro e margens do rio a cada ~20 m
+function montarRio(linhas) {
+  PT.rio = []; PT.ancoras = [];
+  for (const l of linhas) {
+    const p = l.map(q => xy(q[0], q[1])), am = [p[0]];
+    for (let i = 1; i < p.length; i++) {
+      const n = Math.max(1, Math.round(Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]) / 20));
+      for (let k = 1; k <= n; k++) am.push([p[i - 1][0] + (p[i][0] - p[i - 1][0]) * k / n, p[i - 1][1] + (p[i][1] - p[i - 1][1]) * k / n]);
     }
+    const esq = [], dir = [];
+    am.forEach((q, i) => {
+      const a = am[Math.max(0, i - 1)], b = am[Math.min(am.length - 1, i + 1)], d = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      const nx = -(b[1] - a[1]) / d * CALHA, ny = (b[0] - a[0]) / d * CALHA, e = [q[0] + nx, q[1] + ny], r = [q[0] - nx, q[1] - ny];
+      esq.push(e); dir.push(r);
+      PT.ancoras.push({ p: q, cm: 0 }, { p: e, cm: BEIRA }, { p: r, cm: BEIRA });
+    });
+    PT.rio.push([...esq, ...dir.reverse()].map(ll));
+  }
+}
+function malha(nivel) {
+  if (!window.Delaunator || !PT.pontos.size) return [];
+  const nos = [...PT.ancoras, ...[...PT.pontos.values()].map(p => ({ p: xy(p.lat, p.lon), cm: p.cm, obs: true }))];
+  const t = Delaunator.from(nos, n => n.p[0], n => n.p[1]).triangles, out = [];
+  for (let i = 0; i < t.length; i += 3) {
+    const v = [nos[t[i]], nos[t[i + 1]], nos[t[i + 2]]];
+    if (!v.some(n => n.obs) || v.some((n, k) => Math.hypot(n.p[0] - v[(k + 1) % 3].p[0], n.p[1] - v[(k + 1) % 3].p[1]) > LADO_MAX)) continue;
+    const pol = [];   // recorta o triângulo onde o nível interpolado <= nivel
+    v.forEach((a, k) => {
+      const b = v[(k + 1) % 3];
+      if (a.cm <= nivel) pol.push(a.p);
+      if ((a.cm <= nivel) !== (b.cm <= nivel)) { const u = (nivel - a.cm) / (b.cm - a.cm); pol.push([a.p[0] + (b.p[0] - a.p[0]) * u, a.p[1] + (b.p[1] - a.p[1]) * u]); }
+    });
+    if (pol.length > 2) out.push([pol.map(ll)]);
   }
   return out;
 }
 
-// pintado com outro nível (fora do filtro): aparece apagado e o pincel não mexe nele
-const deOutroNivel = t => t.cm != null && t.cm !== PT.nivel && !PT.verTodos;
-function estilo(t) {
-  const outro = deOutroNivel(t);
-  if (t.tipo === "ponto") return { radius: 8, color: "#fff", weight: 2, fillColor: t.cm != null && !outro ? corNivel(t.cm) : cor("--obs"), fillOpacity: t.cm == null ? .5 : outro ? .35 : .95 };
-  if (t.tipo === "area") return { color: "#fff", weight: 1, fillColor: t.cm != null && !outro ? corNivel(t.cm) : cor("--obs"), fillOpacity: t.cm == null ? .25 : outro ? .2 : .7 };
-  if (outro) return { color: cor("--muted"), weight: 3, opacity: .5, dashArray: "3 6" };
-  return t.cm != null ? { color: corNivel(t.cm), weight: 7, opacity: 1, dashArray: null } : { color: cor("--accent"), weight: 4, opacity: .28, dashArray: null };
+function desenharAgua() {
+  if (!PT.mapa) return;
+  PT.calha ??= L.polygon(PT.rio.map(r => [r]), { pane: "agua", stroke: false, fillColor: "#2f7fd6", fillOpacity: .45, interactive: false }).addTo(PT.mapa);
+  const m = malha(PT.ver);
+  PT.camadaAgua?.remove();
+  PT.camadaAgua = L.polygon(m, { pane: "agua", color: "#1f6fd1", weight: .6, opacity: .45, fillColor: "#1f6fd1", fillOpacity: .5, interactive: false }).addTo(PT.mapa);
+  document.getElementById("pVerTxt").textContent = mt(PT.ver);
+  for (const p of PT.pontos.values()) p.marca?.setIcon(icone(p));
 }
-function redesenharTudo() { for (const t of PT.trechos) if (t.camada) redesenhar(t); legenda(); }
-function dica_(t) { return `${escH(nomeRua(t.nome))}${t.cm != null ? ` · alaga com ${fmt(t.cm / 100, 2)} m` : " · sem pintura"}`; }
-function redesenhar(t) { t.camada.setStyle(estilo(t)); t.camada.setTooltipContent(dica_(t)); }
+const icone = p => L.divIcon({ className: "", iconSize: [18, 18], iconAnchor: [9, 9],
+  html: `<span style="display:block;width:14px;height:14px;margin:2px;border-radius:50%;box-shadow:0 0 0 2px #fff,0 1px 4px 2px rgba(0,0,0,.45);${p.cm <= PT.ver ? `background:${corNivel(p.cm)}` : `background:rgba(255,255,255,.55);border:3px solid ${corNivel(p.cm)};box-sizing:border-box`}"></span>` });
 
 function legenda() {
   const cont = new Map();
-  for (const t of PT.trechos) if (t.cm != null) cont.set(t.cm, (cont.get(t.cm) || 0) + 1);
-  const ls = [...cont].sort((a, b) => a[0] - b[0]);
-  const el = document.getElementById("pLeg");
-  el.innerHTML = (ls.length ? ls.map(([cm, n]) => `<button type="button" class="chip" data-cm="${cm}" aria-pressed="${cm === PT.nivel}" style="--c:${corNivel(cm)}"><i></i>${fmt(cm / 100, 2)} m · ${n} ${n === 1 ? "trecho" : "trechos"}</button>`).join("")
-    : "<span>Nada pintado ainda.</span>")
-    + `<label style="margin-left:auto; display:inline-flex; gap:6px; align-items:center"><input type="checkbox" id="pVerTodos"${PT.verTodos ? " checked" : ""}> mostrar todos os níveis</label>`;
-  el.querySelectorAll("[data-cm]").forEach(b => b.onclick = () => escolherNivel(+b.dataset.cm));
-  el.querySelector("#pVerTodos").onchange = e => { PT.verTodos = e.target.checked; redesenharTudo(); };
+  for (const p of PT.pontos.values()) cont.set(p.cm, (cont.get(p.cm) || 0) + 1);
+  const ls = [...cont].sort((a, b) => a[0] - b[0]), el = document.getElementById("pLeg");
+  el.innerHTML = ls.length ? ls.map(([cm, n]) => `<button type="button" class="chip" data-cm="${cm}" style="--c:${corNivel(cm)}"><i></i>${mt(cm)} · ${n} ${n === 1 ? "ponto" : "pontos"}</button>`).join("") : "<span>Nenhum ponto marcado ainda.</span>";
+  el.querySelectorAll("[data-cm]").forEach(b => b.onclick = () => verNivel(+b.dataset.cm));
 }
-function escolherNivel(cm) {
-  PT.nivel = cm; document.getElementById("pOutro").value = "";
-  if (est.pModo === "mover" && PT.ok) { est.pModo = "pincel"; modos(); }
-  chipsNiveis(); redesenharTudo();
+function verNivel(cm) {
+  const s = document.getElementById("pVer");
+  PT.ver = Math.max(+s.min, Math.min(+s.max, Math.round(cm))); s.value = PT.ver; desenharAgua();
 }
-function chipsNiveis() {
-  const el = document.getElementById("pNiveis");
-  const ls = [...new Map([...PT.niveis, ...PT.trechos.filter(t => t.cm != null).map(t => [t.cm, ""])]).entries()].sort((a, b) => a[0] - b[0]);
-  el.innerHTML = "";
-  for (const [cm, rot] of ls) {
-    const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.style.setProperty("--c", corNivel(cm));
-    b.innerHTML = `<i></i>${fmt(cm / 100, 2)} m${rot ? ` <span style="color:var(--muted)">${escH(rot)}</span>` : ""}`;
-    b.setAttribute("aria-pressed", PT.nivel === cm);
-    b.onclick = () => escolherNivel(cm);
-    el.append(b);
-  }
-}
-document.getElementById("pOutro").addEventListener("change", e => {
-  const v = parseFloat(String(e.target.value).replace(",", "."));
-  if (v > 0 && v < 20) { escolherNivel(Math.round(v * 1000) / 10); document.getElementById("pOutro").value = e.target.value; }
-});
+function nivelDoPonto(cm) { document.getElementById("pCm").value = (cm / 100).toFixed(2); verNivel(cm); }
 
-est.pModo = "mover";
-function modos() {
-  seg(document.getElementById("pModo"), [["mover", "Mover"], ["pincel", "Pincel"], ["borracha", "Borracha"]], "pModo", modos);
-  if (!PT.mapa) return;
-  const pinta = est.pModo !== "mover" && PT.ok;
-  document.getElementById("pMapa").classList.toggle("pintando", pinta);
-  pinta ? PT.mapa.dragging.disable() : PT.mapa.dragging.enable();
-  if (est.pModo !== "mover" && !PT.ok) status("Entre com a senha para pintar.", true);
+function por(p) {   // cria o marcador de um ponto
+  PT.pontos.get(p.nome)?.marca?.remove();
+  p.marca = L.marker([p.lat, p.lon], { icon: icone(p), draggable: PT.ok, keyboard: false }).addTo(PT.mapa);
+  p.marca.bindTooltip(() => `${mt(p.cm)}${p.obs ? " · " + escH(p.obs) : ""}`);
+  p.marca.on("dragend", () => { const q = p.marca.getLatLng(); p.lat = +q.lat.toFixed(6); p.lon = +q.lng.toFixed(6); mudou(p); });
+  p.marca.on("click", () => abrir(p));
+  PT.pontos.set(p.nome, p);
 }
-
-// trecho mais perto do ponteiro (em pixels da tela)
-function maisPerto(pt, raio) {
-  let melhor = null, dmin = raio;
-  const dSeg = (p, a, b) => { const dx = b.x - a.x, dy = b.y - a.y, l = dx * dx + dy * dy; const u = l ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l)) : 0; return Math.hypot(p.x - a.x - u * dx, p.y - a.y - u * dy); };
-  for (const t of PT.trechos) {
-    if (deOutroNivel(t)) continue;   // apagado pelo filtro: o pincel procura só entre os outros
-    let d = Infinity;
-    if (t.tipo === "ponto") d = PT.mapa.latLngToContainerPoint([t.lat, t.lon]).distanceTo(pt) - 6;
-    else if (t.tipo === "area") d = t.camada.getBounds().contains(PT.mapa.containerPointToLatLng(pt)) ? 0 : Infinity;
-    else for (const l of t.linhas) { const ps = l.map(p => PT.mapa.latLngToContainerPoint(p)); for (let i = 1; i < ps.length; i++) d = Math.min(d, dSeg(pt, ps[i - 1], ps[i])); }
-    if (d < dmin) { dmin = d; melhor = t; }
-  }
-  return melhor;
+function abrir(p) {
+  if (!PT.ok) { status("Entre com a senha para mudar os pontos.", true); return; }
+  const d = document.createElement("div");
+  d.innerHTML = `<div style="display:grid;gap:6px;min-width:190px">
+    <label>Nível <input type="number" step="0.01" value="${(p.cm / 100).toFixed(2)}" style="width:80px"> m</label>
+    <input type="text" maxlength="200" placeholder="observação (opcional)" value="${escH(p.obs || "")}">
+    <div style="display:flex;gap:6px"><button type="button" class="btn forte" data-a="ok">Salvar</button><button type="button" class="btn" data-a="x">Apagar</button></div></div>`;
+  d.querySelector("[data-a=ok]").onclick = () => { const cm = lerCm(d.querySelector("input").value); if (cm == null) return; p.cm = cm; p.obs = d.querySelector("input[type=text]").value.trim(); PT.mapa.closePopup(); mudou(p); };
+  d.querySelector("[data-a=x]").onclick = () => { PT.mapa.closePopup(); apagar(p); };
+  L.popup().setLatLng([p.lat, p.lon]).setContent(d).openOn(PT.mapa);
 }
-function pintar(t) {
-  const novo = est.pModo === "borracha" ? null : PT.nivel;
-  if (!t || t.cm === novo || deOutroNivel(t)) return;   // com o filtro, não mexe no que é de outro nível
-  if (!PT.traco.has(t.nome)) PT.traco.set(t.nome, t.cm);
-  t.cm = novo; redesenhar(t);
-  if (novo == null) { PT.pend.salvar.delete(t.nome); PT.pend.apagar.add(t.nome); }
-  else { PT.pend.apagar.delete(t.nome); PT.pend.salvar.set(t.nome, t); }
+function agendar() { clearTimeout(PT.timer); PT.timer = setTimeout(salvar, 700); }
+function mudou(p) { PT.pend.apagar.delete(p.nome); PT.pend.salvar.set(p.nome, p); por(p); desenharAgua(); legenda(); agendar(); }
+function apagar(p) {
+  p.marca.remove(); PT.pontos.delete(p.nome); PT.pend.salvar.delete(p.nome); PT.pend.apagar.add(p.nome);
+  PT.ultimos = PT.ultimos.filter(n => n !== p.nome); document.getElementById("pDesfazer").disabled = !PT.ultimos.length;
+  desenharAgua(); legenda(); agendar();
 }
-function registro(t) {
-  const r = { nome: t.nome, cm: t.cm, aproximado: !!t.aproximado, obs: t.obs || null };
-  if (t.linhas) { r.linhas = t.linhas; const m = t.linhas[0][Math.floor(t.linhas[0].length / 2)]; r.lat = m[0]; r.lon = m[1]; }
-  if (t.area) r.area = t.area;
-  if (t.tipo === "ponto") { r.lat = t.lat; r.lon = t.lon; }
-  return r;
+function novoPonto(lat, lon, obs) {
+  if (!PT.ok) { status("Entre com a senha para marcar pontos.", true); return; }
+  const cm = lerCm(document.getElementById("pCm").value);
+  if (cm == null) { status("Informe o nível do ponto, em metros (ex.: 4,40).", true); return; }
+  const p = { nome: `Ponto · ${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, cm, lat: +lat.toFixed(6), lon: +lon.toFixed(6), obs: obs || "" };
+  PT.ultimos.push(p.nome); document.getElementById("pDesfazer").disabled = false;
+  mudou(p);
+  if (cm > PT.ver) verNivel(cm);
 }
 async function salvar() {
   clearTimeout(PT.timer);
   if (!PT.pend.salvar.size && !PT.pend.apagar.size) return;
-  const salvar = [...PT.pend.salvar.values()].map(registro), apagar = [...PT.pend.apagar];
+  const enviar = [...PT.pend.salvar.values()].map(p => ({ nome: p.nome, cm: p.cm, lat: p.lat, lon: p.lon, obs: p.obs || null })), tirar = [...PT.pend.apagar];
   PT.pend = { salvar: new Map(), apagar: new Set() };
   status("Salvando…");
   try {
-    const n = await rpc("monitora_ruas_lote", { p_senha: PT.senha, p_bacia: PT.bacia, p_salvar: salvar, p_apagar: apagar });
-    status(`Salvo às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · ${n} ${n === 1 ? "trecho pintado" : "trechos pintados"}`);
-    document.getElementById("pImportar").hidden = true;
+    await rpc("monitora_ruas_lote", { p_senha: PT.senha, p_bacia: PT.bacia, p_salvar: enviar, p_apagar: tirar });
+    status(`Salvo às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · ${PT.pontos.size} ${PT.pontos.size === 1 ? "ponto" : "pontos"}`);
   } catch (e) {   // devolve à fila para tentar de novo
-    for (const r of salvar) if (!PT.pend.apagar.has(r.nome)) PT.pend.salvar.set(r.nome, PT.porNome.get(r.nome));
-    for (const n of apagar) if (!PT.pend.salvar.has(n)) PT.pend.apagar.add(n);
+    for (const r of enviar) if (!PT.pend.apagar.has(r.nome) && PT.pontos.has(r.nome)) PT.pend.salvar.set(r.nome, PT.pontos.get(r.nome));
+    for (const n of tirar) if (!PT.pend.salvar.has(n)) PT.pend.apagar.add(n);
     status(`Não salvou (${e.message}). Tentando de novo em 20 s…`, true);
     PT.timer = setTimeout(salvar, 20e3);
   }
-  legenda(); chipsNiveis();
 }
-function fimDoTraco() {
-  if (!PT.pintando) return;
-  PT.pintando = false;
-  if (PT.traco.size) { PT.historico.push(PT.traco); document.getElementById("pDesfazer").disabled = false; }
-  PT.traco = null;
-  clearTimeout(PT.timer); PT.timer = setTimeout(salvar, 800);
-}
-document.getElementById("pDesfazer").onclick = () => {
-  const traco = PT.historico.pop(); if (!traco) return;
-  for (const [nome, antes] of traco) {
-    const t = PT.porNome.get(nome); t.cm = antes; redesenhar(t);
-    if (antes == null) { PT.pend.salvar.delete(nome); PT.pend.apagar.add(nome); } else { PT.pend.apagar.delete(nome); PT.pend.salvar.set(nome, t); }
-  }
-  document.getElementById("pDesfazer").disabled = !PT.historico.length;
-  salvar();
-};
 
-// o que o site mostra hoje (impactos.json) vira pintura: ruas inteiras → trechos; praça e pontos ficam como estão
-document.getElementById("pImportar").onclick = () => {
-  if (!PT.ok) { status("Entre com a senha antes.", true); return; }
-  PT.traco = new Map();
-  const modo = est.pModo; est.pModo = "pincel";
-  for (const l of PT.impactos?.lugares || []) {
-    PT.nivel = l.cm;
-    if (l.linhas) {   // trechos com todos os pontos a menos de 4 m da rua registrada
-      const perto = p => l.linhas.some(lin => lin.some((q, i) => i && distSeg(p, lin[i - 1], q) < 4));
-      for (const t of PT.trechos) if (t.tipo === "trecho" && t.linhas[0].every(perto)) pintar(t);
-    } else {
-      const t = PT.porNome.get(l.nome); if (t) { t.aproximado = l.aproximado; pintar(t); }
-    }
-  }
-  est.pModo = modo;
-  PT.historico.push(PT.traco); PT.traco = null; document.getElementById("pDesfazer").disabled = false;
-  PT.nivel = 305; chipsNiveis(); redesenharTudo(); salvar();
-};
-function distSeg(p, a, b) {   // metros de p ao segmento a–b (plano local)
-  const f = Math.cos(p[0] * Math.PI / 180), P = [p[0] * 111320, p[1] * 111320 * f], A = [a[0] * 111320, a[1] * 111320 * f], B = [b[0] * 111320, b[1] * 111320 * f];
-  const dx = B[0] - A[0], dy = B[1] - A[1], l = dx * dx + dy * dy, u = l ? Math.max(0, Math.min(1, ((P[0] - A[0]) * dx + (P[1] - A[1]) * dy) / l)) : 0;
-  return Math.hypot(P[0] - A[0] - u * dx, P[1] - A[1] - u * dy);
+async function lerRegua() {
+  const iso = d => d.toISOString().slice(0, 16), t = Date.now();
+  const r = await fetch(`https://cth.daee.sp.gov.br/sibh/api/v2/measurements?station_prefix_ids[]=664&start_date=${iso(new Date(t - 6 * 36e5))}&end_date=${iso(new Date(t + 36e5))}`);
+  if (!r.ok) throw new Error("SP Águas " + r.status);
+  const ls = ((await r.json()).measurements || []).filter(m => m.value != null && +m.value >= 0).sort((a, b) => a.date.localeCompare(b.date));
+  if (!ls.length) throw new Error("sem leitura");
+  return Math.round(+ls.at(-1).value);
 }
 
 async function entrar(senha, silencioso) {
@@ -625,66 +592,64 @@ async function entrar(senha, silencioso) {
     PT.senha = senha; PT.ok = true;
     try { if (document.getElementById("pLembrar").checked) localStorage.setItem("admin-senha", senha); } catch {}
     document.getElementById("pEntrar").hidden = true;
-    status("Pronto para pintar. Escolha o nível e use o pincel.");
-    modos();
+    for (const p of [...PT.pontos.values()]) por(p);   // agora podem ser arrastados
+    status("Pronto. Informe o nível e toque no mapa onde a água chega.");
   } catch (e) { aviso(`Não foi possível conferir a senha (${e.message}).`, true); }
   finally { btn.disabled = false; }
 }
 document.getElementById("pEntrarBtn").onclick = () => entrar(document.getElementById("pSenha").value);
 document.getElementById("pSenha").addEventListener("keydown", e => { if (e.key === "Enter") entrar(e.target.value); });
+document.getElementById("pVer").addEventListener("input", e => verNivel(+e.target.value));
+document.getElementById("pCm").addEventListener("change", e => { const cm = lerCm(e.target.value); if (cm != null) verNivel(cm); });
+document.getElementById("pAgora").onclick = async () => {
+  try { nivelDoPonto(await lerRegua()); status("Nível de agora preenchido."); } catch (e) { status(`Não deu para ler a régua (${e.message}).`, true); }
+};
+document.getElementById("pDesfazer").onclick = () => { const p = PT.pontos.get(PT.ultimos.at(-1)); if (p) apagar(p); };
+document.getElementById("pGps").onclick = () => {
+  if (!PT.ok) { status("Entre com a senha para marcar pontos.", true); return; }
+  if (!navigator.geolocation) { status("Este aparelho não informa a posição.", true); return; }
+  status("Pegando a posição…");
+  navigator.geolocation.getCurrentPosition(g => {
+    const { latitude, longitude, accuracy } = g.coords;
+    PT.mapa.setView([latitude, longitude], 19);
+    novoPonto(latitude, longitude, `GPS ±${Math.round(accuracy)} m`);
+    status(`Ponto marcado pelo GPS (precisão ±${Math.round(accuracy)} m). Arraste-o se não estiver na beira da água.`, accuracy > 15);
+  }, e => status(`Não deu para pegar a posição (${e.message}).`, true), { enableHighAccuracy: true, timeout: 20e3, maximumAge: 5e3 });
+};
+addEventListener("beforeunload", e => { if (PT.pend.salvar.size || PT.pend.apagar.size) { salvar(); e.preventDefault(); } });
 
-async function iniciarPintura() {
-  modos();
-  if (!window.L) { setTimeout(iniciarPintura, 200); return; }
-  const [ruas, impactos, cfg] = await Promise.all([
-    fetch(`../${PT.bacia}/ruas_osm.json`).then(r => r.json()),
-    fetch(`../${PT.bacia}/impactos.json`).then(r => r.json()).catch(() => null),
-    fetch(`../${PT.bacia}/config.json`).then(r => r.json()).catch(() => null)]);
-  PT.impactos = impactos;
-  // atalhos de nível: as cotas oficiais (com o nome) e os níveis dos registros de cheia
-  PT.niveis = [...new Map((impactos?.niveis || []).map(n => [n.cm, n.tipo === "cota" ? n.titulo.split(" ")[0] : ""])).entries()];
-  PT.trechos = montarTrechos(ruas.ruas);
-  let salvos = [], erroLeitura = null;
-  try { salvos = await rpc("monitora_ruas_listar", { p_bacia: PT.bacia }) || []; }
-  catch (e) { erroLeitura = `Não foi possível ler o Supabase: ${e.message}.`; }
-  const porNome = new Map(PT.trechos.map(t => [t.nome, t]));
-  // lugares de fora da malha de ruas: os salvos e os do impactos.json (praça, pontos)
-  for (const l of [...salvos, ...(impactos?.lugares || []).filter(l => !l.linhas)]) {
-    const t = porNome.get(l.nome);
-    if (t) { if (l.cm != null && salvos.includes(l)) Object.assign(t, { cm: l.cm, aproximado: l.aproximado, obs: l.obs }); continue; }
-    const novo = { nome: l.nome, cm: salvos.includes(l) ? l.cm : null, aproximado: l.aproximado, obs: l.obs,
-                   tipo: l.area ? "area" : l.linhas ? "trecho" : "ponto", area: l.area, linhas: l.linhas, lat: l.lat, lon: l.lon };
-    PT.trechos.push(novo); porNome.set(l.nome, novo);
+async function iniciarPontos() {
+  if (!window.L || !window.Delaunator) { setTimeout(iniciarPontos, 200); return; }
+  const [rio, impactos] = await Promise.all([
+    fetch(`../${PT.bacia}/rio.json`).then(r => r.json()),
+    fetch(`../${PT.bacia}/impactos.json`).then(r => r.json()).catch(() => null)]);
+  montarRio(rio.linhas);
+  const ruas = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 20, maxNativeZoom: 19, attribution: "© OpenStreetMap" });
+  const sat = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 20, maxNativeZoom: 18, attribution: "Imagens © Esri, Maxar, Earthstar Geographics" });
+  PT.mapa = L.map("pMapa", { scrollWheelZoom: true, doubleClickZoom: false, layers: [sat] }).setView([-23.2235, -45.3098], 17);
+  L.control.layers({ "Satélite": sat, "Ruas": ruas }, null, { collapsed: false }).addTo(PT.mapa);
+  const pane = PT.mapa.createPane("agua"); pane.style.zIndex = 350; pane.style.pointerEvents = "none";
+  L.circleMarker([-23.2227, -45.3121], { radius: 6, color: "#fff", weight: 2, fillColor: cor("--accent"), fillOpacity: 1 }).addTo(PT.mapa).bindTooltip("Régua da Passarela");
+  PT.mapa.on("click", e => { if (PT.ok) novoPonto(e.latlng.lat, e.latlng.lng); else status("Entre com a senha para marcar pontos.", true); });
+
+  const niveis = document.getElementById("pNiveis");
+  for (const n of (impactos?.niveis || []).filter(n => n.cm >= BEIRA).sort((a, b) => a.cm - b.cm)) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.style.setProperty("--c", corNivel(n.cm));
+    b.innerHTML = `<i></i>${mt(n.cm)}`; b.title = n.titulo; b.onclick = () => nivelDoPonto(n.cm); niveis.append(b);
   }
-  PT.porNome = porNome;
-  PT.vazio = !salvos.length;
-  document.getElementById("pImportar").hidden = !PT.vazio || !impactos?.lugares?.length;
-  const p = cfg?.rios?.flatMap(r => r.estacoes).find(e => e.codigo === cfg.principal);
-  PT.mapa = L.map("pMapa", { scrollWheelZoom: true, doubleClickZoom: false }).setView([-23.2235, -45.3098], 16);
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(PT.mapa);
-  if (p) L.circleMarker([p.lat, p.lon], { radius: 6, color: "#fff", weight: 2, fillColor: cor("--accent"), fillOpacity: 1 }).addTo(PT.mapa).bindTooltip("Régua da Passarela");
-  for (const t of PT.trechos) {
-    t.camada = t.tipo === "ponto" ? L.circleMarker([t.lat, t.lon], estilo(t)) : t.tipo === "area" ? L.polygon(t.area, estilo(t)) : L.polyline(t.linhas, { ...estilo(t), lineCap: "round" });
-    t.camada.addTo(PT.mapa).bindTooltip(dica_(t), { sticky: true });
-  }
-  // pincel: eventos de ponteiro (mouse, dedo e caneta)
-  const el = document.getElementById("pMapa");
-  const ponto = e => PT.mapa.mouseEventToContainerPoint(e);
-  el.addEventListener("pointerdown", e => {
-    if (est.pModo === "mover" || !PT.ok || e.target.closest(".leaflet-control")) return;
-    PT.pintando = true; PT.traco = new Map(); el.setPointerCapture?.(e.pointerId);
-    pintar(maisPerto(ponto(e), e.pointerType === "touch" ? 26 : 16)); e.preventDefault();
-  });
-  el.addEventListener("pointermove", e => { if (PT.pintando) pintar(maisPerto(ponto(e), e.pointerType === "touch" ? 26 : 16)); });
-  for (const ev of ["pointerup", "pointercancel", "pointerleave"]) el.addEventListener(ev, fimDoTraco);
-  addEventListener("beforeunload", e => { if (PT.pend.salvar.size || PT.pend.apagar.size) { salvar(); e.preventDefault(); } });
-  legenda(); chipsNiveis(); modos();
+  let erroLeitura = null;
+  try {
+    for (const r of await rpc("monitora_ruas_listar", { p_bacia: PT.bacia }) || [])
+      if (r.nome.startsWith("Ponto · ") && r.lat != null) por({ nome: r.nome, cm: r.cm, lat: r.lat, lon: r.lon, obs: r.obs || "" });
+  } catch (e) { erroLeitura = `Não foi possível ler o Supabase: ${e.message}.`; }
+  try { nivelDoPonto(await lerRegua()); } catch { nivelDoPonto(440); }
+  legenda();
   let lembrada = null; try { lembrada = localStorage.getItem("admin-senha"); } catch {}
   if (lembrada) { document.getElementById("pLembrar").checked = true; await entrar(lembrada, true); }
   if (erroLeitura) status(erroLeitura, true);
-  else if (!PT.ok) status(salvos.length ? "Entre com a senha para pintar." : "Nada pintado ainda. Entre com a senha para começar.");
+  else if (!PT.ok) status("Entre com a senha para marcar pontos.");
 }
-iniciarPintura();
+iniciarPontos();
 </script>
 </body>
 </html>
