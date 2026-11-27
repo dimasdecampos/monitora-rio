@@ -118,6 +118,7 @@ code { font-size: 13px; }
         <input type="password" id="pSenha" autocomplete="current-password" placeholder="senha da /admin">
         <label style="text-transform: none; letter-spacing: 0; font-weight: 500"><input type="checkbox" id="pLembrar"> lembrar neste aparelho</label>
         <button class="btn forte" id="pEntrarBtn" type="button">Entrar</button>
+        <span id="pMsgSenha" role="status" style="font-size: 13.5px; font-weight: 600"></span>
       </div>
       <div class="linha"><label>Nível</label><div class="chips" id="pNiveis"></div>
         <span class="pbarra"><input type="number" id="pOutro" step="0.01" min="0" max="20" placeholder="outro" aria-label="Outro nível em metros"> m</span></div>
@@ -596,14 +597,23 @@ function distSeg(p, a, b) {   // metros de p ao segmento a–b (plano local)
 }
 
 async function entrar(senha, silencioso) {
+  const msg = document.getElementById("pMsgSenha"), btn = document.getElementById("pEntrarBtn");
+  const aviso = (t, erro) => { msg.textContent = t; msg.style.color = erro ? "var(--over)" : "var(--muted)"; };
+  if (!silencioso && !senha) { aviso("Digite a senha.", true); return; }
+  if (!silencioso) { aviso("Conferindo…"); btn.disabled = true; }
   try {
-    if (!await rpc("monitora_admin_ok", { p_senha: senha })) { if (!silencioso) status("Senha errada.", true); return; }
+    if (!await rpc("monitora_admin_ok", { p_senha: senha })) {
+      if (!silencioso) aviso("Senha não confere. Se ainda não definiu, rode no Supabase o insert do começo de monitora_ruas.sql.", true);
+      return;
+    }
+    aviso("");
     PT.senha = senha; PT.ok = true;
     try { if (document.getElementById("pLembrar").checked) localStorage.setItem("admin-senha", senha); } catch {}
     document.getElementById("pEntrar").hidden = true;
     status("Pronto para pintar. Escolha o nível e use o pincel.");
     modos();
-  } catch (e) { status(`Não foi possível conferir a senha (${e.message}).`, true); }
+  } catch (e) { aviso(`Não foi possível conferir a senha (${e.message}).`, true); }
+  finally { btn.disabled = false; }
 }
 document.getElementById("pEntrarBtn").onclick = () => entrar(document.getElementById("pSenha").value);
 document.getElementById("pSenha").addEventListener("keydown", e => { if (e.key === "Enter") entrar(e.target.value); });
