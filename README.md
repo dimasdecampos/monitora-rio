@@ -363,6 +363,39 @@ chuva antecedente e umidade do solo (ERA5), temperatura, umidade do ar, pressão
 decisão (gradient boosting) no lugar da regressão (piores: 15–17 cm em 12 h, com poucas cheias para
 aprender). As variáveis extras só melhoram um pouco o pico em 24 h (57 → 48 cm) e pioram o resto.
 
+**Limite conhecido: no topo das cheias grandes ela prevê a descida cedo demais.** Em 27/11/2026, das 9h às
+18h, toda rodada pôs o pico 0–3 h à frente (às 13h, com 4,34 m, previu 4,37 m em 6 h) enquanto a Passarela
+subia ~3,5 cm/h até 4,51 m. Em jan/2026, deixando essa cheia fora do treino, aconteceu o mesmo: com 4,60 m
+previu 4,46 m em 6 h, e o rio foi a 4,62 m. Barro Vermelho e Cunha já baixavam; a linha não olha a Estrada
+do Ribeira, que é quem segura as últimas horas.
+
+**Como a cheia chega à cidade** (engenharia reversa das cheias de 2020–2026, `scripts/modelo_cheias/anatomia_cheias.py`):
+
+| Régua | Atraso até a Passarela | Correlação |
+|---|---|---|
+| Estrada do Ribeira | 4 h | 0,94 |
+| Lagoinha – Barro Vermelho | 8 h | 0,84 |
+| Lagoinha – Jacuí | 11 h | 0,74 |
+| Rio Jacuí | 14 h | 0,40 |
+| Cunha | 22 h (o pico chega ~35 h depois) | 0,34 |
+
+(atraso que melhor liga a variação em 3 h de cada régua à da Passarela, com o rio alto)
+
+- As cheias na cidade são lentas: a Passarela sobe por 50–72 h. Quanto maior a cheia, mais o pico demora
+  depois do pico de Barro Vermelho: ~10 h nas pequenas, 16 h em dez/2024, 28 h em jan/2026.
+- Na subida das cheias grandes, a Passarela fica **60–67 cm abaixo do que a Estrada do Ribeira marcava 4 h
+  antes**, quase constante por mais de 24 h (jan/2026 e nov/2026). Ela só para de subir quando a Estrada do
+  Ribeira de 4 h antes começa a baixar: o pico vem 4–9 h depois do pico de lá e 41–70 cm abaixo dele
+  (diferença menor nas cheias maiores: −46 cm em jan/2026, −48 em fev/2026, −58 a −70 nas menores).
+- Testado como previsão (2026, cada cheia fora do próprio treino, rio acima de 3 m): "Passarela acompanha a
+  Estrada do Ribeira de 4 h antes" empata com a linha em 1–4 h (4 h: 5,7 → 4,9 cm) e piora em 6–8 h
+  (8 → 11 cm), porque aí é preciso prever a Estrada do Ribeira a partir de Barro. Pôr a Estrada do Ribeira
+  na regressão corta à metade o erro em 3–6 h com o rio agitado, mas não resolve 12 h perto do pico; ela só
+  tem histórico desde jan/2026. Não deixar a linha cair enquanto a Passarela sobe e a Estrada do Ribeira não
+  baixa melhora o topo das cheias grandes (12 h: 15,6 → 9,0 cm) e piora um pouco a subida das menores.
+- Próximo passo: montar as primeiras horas em cascata, na ordem em que a água desce (Estrada do Ribeira para
+  0–4 h, Barro → Estrada do Ribeira para 4–8 h…), e retreinar com esta cheia inteira.
+
 **Depois de 7 dias** o gráfico não prevê: previsão de chuva para semanas ou meses não é
 confiável o bastante. O gráfico vai só até o fim da previsão.
 
