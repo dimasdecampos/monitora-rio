@@ -1,5 +1,5 @@
 {
-  "_sobre": "Níveis em cm na régua da Passarela (SP Águas). Impactos tirados de registros de cheias passadas (notícias e relatório SGB/CPRM 2022); são aproximados e não substituem a Defesa Civil. Coordenadas: OpenStreetMap.",
+  "_sobre": "Níveis em cm na régua da Passarela (SP Águas). Impactos tirados de registros de cheias passadas (notícias e relatório SGB/CPRM 2022); são aproximados e não substituem a Defesa Civil. Coordenadas e traçado das ruas (linhas, área): OpenStreetMap, baixados em nov/2026; a rua inteira é pintada, mas pode alagar só em parte.",
   "regua": "sp664",
   "nota": "Baseado nas cheias de 2021, 2022 e 2024 (níveis das ruas do centro são aproximados). Não substitui a Defesa Civil (199).",
   "maior": {
@@ -32,10 +32,16 @@
       "texto": "O rio passa das margens e transborda (extravasamento)."
     },
     {
+      "cm": 305,
+      "tipo": "registro",
+      "titulo": "Rua dos Presottos começa a alagar",
+      "texto": "Visto ao vivo na cheia de 26/11/2026: com a Passarela em 3,05 m a água começou a entrar na Rua dos Presottos, a primeira rua a alagar. Logo depois vem a Rua Benedito Pião Sobrinho."
+    },
+    {
       "cm": 395,
       "tipo": "registro",
       "titulo": "Ruas da beira do rio alagadas",
-      "texto": "Em 7/2/2021 (pico de 3,95 m) as ruas que margeiam o rio ficaram com até 70 cm de água; família retirada na Rua Capitão Antônio Carlos.",
+      "texto": "Em 7/2/2021 (pico de 3,95 m) as ruas que margeiam o rio ficaram com até 70 cm de água; família retirada na Rua Capitão Antônio Carlos. A Rua Benedito Pião Sobrinho é das primeiras a alagar depois da Presottos.",
       "fonte": "https://spriomais.com.br/2021/02/08/sao-luiz-do-paraitinga-entra-em-estado-de-alerta-apos-rio-paraitinga-subir-mais-de-3-metros/"
     },
     {
@@ -56,52 +62,471 @@
   ],
   "lugares": [
     {
-      "nome": "Rua Capitão Antônio Carlos",
-      "lat": -23.22554,
-      "lon": -45.3091,
-      "cm": 395
-    },
-    {
       "nome": "Rua dos Presottos",
       "lat": -23.22162,
       "lon": -45.31194,
-      "cm": 460
+      "cm": 305,
+      "linhas": [
+        [
+          [
+            -23.22152,
+            -45.31095
+          ],
+          [
+            -23.22151,
+            -45.31099
+          ],
+          [
+            -23.22146,
+            -45.31115
+          ],
+          [
+            -23.22143,
+            -45.31124
+          ],
+          [
+            -23.22138,
+            -45.31167
+          ],
+          [
+            -23.22138,
+            -45.31173
+          ],
+          [
+            -23.2214,
+            -45.3118
+          ],
+          [
+            -23.22143,
+            -45.31186
+          ],
+          [
+            -23.22147,
+            -45.31189
+          ],
+          [
+            -23.22151,
+            -45.31192
+          ],
+          [
+            -23.22155,
+            -45.31193
+          ],
+          [
+            -23.2216,
+            -45.31194
+          ],
+          [
+            -23.22191,
+            -45.31195
+          ],
+          [
+            -23.22224,
+            -45.31193
+          ],
+          [
+            -23.22237,
+            -45.31192
+          ],
+          [
+            -23.22255,
+            -45.31196
+          ],
+          [
+            -23.22271,
+            -45.31197
+          ],
+          [
+            -23.22277,
+            -45.31197
+          ]
+        ],
+        [
+          [
+            -23.22285,
+            -45.31196
+          ],
+          [
+            -23.2229,
+            -45.31195
+          ],
+          [
+            -23.22313,
+            -45.31193
+          ],
+          [
+            -23.2233,
+            -45.31191
+          ],
+          [
+            -23.2235,
+            -45.31184
+          ],
+          [
+            -23.2238,
+            -45.31171
+          ]
+        ],
+        [
+          [
+            -23.22277,
+            -45.31197
+          ],
+          [
+            -23.22285,
+            -45.31196
+          ]
+        ],
+        [
+          [
+            -23.2238,
+            -45.31171
+          ],
+          [
+            -23.22394,
+            -45.31165
+          ],
+          [
+            -23.22403,
+            -45.3116
+          ],
+          [
+            -23.22413,
+            -45.31153
+          ],
+          [
+            -23.22451,
+            -45.31128
+          ],
+          [
+            -23.22459,
+            -45.31121
+          ],
+          [
+            -23.22469,
+            -45.31114
+          ]
+        ]
+      ]
+    },
+    {
+      "nome": "Rua Capitão Antônio Carlos",
+      "lat": -23.22554,
+      "lon": -45.3091,
+      "cm": 395,
+      "linhas": [
+        [
+          [
+            -23.22445,
+            -45.30845
+          ],
+          [
+            -23.22515,
+            -45.30887
+          ],
+          [
+            -23.22579,
+            -45.30925
+          ],
+          [
+            -23.22661,
+            -45.30977
+          ]
+        ]
+      ]
     },
     {
       "nome": "Rua Benedito Pião Sobrinho",
       "lat": -23.22608,
       "lon": -45.31009,
-      "cm": 460
+      "cm": 395,
+      "aproximado": true,
+      "linhas": [
+        [
+          [
+            -23.22469,
+            -45.31114
+          ],
+          [
+            -23.22473,
+            -45.31111
+          ],
+          [
+            -23.22475,
+            -45.31109
+          ],
+          [
+            -23.22483,
+            -45.31102
+          ],
+          [
+            -23.22503,
+            -45.31085
+          ],
+          [
+            -23.22528,
+            -45.3106
+          ],
+          [
+            -23.22563,
+            -45.31033
+          ],
+          [
+            -23.22621,
+            -45.31001
+          ],
+          [
+            -23.22661,
+            -45.30977
+          ],
+          [
+            -23.22679,
+            -45.30967
+          ],
+          [
+            -23.22703,
+            -45.30954
+          ],
+          [
+            -23.22715,
+            -45.30946
+          ],
+          [
+            -23.22723,
+            -45.30938
+          ],
+          [
+            -23.2273,
+            -45.30923
+          ],
+          [
+            -23.22736,
+            -45.30909
+          ],
+          [
+            -23.22739,
+            -45.30901
+          ]
+        ]
+      ]
     },
     {
       "nome": "Rua Abraão Abdala",
       "lat": -23.22517,
       "lon": -45.31007,
-      "cm": 460
+      "cm": 460,
+      "linhas": [
+        [
+          [
+            -23.22563,
+            -45.31033
+          ],
+          [
+            -23.22471,
+            -45.3098
+          ]
+        ]
+      ]
     },
     {
       "nome": "Rua Monsenhor Ignácio Gióia",
       "lat": -23.22287,
       "lon": -45.31021,
-      "cm": 460
+      "cm": 460,
+      "linhas": [
+        [
+          [
+            -23.22348,
+            -45.31051
+          ],
+          [
+            -23.22255,
+            -45.31005
+          ],
+          [
+            -23.22237,
+            -45.30995
+          ],
+          [
+            -23.22226,
+            -45.3099
+          ]
+        ],
+        [
+          [
+            -23.22226,
+            -45.3099
+          ],
+          [
+            -23.22191,
+            -45.30972
+          ],
+          [
+            -23.22151,
+            -45.30951
+          ],
+          [
+            -23.22141,
+            -45.30944
+          ]
+        ],
+        [
+          [
+            -23.22348,
+            -45.31051
+          ],
+          [
+            -23.22418,
+            -45.31086
+          ]
+        ],
+        [
+          [
+            -23.22418,
+            -45.31086
+          ],
+          [
+            -23.22464,
+            -45.31111
+          ],
+          [
+            -23.22469,
+            -45.31114
+          ]
+        ]
+      ]
     },
     {
       "nome": "Rua Cel. Manoel Bento",
       "lat": -23.22528,
       "lon": -45.30861,
-      "cm": 460
+      "cm": 460,
+      "linhas": [
+        [
+          [
+            -23.22471,
+            -45.3098
+          ],
+          [
+            -23.22509,
+            -45.309
+          ],
+          [
+            -23.22511,
+            -45.30896
+          ],
+          [
+            -23.22513,
+            -45.30891
+          ],
+          [
+            -23.22515,
+            -45.30887
+          ],
+          [
+            -23.22571,
+            -45.30771
+          ],
+          [
+            -23.22577,
+            -45.30755
+          ],
+          [
+            -23.2258,
+            -45.30741
+          ]
+        ],
+        [
+          [
+            -23.2238,
+            -45.31171
+          ],
+          [
+            -23.22385,
+            -45.3116
+          ],
+          [
+            -23.22418,
+            -45.31086
+          ]
+        ],
+        [
+          [
+            -23.22418,
+            -45.31086
+          ],
+          [
+            -23.22471,
+            -45.3098
+          ]
+        ]
+      ]
     },
     {
       "nome": "Rua Eng. Pedro Pereira Rio Branco",
       "lat": -23.22647,
       "lon": -45.30845,
-      "cm": 460
+      "cm": 460,
+      "linhas": [
+        [
+          [
+            -23.22647,
+            -45.3076
+          ],
+          [
+            -23.22631,
+            -45.30793
+          ],
+          [
+            -23.22616,
+            -45.30826
+          ],
+          [
+            -23.22618,
+            -45.30829
+          ],
+          [
+            -23.22658,
+            -45.30851
+          ],
+          [
+            -23.22737,
+            -45.30896
+          ],
+          [
+            -23.22739,
+            -45.30901
+          ]
+        ]
+      ]
     },
     {
       "nome": "Praça Dr. Oswaldo Cruz (Matriz)",
       "lat": -23.222,
       "lon": -45.31088,
-      "cm": 536
+      "cm": 536,
+      "area": [
+        [
+          -23.22173,
+          -45.31102
+        ],
+        [
+          -23.22209,
+          -45.31122
+        ],
+        [
+          -23.22236,
+          -45.31074
+        ],
+        [
+          -23.22191,
+          -45.31055
+        ],
+        [
+          -23.22173,
+          -45.31102
+        ]
+      ]
     },
     {
       "nome": "Via de acesso — Fórum",

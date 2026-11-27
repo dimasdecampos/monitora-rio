@@ -7,6 +7,8 @@
 <title>Admin · Monitor dos Rios</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
 /* Layout: uma coluna de leitura (máx. 1040px); veredito primeiro, depois ranking, série diária, dias fortes e tabela */
 :root {
@@ -84,12 +86,51 @@ tr.site td:first-child::after { content: "no site"; margin-left: 8px; font-size:
 .estado { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; }
 .estado::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
 code { font-size: 13px; }
+/* pintar o que alaga */
+.pmapa { height: min(68vh, 560px); border-radius: 10px; border: 1px solid var(--line); background: var(--grid); }
+.pmapa.pintando { cursor: crosshair; touch-action: none; }
+.pbarra { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.pbarra input[type="password"], .pbarra input[type="number"] { font: inherit; font-size: 14px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); }
+.pbarra input[type="number"] { width: 84px; }
+.btn { font: inherit; font-size: 13.5px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+.btn.forte { background: var(--accent); border-color: var(--accent); color: var(--surface); font-weight: 600; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.chip[aria-pressed="true"] { border-color: var(--fg); box-shadow: inset 0 0 0 1px var(--fg); font-weight: 600; }
+#pStatus { font-size: 13.5px; color: var(--muted); }
+#pStatus.erro { color: var(--over); font-weight: 600; }
+.pleg { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); }
+.pleg span { display: inline-flex; align-items: center; gap: 6px; }
+.pleg i { width: 18px; height: 6px; border-radius: 3px; background: var(--c); display: inline-block; }
 </style>
 </head>
 <body>
 
 <div class="wrap">
   <div class="topo"><b>Admin · Monitor dos Rios</b><a href="../">Voltar ao site</a></div>
+
+  <section id="pintar">
+    <div class="cab">
+      <div><h2>Pintar o que alaga</h2><p class="nota">Escolha o nível da régua da Passarela e pinte as ruas que alagam com ele: passe o dedo ou o mouse sobre a rua com o pincel. A pintura gruda nos trechos da rua (entre esquinas, até ~60 m) e é gravada sozinha. O mapa "O que alaga" do painel mostra na hora.</p></div>
+    </div>
+    <div class="painel controles">
+      <div class="pbarra" id="pEntrar">
+        <label for="pSenha">Senha</label>
+        <input type="password" id="pSenha" autocomplete="current-password" placeholder="senha da /admin">
+        <label style="text-transform: none; letter-spacing: 0; font-weight: 500"><input type="checkbox" id="pLembrar"> lembrar neste aparelho</label>
+        <button class="btn forte" id="pEntrarBtn" type="button">Entrar</button>
+      </div>
+      <div class="linha"><label>Nível</label><div class="chips" id="pNiveis"></div>
+        <span class="pbarra"><input type="number" id="pOutro" step="0.01" min="0" max="20" placeholder="outro" aria-label="Outro nível em metros"> m</span></div>
+      <div class="pbarra">
+        <div class="seg" role="group" aria-label="Ferramenta" id="pModo"></div>
+        <button class="btn" id="pDesfazer" type="button" disabled>Desfazer</button>
+        <button class="btn" id="pImportar" type="button" hidden>Começar com o que o site mostra hoje</button>
+        <span id="pStatus">Carregando…</span>
+      </div>
+      <div class="pmapa" id="pMapa" role="application" aria-label="Mapa para pintar as ruas que alagam"></div>
+      <div class="pleg" id="pLeg"></div>
+    </div>
+  </section>
 
   <section>
     <div class="cab">
@@ -383,6 +424,242 @@ document.getElementById("qual").addEventListener("input", e => { real.i = +e.tar
 est.rioReal = "paraitinga";
 seg(document.getElementById("rioReal"), [["paraitinga", "Paraitinga"], ["paraibuna", "Paraibuna"]], "rioReal", () => { real.rio = est.rioReal; real.i = null; carregarReal(); });
 carregarReal(); setInterval(carregarReal, 5 * 60e3);
+
+// ---- pintar o que alaga (Supabase: monitora_ruas; scripts/supabase/monitora_ruas.sql)
+// Cada trecho de rua (entre esquinas, até ~60 m, do ruas_osm.json) vira um registro "Rua X · id" com o nível em que alaga.
+// Lugares sem rua (praça, ponto) ficam com o nome deles. O painel lê monitora_ruas_listar.
+const PT = { bacia: "paraitinga", senha: "", ok: false, nivel: 305, trechos: [], porNome: new Map(), mapa: null, pend: { salvar: new Map(), apagar: new Set() },
+             historico: [], traco: null, pintando: false, timer: null, niveis: [], vazio: false, impactos: null };
+const rpc = async (f, dados) => {
+  const r = await fetch(`${SUPABASE}/rest/v1/rpc/${f}`, { method: "POST", headers: { apikey: CHAVE, "Content-Type": "application/json" }, body: JSON.stringify(dados) });
+  const txt = await r.text();
+  if (!r.ok) { let m = txt; try { m = JSON.parse(txt).message || txt; } catch {} throw new Error(r.status === 404 ? "falta criar as tabelas (scripts/supabase/monitora_ruas.sql)" : m); }
+  return txt ? JSON.parse(txt) : null;
+};
+const status = (t, erro) => { const s = document.getElementById("pStatus"); s.textContent = t; s.classList.toggle("erro", !!erro); };
+const escH = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const metros = (a, b) => Math.hypot((a[0] - b[0]) * 111320, (a[1] - b[1]) * 111320 * Math.cos(a[0] * Math.PI / 180));
+const hashId = s => { let h = 2166136261; for (const c of s) { h ^= c.codePointAt(0); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
+// cor pelo nível: amarelo (baixo) → vermelho → vinho (alto)
+function corNivel(cm) {
+  const t = Math.max(0, Math.min(1, (cm - 190) / (540 - 190)));
+  return `hsl(${Math.round(48 - 52 * t)}, 85%, ${Math.round(56 - 26 * t)}%)`;
+}
+const nomeRua = n => n.split(" · ")[0];
+
+// trechos: corta cada rua nas esquinas (ponto usado por 2+ ruas) e a cada ~60 m
+function montarTrechos(ruas) {
+  const usos = new Map(), k = p => p[0] + "," + p[1];
+  for (const r of ruas) for (const p of r.pts) usos.set(k(p), (usos.get(k(p)) || 0) + 1);
+  const out = [];
+  for (const r of ruas) {
+    let corte = [r.pts[0]], acc = 0;
+    for (let i = 1; i < r.pts.length; i++) {
+      const p = r.pts[i]; acc += metros(r.pts[i - 1], p); corte.push(p);
+      if (i === r.pts.length - 1 || usos.get(k(p)) > 1 || acc >= 60) {
+        const rua = r.nome || "Via sem nome", id = hashId(rua + k(corte[0]) + k(p) + corte.length);
+        out.push({ nome: `${rua} · ${id}`, rua, linhas: [corte], cm: null, tipo: "trecho" });
+        corte = [p]; acc = 0;
+      }
+    }
+  }
+  return out;
+}
+
+function estilo(t) {
+  if (t.tipo === "ponto") return { radius: 8, color: "#fff", weight: 2, fillColor: t.cm != null ? corNivel(t.cm) : cor("--obs"), fillOpacity: t.cm != null ? .95 : .5 };
+  if (t.tipo === "area") return { color: "#fff", weight: 1, fillColor: t.cm != null ? corNivel(t.cm) : cor("--obs"), fillOpacity: t.cm != null ? .7 : .25 };
+  return t.cm != null ? { color: corNivel(t.cm), weight: 7, opacity: 1 } : { color: cor("--accent"), weight: 4, opacity: .28 };
+}
+function dica_(t) { return `${escH(nomeRua(t.nome))}${t.cm != null ? ` · alaga com ${fmt(t.cm / 100, 2)} m` : " · sem pintura"}`; }
+function redesenhar(t) { t.camada.setStyle(estilo(t)); t.camada.setTooltipContent(dica_(t)); }
+
+function legenda() {
+  const cont = new Map();
+  for (const t of PT.trechos) if (t.cm != null) cont.set(t.cm, (cont.get(t.cm) || 0) + 1);
+  const ls = [...cont].sort((a, b) => a[0] - b[0]);
+  document.getElementById("pLeg").innerHTML = ls.length ? ls.map(([cm, n]) => `<span><i style="--c:${corNivel(cm)}"></i>${fmt(cm / 100, 2)} m · ${n} ${n === 1 ? "trecho" : "trechos"}</span>`).join("")
+    : "<span>Nada pintado ainda.</span>";
+}
+function chipsNiveis() {
+  const el = document.getElementById("pNiveis");
+  const ls = [...new Map([...PT.niveis, ...PT.trechos.filter(t => t.cm != null).map(t => [t.cm, ""])]).entries()].sort((a, b) => a[0] - b[0]);
+  el.innerHTML = "";
+  for (const [cm, rot] of ls) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.style.setProperty("--c", corNivel(cm));
+    b.innerHTML = `<i></i>${fmt(cm / 100, 2)} m${rot ? ` <span style="color:var(--muted)">${escH(rot)}</span>` : ""}`;
+    b.setAttribute("aria-pressed", PT.nivel === cm);
+    b.onclick = () => { PT.nivel = cm; document.getElementById("pOutro").value = ""; if (est.pModo === "borracha" || est.pModo === "mover") { est.pModo = "pincel"; modos(); } chipsNiveis(); };
+    el.append(b);
+  }
+}
+document.getElementById("pOutro").addEventListener("change", e => {
+  const v = parseFloat(String(e.target.value).replace(",", "."));
+  if (v > 0 && v < 20) { PT.nivel = Math.round(v * 1000) / 10; chipsNiveis(); est.pModo = "pincel"; modos(); }
+});
+
+est.pModo = "mover";
+function modos() {
+  seg(document.getElementById("pModo"), [["mover", "Mover"], ["pincel", "Pincel"], ["borracha", "Borracha"]], "pModo", modos);
+  if (!PT.mapa) return;
+  const pinta = est.pModo !== "mover" && PT.ok;
+  document.getElementById("pMapa").classList.toggle("pintando", pinta);
+  pinta ? PT.mapa.dragging.disable() : PT.mapa.dragging.enable();
+  if (est.pModo !== "mover" && !PT.ok) status("Entre com a senha para pintar.", true);
+}
+
+// trecho mais perto do ponteiro (em pixels da tela)
+function maisPerto(pt, raio) {
+  let melhor = null, dmin = raio;
+  const dSeg = (p, a, b) => { const dx = b.x - a.x, dy = b.y - a.y, l = dx * dx + dy * dy; const u = l ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l)) : 0; return Math.hypot(p.x - a.x - u * dx, p.y - a.y - u * dy); };
+  for (const t of PT.trechos) {
+    let d = Infinity;
+    if (t.tipo === "ponto") d = PT.mapa.latLngToContainerPoint([t.lat, t.lon]).distanceTo(pt) - 6;
+    else if (t.tipo === "area") d = t.camada.getBounds().contains(PT.mapa.containerPointToLatLng(pt)) ? 0 : Infinity;
+    else for (const l of t.linhas) { const ps = l.map(p => PT.mapa.latLngToContainerPoint(p)); for (let i = 1; i < ps.length; i++) d = Math.min(d, dSeg(pt, ps[i - 1], ps[i])); }
+    if (d < dmin) { dmin = d; melhor = t; }
+  }
+  return melhor;
+}
+function pintar(t) {
+  const novo = est.pModo === "borracha" ? null : PT.nivel;
+  if (!t || t.cm === novo) return;
+  if (!PT.traco.has(t.nome)) PT.traco.set(t.nome, t.cm);
+  t.cm = novo; redesenhar(t);
+  if (novo == null) { PT.pend.salvar.delete(t.nome); PT.pend.apagar.add(t.nome); }
+  else { PT.pend.apagar.delete(t.nome); PT.pend.salvar.set(t.nome, t); }
+}
+function registro(t) {
+  const r = { nome: t.nome, cm: t.cm, aproximado: !!t.aproximado, obs: t.obs || null };
+  if (t.linhas) { r.linhas = t.linhas; const m = t.linhas[0][Math.floor(t.linhas[0].length / 2)]; r.lat = m[0]; r.lon = m[1]; }
+  if (t.area) r.area = t.area;
+  if (t.tipo === "ponto") { r.lat = t.lat; r.lon = t.lon; }
+  return r;
+}
+async function salvar() {
+  clearTimeout(PT.timer);
+  if (!PT.pend.salvar.size && !PT.pend.apagar.size) return;
+  const salvar = [...PT.pend.salvar.values()].map(registro), apagar = [...PT.pend.apagar];
+  PT.pend = { salvar: new Map(), apagar: new Set() };
+  status("Salvando…");
+  try {
+    const n = await rpc("monitora_ruas_lote", { p_senha: PT.senha, p_bacia: PT.bacia, p_salvar: salvar, p_apagar: apagar });
+    status(`Salvo às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · ${n} ${n === 1 ? "trecho pintado" : "trechos pintados"}`);
+    document.getElementById("pImportar").hidden = true;
+  } catch (e) {   // devolve à fila para tentar de novo
+    for (const r of salvar) if (!PT.pend.apagar.has(r.nome)) PT.pend.salvar.set(r.nome, PT.porNome.get(r.nome));
+    for (const n of apagar) if (!PT.pend.salvar.has(n)) PT.pend.apagar.add(n);
+    status(`Não salvou (${e.message}). Tentando de novo em 20 s…`, true);
+    PT.timer = setTimeout(salvar, 20e3);
+  }
+  legenda(); chipsNiveis();
+}
+function fimDoTraco() {
+  if (!PT.pintando) return;
+  PT.pintando = false;
+  if (PT.traco.size) { PT.historico.push(PT.traco); document.getElementById("pDesfazer").disabled = false; }
+  PT.traco = null;
+  clearTimeout(PT.timer); PT.timer = setTimeout(salvar, 800);
+}
+document.getElementById("pDesfazer").onclick = () => {
+  const traco = PT.historico.pop(); if (!traco) return;
+  for (const [nome, antes] of traco) {
+    const t = PT.porNome.get(nome); t.cm = antes; redesenhar(t);
+    if (antes == null) { PT.pend.salvar.delete(nome); PT.pend.apagar.add(nome); } else { PT.pend.apagar.delete(nome); PT.pend.salvar.set(nome, t); }
+  }
+  document.getElementById("pDesfazer").disabled = !PT.historico.length;
+  salvar();
+};
+
+// o que o site mostra hoje (impactos.json) vira pintura: ruas inteiras → trechos; praça e pontos ficam como estão
+document.getElementById("pImportar").onclick = () => {
+  if (!PT.ok) { status("Entre com a senha antes.", true); return; }
+  PT.traco = new Map();
+  const modo = est.pModo; est.pModo = "pincel";
+  for (const l of PT.impactos?.lugares || []) {
+    PT.nivel = l.cm;
+    if (l.linhas) {   // trechos com todos os pontos a menos de 4 m da rua registrada
+      const perto = p => l.linhas.some(lin => lin.some((q, i) => i && distSeg(p, lin[i - 1], q) < 4));
+      for (const t of PT.trechos) if (t.tipo === "trecho" && t.linhas[0].every(perto)) pintar(t);
+    } else {
+      const t = PT.porNome.get(l.nome); if (t) { t.aproximado = l.aproximado; pintar(t); }
+    }
+  }
+  est.pModo = modo;
+  PT.historico.push(PT.traco); PT.traco = null; document.getElementById("pDesfazer").disabled = false;
+  PT.nivel = 305; chipsNiveis(); salvar();
+};
+function distSeg(p, a, b) {   // metros de p ao segmento a–b (plano local)
+  const f = Math.cos(p[0] * Math.PI / 180), P = [p[0] * 111320, p[1] * 111320 * f], A = [a[0] * 111320, a[1] * 111320 * f], B = [b[0] * 111320, b[1] * 111320 * f];
+  const dx = B[0] - A[0], dy = B[1] - A[1], l = dx * dx + dy * dy, u = l ? Math.max(0, Math.min(1, ((P[0] - A[0]) * dx + (P[1] - A[1]) * dy) / l)) : 0;
+  return Math.hypot(P[0] - A[0] - u * dx, P[1] - A[1] - u * dy);
+}
+
+async function entrar(senha, silencioso) {
+  try {
+    if (!await rpc("monitora_admin_ok", { p_senha: senha })) { if (!silencioso) status("Senha errada.", true); return; }
+    PT.senha = senha; PT.ok = true;
+    try { if (document.getElementById("pLembrar").checked) localStorage.setItem("admin-senha", senha); } catch {}
+    document.getElementById("pEntrar").hidden = true;
+    status("Pronto para pintar. Escolha o nível e use o pincel.");
+    modos();
+  } catch (e) { status(`Não foi possível conferir a senha (${e.message}).`, true); }
+}
+document.getElementById("pEntrarBtn").onclick = () => entrar(document.getElementById("pSenha").value);
+document.getElementById("pSenha").addEventListener("keydown", e => { if (e.key === "Enter") entrar(e.target.value); });
+
+async function iniciarPintura() {
+  modos();
+  if (!window.L) { setTimeout(iniciarPintura, 200); return; }
+  const [ruas, impactos, cfg] = await Promise.all([
+    fetch(`../${PT.bacia}/ruas_osm.json`).then(r => r.json()),
+    fetch(`../${PT.bacia}/impactos.json`).then(r => r.json()).catch(() => null),
+    fetch(`../${PT.bacia}/config.json`).then(r => r.json()).catch(() => null)]);
+  PT.impactos = impactos;
+  // atalhos de nível: as cotas oficiais (com o nome) e os níveis dos registros de cheia
+  PT.niveis = [...new Map((impactos?.niveis || []).map(n => [n.cm, n.tipo === "cota" ? n.titulo.split(" ")[0] : ""])).entries()];
+  PT.trechos = montarTrechos(ruas.ruas);
+  let salvos = [], erroLeitura = null;
+  try { salvos = await rpc("monitora_ruas_listar", { p_bacia: PT.bacia }) || []; }
+  catch (e) { erroLeitura = `Não foi possível ler o Supabase: ${e.message}.`; }
+  const porNome = new Map(PT.trechos.map(t => [t.nome, t]));
+  // lugares de fora da malha de ruas: os salvos e os do impactos.json (praça, pontos)
+  for (const l of [...salvos, ...(impactos?.lugares || []).filter(l => !l.linhas)]) {
+    const t = porNome.get(l.nome);
+    if (t) { if (l.cm != null && salvos.includes(l)) Object.assign(t, { cm: l.cm, aproximado: l.aproximado, obs: l.obs }); continue; }
+    const novo = { nome: l.nome, cm: salvos.includes(l) ? l.cm : null, aproximado: l.aproximado, obs: l.obs,
+                   tipo: l.area ? "area" : l.linhas ? "trecho" : "ponto", area: l.area, linhas: l.linhas, lat: l.lat, lon: l.lon };
+    PT.trechos.push(novo); porNome.set(l.nome, novo);
+  }
+  PT.porNome = porNome;
+  PT.vazio = !salvos.length;
+  document.getElementById("pImportar").hidden = !PT.vazio || !impactos?.lugares?.length;
+  const p = cfg?.rios?.flatMap(r => r.estacoes).find(e => e.codigo === cfg.principal);
+  PT.mapa = L.map("pMapa", { scrollWheelZoom: true, doubleClickZoom: false }).setView([-23.2235, -45.3098], 16);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(PT.mapa);
+  if (p) L.circleMarker([p.lat, p.lon], { radius: 6, color: "#fff", weight: 2, fillColor: cor("--accent"), fillOpacity: 1 }).addTo(PT.mapa).bindTooltip("Régua da Passarela");
+  for (const t of PT.trechos) {
+    t.camada = t.tipo === "ponto" ? L.circleMarker([t.lat, t.lon], estilo(t)) : t.tipo === "area" ? L.polygon(t.area, estilo(t)) : L.polyline(t.linhas, { ...estilo(t), lineCap: "round" });
+    t.camada.addTo(PT.mapa).bindTooltip(dica_(t), { sticky: true });
+  }
+  // pincel: eventos de ponteiro (mouse, dedo e caneta)
+  const el = document.getElementById("pMapa");
+  const ponto = e => PT.mapa.mouseEventToContainerPoint(e);
+  el.addEventListener("pointerdown", e => {
+    if (est.pModo === "mover" || !PT.ok || e.target.closest(".leaflet-control")) return;
+    PT.pintando = true; PT.traco = new Map(); el.setPointerCapture?.(e.pointerId);
+    pintar(maisPerto(ponto(e), e.pointerType === "touch" ? 26 : 16)); e.preventDefault();
+  });
+  el.addEventListener("pointermove", e => { if (PT.pintando) pintar(maisPerto(ponto(e), e.pointerType === "touch" ? 26 : 16)); });
+  for (const ev of ["pointerup", "pointercancel", "pointerleave"]) el.addEventListener(ev, fimDoTraco);
+  addEventListener("beforeunload", e => { if (PT.pend.salvar.size || PT.pend.apagar.size) { salvar(); e.preventDefault(); } });
+  legenda(); chipsNiveis(); modos();
+  let lembrada = null; try { lembrada = localStorage.getItem("admin-senha"); } catch {}
+  if (lembrada) { document.getElementById("pLembrar").checked = true; await entrar(lembrada, true); }
+  if (erroLeitura) status(erroLeitura, true);
+  else if (!PT.ok) status(salvos.length ? "Entre com a senha para pintar." : "Nada pintado ainda. Entre com a senha para começar.");
+}
+iniciarPintura();
 </script>
 </body>
 </html>

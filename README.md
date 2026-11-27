@@ -380,9 +380,17 @@ ou desliga a região.
 
 ## O que alaga, memória e estatísticas
 
-- `public/paraitinga/impactos.json`: níveis da Passarela ligados a impactos registrados (3,95 m:
-  ruas da beira do rio, 2021; ~4,60 m: ruas do centro, 2024 — aproximado; 5,36 m: Praça
-  da Matriz, 2022), pontos no mapa e linha do tempo das cheias desde 1863.
+- `public/paraitinga/impactos.json`: níveis da Passarela ligados a impactos registrados (3,05 m:
+  Rua dos Presottos começa a alagar, visto em 26/11/2026; 3,95 m: ruas da beira do rio, 2021;
+  ~4,60 m: ruas do centro, 2024 — aproximado; 5,36 m: Praça da Matriz, 2022), ruas no mapa e
+  linha do tempo das cheias desde 1863.
+- **Mapa "O que alaga" pintado na /admin.** Em *Pintar o que alaga* (`/admin/`), escolha o nível e
+  pinte as ruas com o pincel (borracha e desfazer também); a pintura gruda nos trechos das ruas do
+  OpenStreetMap (`public/paraitinga/ruas_osm.json`, entre esquinas e até ~60 m) e é gravada sozinha
+  no Supabase (tabela `monitora_ruas`, SQL em `scripts/supabase/monitora_ruas.sql`). O painel mostra
+  cada trecho pela situação (atingido agora, pode ser atingido em 48 h, não atingido); sem nada
+  pintado ou sem o Supabase, usa as ruas inteiras do `impactos.json`. Gravar exige a senha da /admin,
+  separada do token do robô (só o hash fica no banco; como definir está no começo do SQL).
 - `public/<bacia>/estatisticas.json` (gerado por `scripts/estatisticas.py`, para a régua
   principal de cada bacia): frequência de cheias por mês, tempo para baixar depois do pico
   e, no Paraitinga, chuva × subida do rio por umidade do solo.
@@ -489,7 +497,7 @@ scripts/
   alertas.py               robô de avisos (ntfy, Telegram, WhatsApp)
   testar_previsao.py       confere se o painel e o robô calculam a mesma chance de cheia
   testar_alertas.py        cheia simulada: o robô manda um aviso por mudança de cota, sem repetir
-  supabase/                SQL do Web Push (monitora_push.sql) e do disparo dos robôs (monitora_disparo.sql)
+  supabase/                SQL do Web Push (monitora_push.sql), do disparo dos robôs (monitora_disparo.sql) e das ruas que alagam (monitora_ruas.sql)
   montar_site.py           copia os modelos para cada bacia e confere as configurações
   baixar_chuva_era5.py     chuva estimada (ERA5) nos pontos de uma bacia, para chuva × subida
   modelo_cheias/           previsão: chuva (ERA5, previsões arquivadas), vento e CAPE (testes), treino e testes (testar_ideias.py: o que já foi tentado)
