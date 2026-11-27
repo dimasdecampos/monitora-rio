@@ -381,7 +381,7 @@ function desenharReal() {
 }
 document.getElementById("qual").addEventListener("input", e => { real.i = +e.target.value; desenharReal(); });
 est.rioReal = "paraitinga";
-seg(document.getElementById("rioReal"), [["paraitinga", "Paraitinga"], ["paraibuna", "Paraibuna"], ["ribeira", "Ribeira"]], "rioReal", () => { real.rio = est.rioReal; real.i = null; carregarReal(); });
+seg(document.getElementById("rioReal"), [["paraitinga", "Paraitinga"], ["paraibuna", "Paraibuna"]], "rioReal", () => { real.rio = est.rioReal; real.i = null; carregarReal(); });
 carregarReal(); setInterval(carregarReal, 5 * 60e3);
 </script>
 </body>
