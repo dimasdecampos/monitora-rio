@@ -393,7 +393,8 @@ ou desliga a região.
   ruas) até onde a água chega com ele, tocando no lugar ou por "Marcar onde estou" (GPS). A mancha
   vai do centro do rio (`public/paraitinga/rio.json`) até cada ponto, sem passar dele; pontos do mesmo lado a
   menos de ~220 m (ao longo do rio) se ligam, e abaixo do nível marcado ela recua proporcionalmente até a
-  calha (3,00 m). Os pontos ficam no
+  calha (3,00 m). Onde só há marca baixa (30 cm ou mais abaixo dos vizinhos ligados), os níveis acima dela
+  seguem a linha dos vizinhos. Os pontos ficam no
   Supabase (tabela `monitora_ruas`, nomes `Ponto · …`; SQL em `scripts/supabase/monitora_ruas.sql`), com a
   senha da /admin. O mapa "O que alaga" do painel ainda usa o `impactos.json`.
 - `public/<bacia>/estatisticas.json` (gerado por `scripts/estatisticas.py`, para a régua

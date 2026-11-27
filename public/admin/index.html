@@ -110,7 +110,7 @@ code { font-size: 13px; }
 
   <section id="pontos">
     <div class="cab">
-      <div><h2>Até onde a água chegou</h2><p class="nota">Informe o nível da régua da Passarela e toque no mapa no lugar até onde a água chega com ele (ou use "Marcar onde estou", na beira da água). Cada ponto refina a mancha: a mancha vai do rio até o ponto, sem passar dele; pontos vizinhos do mesmo lado (até uns 200 m) se ligam. Arraste um ponto para ajustar; toque nele para mudar o nível ou apagar. Grava sozinho.</p></div>
+      <div><h2>Até onde a água chegou</h2><p class="nota">Informe o nível da régua da Passarela e toque no mapa no lugar até onde a água chega com ele (ou use "Marcar onde estou", na beira da água). Cada ponto refina a mancha: a mancha vai do rio até o ponto, sem passar dele; pontos vizinhos do mesmo lado (até uns 200 m) se ligam. Onde só há marca de nível baixo, os níveis mais altos seguem os vizinhos. Arraste um ponto para ajustar; toque nele para mudar o nível ou apagar. Grava sozinho.</p></div>
     </div>
     <div class="painel controles">
       <div class="pbarra" id="pEntrar">
@@ -437,7 +437,7 @@ carregarReal(); setInterval(carregarReal, 5 * 60e3);
 // Cada ponto é (lugar, nível da régua em que a água chega ali). A mancha vai do centro do rio até os pontos, sem passar deles.
 const PT = { bacia: "paraitinga", senha: "", ok: false, mapa: null, pontos: new Map(), rio: [], linhas: null, ver: 440, agora: null,
              pend: { salvar: new Map(), apagar: new Set() }, ultimos: [], timer: null };
-const CALHA = 18, BEIRA = 300, JUNTAR = 220, MESMO = 20, LARGURA = 12;   // meia largura do rio (m), nível em que sai da calha (cm), distância (m) para ligar pontos vizinhos, para considerar o mesmo lugar, e meia largura da faixa de um ponto sozinho
+const CALHA = 18, BEIRA = 300, JUNTAR = 220, MESMO = 20, LARGURA = 12, FOLGA = 30;   // meia largura do rio (m), nível em que sai da calha (cm), distância (m) para ligar pontos vizinhos, para considerar o mesmo lugar, e meia largura da faixa de um ponto sozinho, e diferença (cm) para um vizinho contar como marca mais alta
 const LAT0 = -23.222, LON0 = -45.311, MLON = 111320 * Math.cos(LAT0 * Math.PI / 180);
 const xy = (lat, lon) => [(lon - LON0) * MLON, (lat - LAT0) * 111320];
 const ll = p => [LAT0 + p[1] / 111320, LON0 + p[0] / MLON];
@@ -493,8 +493,9 @@ function trechoRio(l, s1, s2) {
   const em = v => { let i = 1; while (i < l.s.length - 1 && l.s[i] < v) i++; const u = Math.max(0, Math.min(1, (v - l.s[i - 1]) / (l.s[i] - l.s[i - 1] || 1))); return [l.p[i - 1][0] + u * (l.p[i][0] - l.p[i - 1][0]), l.p[i - 1][1] + u * (l.p[i][1] - l.p[i - 1][1])]; };
   return [em(s1), ...l.p.filter((_, i) => l.s[i] > s1 && l.s[i] < s2), em(s2)];
 }
-// mancha para um nível: só do rio até os pontos, nunca além deles. Pontos do mesmo lado a menos de JUNTAR m
-// um do outro (medido ao longo do rio) se ligam; ponto sozinho puxa uma faixa estreita.
+// mancha para um nível: só do rio até os pontos. Pontos do mesmo lado a menos de JUNTAR m um do outro
+// (medido ao longo do rio) se ligam; ponto sozinho puxa uma faixa estreita. Num lugar marcado só em nível baixo
+// (FOLGA cm ou mais abaixo dos vizinhos), os níveis acima seguem a linha dos vizinhos, mesmo passando do ponto.
 function malha(nivel) {
   if (nivel <= BEIRA || !PT.linhas) return [];
   const lados = new Map();
@@ -519,9 +520,23 @@ function malha(nivel) {
         cm0 = p.cm; d0 = d1;
       }
       alcance ??= d0;
-      const f = Math.min(1, alcance / (longe.d || 1));
-      return { s: longe.s, li: longe.li, v: [longe.pe[0] + (longe.q[0] - longe.pe[0]) * f, longe.pe[1] + (longe.q[1] - longe.pe[1]) * f] };
+      return { s: longe.s, li: longe.li, longe, alcance: Math.min(alcance, longe.d), cm: marcas.at(-1).cm };
     });
+    // lugar que só tem marca baixa: acima dela, segue a linha dos vizinhos ligados que têm marca mais alta
+    let cadeia = 0;
+    bordas.forEach((b, i) => { if (i && b.s - bordas[i - 1].s > JUNTAR) cadeia++; b.cadeia = cadeia; });
+    for (const b of bordas.slice().sort((a, c) => c.cm - a.cm)) {
+      if (nivel <= b.cm) continue;
+      const i = bordas.indexOf(b), maisAlto = o => o.cadeia === b.cadeia && o.cm >= b.cm + FOLGA;
+      const a = bordas.slice(0, i).reverse().find(maisAlto), d = bordas.slice(i + 1).find(maisAlto);
+      if (!a && !d) continue;
+      const viz = a && d ? a.alcance + (d.alcance - a.alcance) * (b.s - a.s) / (d.s - a.s || 1) : (a || d).alcance;
+      b.alcance = Math.max(b.alcance, viz);   // a água nunca recua
+    }
+    for (const b of bordas) {
+      const p = b.longe, f = b.alcance / (p.d || 1);
+      b.v = [p.pe[0] + (p.q[0] - p.pe[0]) * f, p.pe[1] + (p.q[1] - p.pe[1]) * f];
+    }
     bordas.forEach((b, i) => {
       const l = PT.linhas[b.li], prox = bordas[i + 1], ant = bordas[i - 1];
       if (prox && prox.s - b.s <= JUNTAR) out.push([[...trechoRio(l, b.s, prox.s), prox.v, b.v].map(ll)]);
