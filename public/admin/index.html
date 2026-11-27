@@ -110,7 +110,7 @@ code { font-size: 13px; }
 
   <section id="pintar">
     <div class="cab">
-      <div><h2>Pintar o que alaga</h2><p class="nota">Escolha o nível da régua da Passarela e pinte as ruas que alagam com ele: passe o dedo ou o mouse sobre a rua com o pincel. A pintura gruda nos trechos da rua (entre esquinas, até ~60 m) e é gravada sozinha. O mapa "O que alaga" do painel mostra na hora.</p></div>
+      <div><h2>Pintar o que alaga</h2><p class="nota">Escolha o nível da régua da Passarela e pinte as ruas que alagam com ele: passe o dedo ou o mouse sobre a rua com o pincel. O mapa mostra em cor só o que é do nível escolhido; o que foi pintado com outro nível fica tracejado e o pincel não mexe nele (para trocar o nível de um trecho, marque "mostrar todos os níveis"). A pintura gruda nos trechos da rua (entre esquinas, até ~60 m) e é gravada sozinha.</p></div>
     </div>
     <div class="painel controles">
       <div class="pbarra" id="pEntrar">
@@ -467,11 +467,16 @@ function montarTrechos(ruas) {
   return out;
 }
 
+// pintado com outro nível (fora do filtro): aparece apagado e o pincel não mexe nele
+const deOutroNivel = t => t.cm != null && t.cm !== PT.nivel && !PT.verTodos;
 function estilo(t) {
-  if (t.tipo === "ponto") return { radius: 8, color: "#fff", weight: 2, fillColor: t.cm != null ? corNivel(t.cm) : cor("--obs"), fillOpacity: t.cm != null ? .95 : .5 };
-  if (t.tipo === "area") return { color: "#fff", weight: 1, fillColor: t.cm != null ? corNivel(t.cm) : cor("--obs"), fillOpacity: t.cm != null ? .7 : .25 };
-  return t.cm != null ? { color: corNivel(t.cm), weight: 7, opacity: 1 } : { color: cor("--accent"), weight: 4, opacity: .28 };
+  const outro = deOutroNivel(t);
+  if (t.tipo === "ponto") return { radius: 8, color: "#fff", weight: 2, fillColor: t.cm != null && !outro ? corNivel(t.cm) : cor("--obs"), fillOpacity: t.cm == null ? .5 : outro ? .35 : .95 };
+  if (t.tipo === "area") return { color: "#fff", weight: 1, fillColor: t.cm != null && !outro ? corNivel(t.cm) : cor("--obs"), fillOpacity: t.cm == null ? .25 : outro ? .2 : .7 };
+  if (outro) return { color: cor("--muted"), weight: 3, opacity: .5, dashArray: "3 6" };
+  return t.cm != null ? { color: corNivel(t.cm), weight: 7, opacity: 1, dashArray: null } : { color: cor("--accent"), weight: 4, opacity: .28, dashArray: null };
 }
+function redesenharTudo() { for (const t of PT.trechos) if (t.camada) redesenhar(t); legenda(); }
 function dica_(t) { return `${escH(nomeRua(t.nome))}${t.cm != null ? ` · alaga com ${fmt(t.cm / 100, 2)} m` : " · sem pintura"}`; }
 function redesenhar(t) { t.camada.setStyle(estilo(t)); t.camada.setTooltipContent(dica_(t)); }
 
@@ -479,8 +484,17 @@ function legenda() {
   const cont = new Map();
   for (const t of PT.trechos) if (t.cm != null) cont.set(t.cm, (cont.get(t.cm) || 0) + 1);
   const ls = [...cont].sort((a, b) => a[0] - b[0]);
-  document.getElementById("pLeg").innerHTML = ls.length ? ls.map(([cm, n]) => `<span><i style="--c:${corNivel(cm)}"></i>${fmt(cm / 100, 2)} m · ${n} ${n === 1 ? "trecho" : "trechos"}</span>`).join("")
-    : "<span>Nada pintado ainda.</span>";
+  const el = document.getElementById("pLeg");
+  el.innerHTML = (ls.length ? ls.map(([cm, n]) => `<button type="button" class="chip" data-cm="${cm}" aria-pressed="${cm === PT.nivel}" style="--c:${corNivel(cm)}"><i></i>${fmt(cm / 100, 2)} m · ${n} ${n === 1 ? "trecho" : "trechos"}</button>`).join("")
+    : "<span>Nada pintado ainda.</span>")
+    + `<label style="margin-left:auto; display:inline-flex; gap:6px; align-items:center"><input type="checkbox" id="pVerTodos"${PT.verTodos ? " checked" : ""}> mostrar todos os níveis</label>`;
+  el.querySelectorAll("[data-cm]").forEach(b => b.onclick = () => escolherNivel(+b.dataset.cm));
+  el.querySelector("#pVerTodos").onchange = e => { PT.verTodos = e.target.checked; redesenharTudo(); };
+}
+function escolherNivel(cm) {
+  PT.nivel = cm; document.getElementById("pOutro").value = "";
+  if (est.pModo === "mover" && PT.ok) { est.pModo = "pincel"; modos(); }
+  chipsNiveis(); redesenharTudo();
 }
 function chipsNiveis() {
   const el = document.getElementById("pNiveis");
@@ -490,13 +504,13 @@ function chipsNiveis() {
     const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.style.setProperty("--c", corNivel(cm));
     b.innerHTML = `<i></i>${fmt(cm / 100, 2)} m${rot ? ` <span style="color:var(--muted)">${escH(rot)}</span>` : ""}`;
     b.setAttribute("aria-pressed", PT.nivel === cm);
-    b.onclick = () => { PT.nivel = cm; document.getElementById("pOutro").value = ""; if (est.pModo === "borracha" || est.pModo === "mover") { est.pModo = "pincel"; modos(); } chipsNiveis(); };
+    b.onclick = () => escolherNivel(cm);
     el.append(b);
   }
 }
 document.getElementById("pOutro").addEventListener("change", e => {
   const v = parseFloat(String(e.target.value).replace(",", "."));
-  if (v > 0 && v < 20) { PT.nivel = Math.round(v * 1000) / 10; chipsNiveis(); est.pModo = "pincel"; modos(); }
+  if (v > 0 && v < 20) { escolherNivel(Math.round(v * 1000) / 10); document.getElementById("pOutro").value = e.target.value; }
 });
 
 est.pModo = "mover";
@@ -514,6 +528,7 @@ function maisPerto(pt, raio) {
   let melhor = null, dmin = raio;
   const dSeg = (p, a, b) => { const dx = b.x - a.x, dy = b.y - a.y, l = dx * dx + dy * dy; const u = l ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l)) : 0; return Math.hypot(p.x - a.x - u * dx, p.y - a.y - u * dy); };
   for (const t of PT.trechos) {
+    if (deOutroNivel(t)) continue;   // apagado pelo filtro: o pincel procura só entre os outros
     let d = Infinity;
     if (t.tipo === "ponto") d = PT.mapa.latLngToContainerPoint([t.lat, t.lon]).distanceTo(pt) - 6;
     else if (t.tipo === "area") d = t.camada.getBounds().contains(PT.mapa.containerPointToLatLng(pt)) ? 0 : Infinity;
@@ -524,7 +539,7 @@ function maisPerto(pt, raio) {
 }
 function pintar(t) {
   const novo = est.pModo === "borracha" ? null : PT.nivel;
-  if (!t || t.cm === novo) return;
+  if (!t || t.cm === novo || deOutroNivel(t)) return;   // com o filtro, não mexe no que é de outro nível
   if (!PT.traco.has(t.nome)) PT.traco.set(t.nome, t.cm);
   t.cm = novo; redesenhar(t);
   if (novo == null) { PT.pend.salvar.delete(t.nome); PT.pend.apagar.add(t.nome); }
@@ -588,7 +603,7 @@ document.getElementById("pImportar").onclick = () => {
   }
   est.pModo = modo;
   PT.historico.push(PT.traco); PT.traco = null; document.getElementById("pDesfazer").disabled = false;
-  PT.nivel = 305; chipsNiveis(); salvar();
+  PT.nivel = 305; chipsNiveis(); redesenharTudo(); salvar();
 };
 function distSeg(p, a, b) {   // metros de p ao segmento a–b (plano local)
   const f = Math.cos(p[0] * Math.PI / 180), P = [p[0] * 111320, p[1] * 111320 * f], A = [a[0] * 111320, a[1] * 111320 * f], B = [b[0] * 111320, b[1] * 111320 * f];
